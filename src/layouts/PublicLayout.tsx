@@ -2,7 +2,6 @@ import {
   Activity,
   Bell,
   Map,
-  TrainFront,
 } from "lucide-react"
 import { NavLink, Outlet } from "react-router-dom"
 
@@ -10,17 +9,16 @@ function PublicLayout() {
   return (
     <div className="min-h-screen bg-[#F4F7FA] text-slate-900">
 
-      {/* Top Navigation */}
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex h-16 max-w-[1600px] items-center justify-between px-5 lg:px-8">
 
-          {/* Brand */}
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#0B3D91]">
-              <TrainFront
-                size={21}
-                strokeWidth={2}
-                className="text-white"
+
+            <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full border border-slate-200 bg-white">
+              <img
+                src="/logos/raildrishti-light.png"
+                alt="RailDrishti"
+                className="h-full w-full object-contain"
               />
             </div>
 
@@ -33,13 +31,13 @@ function PublicLayout() {
                 Railway Network Intelligence
               </div>
             </div>
+
           </div>
 
-          {/* Navigation */}
           <nav className="hidden items-center gap-1 md:flex">
 
             <NavLink
-              to="/"
+              to="/live"
               className={({ isActive }) =>
                 `flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition ${
                   isActive
@@ -94,10 +92,8 @@ function PublicLayout() {
 
           </nav>
 
-          {/* Right Side */}
           <div className="flex items-center gap-3">
 
-            {/* Network Status */}
             <div className="hidden items-center gap-2 border-r border-slate-200 pr-4 sm:flex">
               <span className="h-2 w-2 rounded-full bg-green-500" />
 
@@ -106,7 +102,6 @@ function PublicLayout() {
               </span>
             </div>
 
-            {/* Notifications */}
             <button
               type="button"
               aria-label="Notifications"
@@ -122,7 +117,6 @@ function PublicLayout() {
         </div>
       </header>
 
-      {/* Page Content */}
       <main>
         <Outlet />
       </main>
