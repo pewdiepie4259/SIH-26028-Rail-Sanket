@@ -1,203 +1,330 @@
-import {
-  ArrowRight,
-  Clock3,
-  MapPin,
-  Search,
-  TrainFront,
-  TriangleAlert,
-} from "lucide-react"
+import { useEffect, useState } from "react"
+import { Search, MapPin, TrainFront } from "lucide-react"
+
+interface RailwayStation {
+  name: string
+  latitude: number
+  longitude: number
+  image: string
+}
+
+const defaultStation: RailwayStation = {
+  name: "KSR Bengaluru Railway Station",
+  latitude: 12.9775,
+  longitude: 77.5713,
+  image:
+    "https://commons.wikimedia.org/wiki/Special:Redirect/file/KSR%20Bengaluru%20Railway%20Station.jpg",
+}
+
+const bengaluruStations: RailwayStation[] = [
+  {
+    name: "KSR Bengaluru Railway Station",
+    latitude: 12.9775,
+    longitude: 77.5713,
+    image:
+      "https://commons.wikimedia.org/wiki/Special:Redirect/file/KSR%20Bengaluru%20Railway%20Station.jpg",
+  },
+  {
+    name: "Yesvantpur Junction",
+    latitude: 13.028,
+    longitude: 77.5547,
+    image:
+      "https://commons.wikimedia.org/wiki/Special:Redirect/file/Yesvantpur_Junction_Railway_Station.JPG",
+  },
+  {
+    name: "Bengaluru Cantonment Railway Station",
+    latitude: 12.9937,
+    longitude: 77.598,
+    image:
+      "https://commons.wikimedia.org/wiki/Special:Redirect/file/Bangalore_Cantonment_railway_station.jpg",
+  },
+  {
+    name: "Bengaluru East Railway Station",
+    latitude: 13.0007,
+    longitude: 77.6171,
+    image:
+      "https://commons.wikimedia.org/wiki/Special:Redirect/file/Bangalore_East_railway_station.jpg",
+  },
+  {
+    name: "Baiyappanahalli Railway Station",
+    latitude: 13.0285,
+    longitude: 77.6328,
+    image:
+      "https://commons.wikimedia.org/wiki/Special:Redirect/file/Baiyappanahalli_railway_station.jpg",
+  },
+  {
+    name: "Krishnarajapuram Railway Station",
+    latitude: 13.0006,
+    longitude: 77.676,
+    image:
+      "https://commons.wikimedia.org/wiki/Special:Redirect/file/Krishnarajapuram_railway_station.jpg",
+  },
+  {
+    name: "Kengeri Railway Station",
+    latitude: 12.916844,
+    longitude: 77.483789,
+    image:
+      "https://commons.wikimedia.org/wiki/Special:Redirect/file/Kengeri%20Railway%20Station.jpg",
+  },
+]
+
+function calculateDistance(
+  latitude1: number,
+  longitude1: number,
+  latitude2: number,
+  longitude2: number
+) {
+  const earthRadius = 6371
+
+  const latitudeDifference =
+    ((latitude2 - latitude1) * Math.PI) / 180
+
+  const longitudeDifference =
+    ((longitude2 - longitude1) * Math.PI) / 180
+
+  const a =
+    Math.sin(latitudeDifference / 2) ** 2 +
+    Math.cos((latitude1 * Math.PI) / 180) *
+      Math.cos((latitude2 * Math.PI) / 180) *
+      Math.sin(longitudeDifference / 2) ** 2
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+
+  return earthRadius * c
+}
 
 function PublicDashboard() {
+  const [station, setStation] = useState(defaultStation)
+  const [locationStatus, setLocationStatus] = useState("Locating...")
+
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      setLocationStatus("Location unavailable")
+      return
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords
+
+        const bengaluruCenter = {
+          latitude: 12.9716,
+          longitude: 77.5946,
+        }
+
+        const distanceFromBengaluru = calculateDistance(
+          latitude,
+          longitude,
+          bengaluruCenter.latitude,
+          bengaluruCenter.longitude
+        )
+
+        const bengaluruCoverageRadius = 35
+
+        if (distanceFromBengaluru > bengaluruCoverageRadius) {
+          setStation(defaultStation)
+          setLocationStatus("Bengaluru")
+          return
+        }
+
+        let nearestStation = bengaluruStations[0]
+        let shortestDistance = Infinity
+
+        bengaluruStations.forEach((railwayStation) => {
+          const distance = calculateDistance(
+            latitude,
+            longitude,
+            railwayStation.latitude,
+            railwayStation.longitude
+          )
+
+          if (distance < shortestDistance) {
+            shortestDistance = distance
+            nearestStation = railwayStation
+          }
+        })
+
+        setStation(nearestStation)
+        setLocationStatus("Nearest railway station")
+      },
+      () => {
+        setStation(defaultStation)
+        setLocationStatus("Bengaluru")
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 5 * 60 * 1000,
+      }
+    )
+  }, [])
+
   return (
-    <div className="mx-auto max-w-[1600px] px-5 py-6 lg:px-8">
+    <div className="min-h-screen bg-[#F4F7FA]">
 
-      {/* Page heading */}
-      <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+      <section className="relative h-[40vh] min-h-[300px] max-h-[420px] overflow-hidden">
 
-        <div>
-          <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-[#0E7C86]">
+        <img
+          src={station.image}
+          alt={station.name}
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+
+        <div className="absolute inset-0 bg-gradient-to-r from-[#031426]/90 via-[#06283B]/65 to-[#031426]/35" />
+
+        <div className="relative z-10 mx-auto flex h-full max-w-[1600px] flex-col justify-between px-6 py-7 lg:px-12">
+
+          <div className="max-w-3xl pt-2">
+
+            <div className="mb-1 text-xs font-bold uppercase tracking-[0.2em] text-[#55D6D1] sm:text-sm">
+              Welcome to
+            </div>
+
+            <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl">
+              RailDrishti
+            </h1>
+
+            <p className="mt-2 max-w-xl text-sm leading-6 text-[#D7E5EC] sm:text-base">
+              Dynamic Estimated Time of Arrival System For Indian Coaching Trains.
+            </p>
+
+            <div className="mt-3 flex items-center gap-2 text-xs text-[#B8CBD6] sm:text-sm">
+              <MapPin size={15} />
+
+              <span>
+                {locationStatus}: {station.name}
+              </span>
+            </div>
+
+          </div>
+
+          <div className="w-full max-w-5xl">
+
+            <div className="mb-2 text-xs font-semibold text-white sm:text-sm">
+              Search trains, stations or train numbers
+            </div>
+
+            <div className="flex flex-col overflow-hidden rounded-xl border border-white/20 bg-white/95 shadow-2xl backdrop-blur-xl sm:flex-row">
+
+              <div className="flex min-h-[52px] flex-1 items-center gap-3 px-4 sm:px-5">
+
+                <Search
+                  size={20}
+                  className="shrink-0 text-[#0E7C86]"
+                />
+
+                <input
+                  type="text"
+                  placeholder="Search train number, train name or station..."
+                  className="w-full bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-500 sm:text-base"
+                />
+
+              </div>
+
+              <button
+                type="button"
+                className="flex min-h-[52px] items-center justify-center gap-2 bg-[#0E7C86] px-6 text-sm font-semibold text-white transition hover:bg-[#0B6972] sm:px-7"
+              >
+                <Search size={17} />
+                Search
+              </button>
+
+            </div>
+
+            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-[#D0DEE5] sm:text-xs">
+
+              <span className="flex items-center gap-1.5">
+                <TrainFront size={13} />
+                Live train status
+              </span>
+
+              <span>
+                Predictive ETA
+              </span>
+
+              <span>
+                Network conditions
+              </span>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </section>
+
+      <section className="mx-auto max-w-[1600px] px-6 py-7 lg:px-12">
+
+        <div className="mb-5">
+
+          <div className="text-xs font-bold uppercase tracking-[0.15em] text-[#0E7C86]">
             Live Network
           </div>
 
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+          <h2 className="mt-1 text-2xl font-bold tracking-tight text-[#071A33] sm:text-3xl">
             Railway Network Overview
-          </h1>
+          </h2>
 
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-slate-500 sm:text-base">
             Real-time train movement, delays and network conditions.
           </p>
-        </div>
-
-        <div className="text-xs text-slate-400">
-          Last updated: <span className="font-medium text-slate-600">Just now</span>
-        </div>
-
-      </div>
-
-
-      {/* Search */}
-      <section className="mb-6 border border-slate-200 bg-white p-4 shadow-sm">
-
-        <div className="flex flex-col gap-3 md:flex-row">
-
-          <div className="relative flex-1">
-
-            <Search
-              size={18}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-            />
-
-            <input
-              type="text"
-              placeholder="Search train number, train name or station..."
-              className="h-11 w-full border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm outline-none transition focus:border-[#0E7C86] focus:bg-white"
-            />
-
-          </div>
-
-          <button className="h-11 bg-[#0B3D91] px-6 text-sm font-semibold text-white transition hover:bg-[#092f70]">
-            Search
-          </button>
 
         </div>
 
-      </section>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
 
+          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
 
-      {/* Network metrics */}
-      <section className="mb-6 grid grid-cols-2 border border-slate-200 bg-white lg:grid-cols-4">
+            <p className="text-sm text-slate-500">
+              Live Network
+            </p>
 
-        <Metric
-          label="Trains Monitored"
-          value="1,248"
-          detail="Live telemetry"
-        />
+            <div className="mt-2 flex items-center gap-2">
 
-        <Metric
-          label="Currently Delayed"
-          value="87"
-          detail="6.9% of network"
-          accent="orange"
-        />
+              <span className="h-2.5 w-2.5 rounded-full bg-green-500" />
 
-        <Metric
-          label="Network Sections"
-          value="326"
-          detail="Under monitoring"
-        />
-
-        <Metric
-          label="Critical Alerts"
-          value="3"
-          detail="Require attention"
-          accent="red"
-        />
-
-      </section>
-
-
-      {/* Map + status */}
-      <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-
-        {/* Map */}
-        <div className="min-h-[500px] border border-slate-200 bg-white shadow-sm">
-
-          <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-
-            <div>
-              <h2 className="text-sm font-semibold text-slate-900">
-                Live Network Map
-              </h2>
-
-              <p className="mt-1 text-xs text-slate-400">
-                Train movement and network conditions
+              <p className="text-xl font-bold text-[#071A33]">
+                Operational
               </p>
-            </div>
 
-            <button className="text-xs font-semibold text-[#0B3D91]">
-              View Full Map
-            </button>
-
-          </div>
-
-          {/* Temporary map area */}
-          <div className="relative flex min-h-[440px] items-center justify-center overflow-hidden bg-[#EEF3F5]">
-
-            {/* Grid */}
-            <div className="absolute inset-0 opacity-40"
-              style={{
-                backgroundImage:
-                  "linear-gradient(#CBD5E1 1px, transparent 1px), linear-gradient(90deg, #CBD5E1 1px, transparent 1px)",
-                backgroundSize: "40px 40px",
-              }}
-            />
-
-            {/* Railway lines */}
-            <div className="absolute h-px w-[70%] rotate-[-12deg] bg-[#0E7C86]" />
-            <div className="absolute h-px w-[55%] rotate-[18deg] bg-[#0B3D91]" />
-            <div className="absolute h-px w-[45%] rotate-[42deg] bg-slate-400" />
-
-            {/* Stations */}
-            <StationDot className="left-[18%] top-[55%]" />
-            <StationDot className="left-[39%] top-[42%]" />
-            <StationDot className="left-[61%] top-[56%]" />
-            <StationDot className="left-[78%] top-[36%]" />
-
-            <div className="absolute bottom-4 left-4 border border-slate-200 bg-white px-3 py-2 text-[11px] text-slate-500 shadow-sm">
-              Map integration placeholder
             </div>
 
           </div>
 
-        </div>
+          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
 
+            <p className="text-sm text-slate-500">
+              Train Movements
+            </p>
 
-        {/* Network status */}
-        <div className="border border-slate-200 bg-white shadow-sm">
-
-          <div className="border-b border-slate-200 px-5 py-4">
-
-            <h2 className="text-sm font-semibold text-slate-900">
-              Network Conditions
-            </h2>
-
-            <p className="mt-1 text-xs text-slate-400">
-              Current operational alerts
+            <p className="mt-2 text-2xl font-bold text-[#071A33]">
+              1,248
             </p>
 
           </div>
 
-          <div className="divide-y divide-slate-100">
+          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
 
-            <Alert
-              title="Bengaluru Division"
-              detail="Moderate delays"
-              status="12 trains affected"
-            />
+            <p className="text-sm text-slate-500">
+              On-Time Services
+            </p>
 
-            <Alert
-              title="Chennai Junction"
-              detail="Platform congestion"
-              status="4 trains affected"
-            />
-
-            <Alert
-              title="Mysuru Section"
-              detail="Weather impact detected"
-              status="3 trains affected"
-            />
+            <p className="mt-2 text-2xl font-bold text-[#071A33]">
+              87%
+            </p>
 
           </div>
 
-          <div className="p-5">
+          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
 
-            <button className="flex w-full items-center justify-between border border-slate-200 px-4 py-3 text-xs font-semibold text-[#0B3D91] transition hover:bg-slate-50">
+            <p className="text-sm text-slate-500">
+              Active Alerts
+            </p>
 
-              View all alerts
-
-              <ArrowRight size={15} />
-
-            </button>
+            <p className="mt-2 text-2xl font-bold text-[#071A33]">
+              3
+            </p>
 
           </div>
 
@@ -205,264 +332,7 @@ function PublicDashboard() {
 
       </section>
 
-
-      {/* Train movements */}
-      <section className="mt-6 border border-slate-200 bg-white shadow-sm">
-
-        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-
-          <div>
-            <h2 className="text-sm font-semibold text-slate-900">
-              Live Train Movements
-            </h2>
-
-            <p className="mt-1 text-xs text-slate-400">
-              Recently updated train positions
-            </p>
-          </div>
-
-          <button className="text-xs font-semibold text-[#0B3D91]">
-            View all
-          </button>
-
-        </div>
-
-        <div className="overflow-x-auto">
-
-          <table className="w-full min-w-[700px] text-left">
-
-            <thead className="border-b border-slate-100 bg-slate-50">
-
-              <tr className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-
-                <th className="px-5 py-3">Train</th>
-                <th className="px-5 py-3">Route</th>
-                <th className="px-5 py-3">Current Location</th>
-                <th className="px-5 py-3">Status</th>
-                <th className="px-5 py-3">ETA</th>
-
-              </tr>
-
-            </thead>
-
-            <tbody className="divide-y divide-slate-100">
-
-              <TrainRow
-                number="12627"
-                name="Karnataka Express"
-                route="Bengaluru → New Delhi"
-                location="Krishnarajapuram"
-                status="+12 min"
-              />
-
-              <TrainRow
-                number="12951"
-                name="Mumbai Rajdhani"
-                route="Mumbai → New Delhi"
-                location="Vadodara"
-                status="+4 min"
-              />
-
-              <TrainRow
-                number="12008"
-                name="Shatabdi Express"
-                route="Mysuru → Chennai"
-                location="Bengaluru"
-                status="On time"
-              />
-
-            </tbody>
-
-          </table>
-
-        </div>
-
-      </section>
-
     </div>
-  )
-}
-
-
-function Metric({
-  label,
-  value,
-  detail,
-  accent,
-}: {
-  label: string
-  value: string
-  detail: string
-  accent?: "orange" | "red"
-}) {
-  return (
-    <div className="border-r border-slate-200 p-5 last:border-r-0">
-
-      <p className="text-xs font-medium text-slate-500">
-        {label}
-      </p>
-
-      <p
-        className={`mt-2 text-2xl font-bold ${
-          accent === "orange"
-            ? "text-[#D96B20]"
-            : accent === "red"
-              ? "text-red-600"
-              : "text-[#0B3D91]"
-        }`}
-      >
-        {value}
-      </p>
-
-      <p className="mt-1 text-[11px] text-slate-400">
-        {detail}
-      </p>
-
-    </div>
-  )
-}
-
-
-function StationDot({ className }: { className: string }) {
-  return (
-    <div className={`absolute ${className}`}>
-
-      <div className="h-3 w-3 rounded-full border-2 border-white bg-[#0B3D91] shadow-sm" />
-
-    </div>
-  )
-}
-
-
-function Alert({
-  title,
-  detail,
-  status,
-}: {
-  title: string
-  detail: string
-  status: string
-}) {
-  return (
-    <div className="p-5">
-
-      <div className="flex gap-3">
-
-        <TriangleAlert
-          size={17}
-          className="mt-0.5 shrink-0 text-[#FF8A3D]"
-        />
-
-        <div className="min-w-0">
-
-          <p className="text-sm font-semibold text-slate-800">
-            {title}
-          </p>
-
-          <p className="mt-1 text-xs text-slate-500">
-            {detail}
-          </p>
-
-          <p className="mt-2 text-[11px] font-medium text-slate-400">
-            {status}
-          </p>
-
-        </div>
-
-      </div>
-
-    </div>
-  )
-}
-
-
-function TrainRow({
-  number,
-  name,
-  route,
-  location,
-  status,
-}: {
-  number: string
-  name: string
-  route: string
-  location: string
-  status: string
-}) {
-  const delayed = status !== "On time"
-
-  return (
-    <tr className="text-sm">
-
-      <td className="px-5 py-4">
-
-        <div className="flex items-center gap-3">
-
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-slate-100">
-            <TrainFront size={16} className="text-[#0B3D91]" />
-          </div>
-
-          <div>
-            <p className="font-semibold text-slate-800">
-              {number}
-            </p>
-
-            <p className="text-xs text-slate-400">
-              {name}
-            </p>
-          </div>
-
-        </div>
-
-      </td>
-
-      <td className="px-5 py-4 text-xs text-slate-600">
-        {route}
-      </td>
-
-      <td className="px-5 py-4">
-
-        <div className="flex items-center gap-2 text-xs text-slate-600">
-
-          <MapPin size={14} className="text-slate-400" />
-
-          {location}
-
-        </div>
-
-      </td>
-
-      <td className="px-5 py-4">
-
-        <span
-          className={`inline-flex items-center gap-1.5 text-xs font-semibold ${
-            delayed
-              ? "text-[#D96B20]"
-              : "text-green-600"
-          }`}
-        >
-
-          <span className="h-1.5 w-1.5 rounded-full bg-current" />
-
-          {status}
-
-        </span>
-
-      </td>
-
-      <td className="px-5 py-4">
-
-        <div className="flex items-center gap-2 text-xs font-medium text-slate-600">
-
-          <Clock3 size={14} className="text-slate-400" />
-
-          Predicted
-
-        </div>
-
-      </td>
-
-    </tr>
   )
 }
 

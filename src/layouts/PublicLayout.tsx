@@ -9,25 +9,25 @@ function PublicLayout() {
   return (
     <div className="min-h-screen bg-[#F4F7FA] text-slate-900">
 
-      <header className="border-b border-slate-200 bg-white">
+      <header className="border-b border-[#164B5A] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33]">
         <div className="mx-auto flex h-16 max-w-[1600px] items-center justify-between px-5 lg:px-8">
 
           <div className="flex items-center gap-3">
 
-            <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full border border-slate-200 bg-white">
+            <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full border border-[#294665] bg-[#071A33]">
               <img
-                src="/logos/raildrishti-light.png"
+                src="/logos/raildrishti-dark.png"
                 alt="RailDrishti"
-                className="h-full w-full object-contain"
+                className="h-full w-full object-contain p-0.5"
               />
             </div>
 
             <div>
-              <div className="text-lg font-bold leading-none tracking-tight text-[#0B3D91]">
+              <div className="text-lg font-bold leading-none tracking-tight text-white">
                 RailDrishti
               </div>
 
-              <div className="mt-1 hidden text-[10px] font-medium uppercase tracking-wider text-slate-400 sm:block">
+              <div className="mt-1 hidden text-[10px] font-medium uppercase tracking-wider text-[#AFC0D4] sm:block">
                 Railway Network Intelligence
               </div>
             </div>
@@ -41,8 +41,8 @@ function PublicLayout() {
               className={({ isActive }) =>
                 `flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition ${
                   isActive
-                    ? "bg-[#0B3D91]/5 text-[#0B3D91]"
-                    : "text-slate-600 hover:bg-slate-50 hover:text-[#0B3D91]"
+                    ? "bg-[#0E7C86]/30 text-white"
+                    : "text-[#AFC0D4] hover:bg-white/5 hover:text-white"
                 }`
               }
             >
@@ -55,8 +55,8 @@ function PublicLayout() {
               className={({ isActive }) =>
                 `flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition ${
                   isActive
-                    ? "bg-[#0B3D91]/5 text-[#0B3D91]"
-                    : "text-slate-600 hover:bg-slate-50 hover:text-[#0B3D91]"
+                    ? "bg-[#0E7C86]/30 text-white"
+                    : "text-[#AFC0D4] hover:bg-white/5 hover:text-white"
                 }`
               }
             >
@@ -69,8 +69,8 @@ function PublicLayout() {
               className={({ isActive }) =>
                 `rounded-lg px-3 py-2 text-sm font-medium transition ${
                   isActive
-                    ? "bg-[#0B3D91]/5 text-[#0B3D91]"
-                    : "text-slate-600 hover:bg-slate-50 hover:text-[#0B3D91]"
+                    ? "bg-[#0E7C86]/30 text-white"
+                    : "text-[#AFC0D4] hover:bg-white/5 hover:text-white"
                 }`
               }
             >
@@ -82,8 +82,8 @@ function PublicLayout() {
               className={({ isActive }) =>
                 `rounded-lg px-3 py-2 text-sm font-medium transition ${
                   isActive
-                    ? "bg-[#0B3D91]/5 text-[#0B3D91]"
-                    : "text-slate-600 hover:bg-slate-50 hover:text-[#0B3D91]"
+                    ? "bg-[#0E7C86]/30 text-white"
+                    : "text-[#AFC0D4] hover:bg-white/5 hover:text-white"
                 }`
               }
             >
@@ -94,10 +94,10 @@ function PublicLayout() {
 
           <div className="flex items-center gap-3">
 
-            <div className="hidden items-center gap-2 border-r border-slate-200 pr-4 sm:flex">
+            <div className="hidden items-center gap-2 border-r border-[#294665] pr-4 sm:flex">
               <span className="h-2 w-2 rounded-full bg-green-500" />
 
-              <span className="text-xs font-medium text-slate-500">
+              <span className="text-xs font-medium text-[#D5E1EA]">
                 Network Operational
               </span>
             </div>
@@ -105,7 +105,7 @@ function PublicLayout() {
             <button
               type="button"
               aria-label="Notifications"
-              className="relative rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+              className="relative rounded-lg p-2 text-[#D5E1EA] transition hover:bg-white/10 hover:text-white"
             >
               <Bell size={19} />
 
