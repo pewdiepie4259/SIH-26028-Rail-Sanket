@@ -1,0 +1,93 @@
+{
+  "directed": true,
+  "multigraph": false,
+  "graph": {},
+  "nodes": [
+    {
+      "name": "New Delhi",
+      "lat": 28.6424,
+      "lon": 77.2195,
+      "visibility_m": 10000.0,
+      "rain_mm": 0.0,
+      "wind_speed_kmh": 0.0,
+      "id": "NDLS"
+    },
+    {
+      "name": "Ghaziabad Jn",
+      "lat": 28.6678,
+      "lon": 77.4339,
+      "visibility_m": 9400.0,
+      "rain_mm": 0.0,
+      "wind_speed_kmh": 4.6,
+      "id": "GZB"
+    },
+    {
+      "name": "Aligarh Jn",
+      "lat": 27.8974,
+      "lon": 78.088,
+      "visibility_m": 7900.0,
+      "rain_mm": 0.0,
+      "wind_speed_kmh": 3.6,
+      "id": "ALJN"
+    },
+    {
+      "name": "Tundla Jn",
+      "lat": 27.2046,
+      "lon": 78.241,
+      "visibility_m": 8860.0,
+      "rain_mm": 0.0,
+      "wind_speed_kmh": 4.4,
+      "id": "TDL"
+    },
+    {
+      "name": "Etawah Jn",
+      "lat": 26.7855,
+      "lon": 79.027,
+      "visibility_m": 7860.0,
+      "rain_mm": 0.0,
+      "wind_speed_kmh": 5.7,
+      "id": "ETW"
+    },
+    {
+      "name": "Kanpur Central",
+      "lat": 26.4547,
+      "lon": 80.3507,
+      "visibility_m": 5520.0,
+      "rain_mm": 0.0,
+      "wind_speed_kmh": 1.8,
+      "id": "CNB"
+    }
+  ],
+  "edges": [
+    {
+      "distance_km": 21.11,
+      "max_speed_kmh": 130.0,
+      "source": "NDLS",
+      "target": "GZB"
+    },
+    {
+      "distance_km": 106.96,
+      "max_speed_kmh": 130.0,
+      "source": "GZB",
+      "target": "ALJN"
+    },
+    {
+      "distance_km": 78.5,
+      "max_speed_kmh": 130.0,
+      "source": "ALJN",
+      "target": "TDL"
+    },
+    {
+      "distance_km": 90.75,
+      "max_speed_kmh": 130.0,
+      "source": "TDL",
+      "target": "ETW"
+    },
+    {
+      "distance_km": 136.63,
+      "max_speed_kmh": 130.0,
+      "source": "ETW",
+      "target": "CNB"
+    }
+  ]
+}
