@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { Search, MapPin, TrainFront } from "lucide-react"
+import AlertMarquee from "../components/AlertMarquee"
 
 interface RailwayStation {
   name: string
@@ -29,7 +30,7 @@ const bengaluruStations: RailwayStation[] = [
     latitude: 13.028,
     longitude: 77.5547,
     image:
-      "https://commons.wikimedia.org/wiki/Special:Redirect/file/Yesvantpur_Junction_Railway_Station.JPG",
+      "https://commons.wikimedia.org/wiki/Special:Redirect/file/Yesvantpur%20Junction%20railway%20station%20%28Sept%20%2723%29.jpg",
   },
   {
     name: "Bengaluru Cantonment Railway Station",
@@ -161,9 +162,7 @@ function PublicDashboard() {
 
   return (
     <div className="min-h-screen bg-[#F4F7FA]">
-
       <section className="relative h-[40vh] min-h-[300px] max-h-[420px] overflow-hidden">
-
         <img
           src={station.image}
           alt={station.name}
@@ -173,9 +172,7 @@ function PublicDashboard() {
         <div className="absolute inset-0 bg-gradient-to-r from-[#031426]/90 via-[#06283B]/65 to-[#031426]/35" />
 
         <div className="relative z-10 mx-auto flex h-full max-w-[1600px] flex-col justify-between px-6 py-7 lg:px-12">
-
           <div className="max-w-3xl pt-2">
-
             <div className="mb-1 text-xs font-bold uppercase tracking-[0.2em] text-[#55D6D1] sm:text-sm">
               Welcome to
             </div>
@@ -190,24 +187,19 @@ function PublicDashboard() {
 
             <div className="mt-3 flex items-center gap-2 text-xs text-[#B8CBD6] sm:text-sm">
               <MapPin size={15} />
-
               <span>
                 {locationStatus}: {station.name}
               </span>
             </div>
-
           </div>
 
           <div className="w-full max-w-5xl">
-
             <div className="mb-2 text-xs font-semibold text-white sm:text-sm">
               Search trains, stations or train numbers
             </div>
 
             <div className="flex flex-col overflow-hidden rounded-xl border border-white/20 bg-white/95 shadow-2xl backdrop-blur-xl sm:flex-row">
-
               <div className="flex min-h-[52px] flex-1 items-center gap-3 px-4 sm:px-5">
-
                 <Search
                   size={20}
                   className="shrink-0 text-[#0E7C86]"
@@ -218,7 +210,6 @@ function PublicDashboard() {
                   placeholder="Search train number, train name or station..."
                   className="w-full bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-500 sm:text-base"
                 />
-
               </div>
 
               <button
@@ -228,36 +219,25 @@ function PublicDashboard() {
                 <Search size={17} />
                 Search
               </button>
-
             </div>
 
             <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-[#D0DEE5] sm:text-xs">
-
               <span className="flex items-center gap-1.5">
                 <TrainFront size={13} />
                 Live train status
               </span>
 
-              <span>
-                Predictive ETA
-              </span>
-
-              <span>
-                Network conditions
-              </span>
-
+              <span>Predictive ETA</span>
+              <span>Network conditions</span>
             </div>
-
           </div>
-
         </div>
-
       </section>
 
+      <AlertMarquee />
+
       <section className="mx-auto max-w-[1600px] px-6 py-7 lg:px-12">
-
         <div className="mb-5">
-
           <div className="text-xs font-bold uppercase tracking-[0.15em] text-[#0E7C86]">
             Live Network
           </div>
@@ -269,31 +249,24 @@ function PublicDashboard() {
           <p className="mt-1 text-sm text-slate-500 sm:text-base">
             Real-time train movement, delays and network conditions.
           </p>
-
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-
           <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-
             <p className="text-sm text-slate-500">
               Live Network
             </p>
 
             <div className="mt-2 flex items-center gap-2">
-
               <span className="h-2.5 w-2.5 rounded-full bg-green-500" />
 
               <p className="text-xl font-bold text-[#071A33]">
                 Operational
               </p>
-
             </div>
-
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-
             <p className="text-sm text-slate-500">
               Train Movements
             </p>
@@ -301,11 +274,9 @@ function PublicDashboard() {
             <p className="mt-2 text-2xl font-bold text-[#071A33]">
               1,248
             </p>
-
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-
             <p className="text-sm text-slate-500">
               On-Time Services
             </p>
@@ -313,11 +284,9 @@ function PublicDashboard() {
             <p className="mt-2 text-2xl font-bold text-[#071A33]">
               87%
             </p>
-
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-
             <p className="text-sm text-slate-500">
               Active Alerts
             </p>
@@ -325,13 +294,9 @@ function PublicDashboard() {
             <p className="mt-2 text-2xl font-bold text-[#071A33]">
               3
             </p>
-
           </div>
-
         </div>
-
       </section>
-
     </div>
   )
 }

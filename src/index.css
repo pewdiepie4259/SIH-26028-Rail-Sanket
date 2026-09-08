@@ -44,3 +44,21 @@ body {
   background: var(--rd-background);
   color: var(--rd-text);
 }
+
+.alert-marquee {
+  animation: alert-marquee 35s linear infinite;
+}
+
+.alert-marquee:hover {
+  animation-play-state: paused;
+}
+
+@keyframes alert-marquee {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}

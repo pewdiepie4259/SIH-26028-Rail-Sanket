@@ -6,6 +6,7 @@ import LiveTrainStatus from "./pages/public/LiveTrainStatus"
 import LiveMap from "./pages/public/LiveMap"
 import TrainSearch from "./pages/public/TrainSearch"
 import StationInformation from "./pages/public/StationInformation"
+import Settings from "./pages/settings"
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
           <Route path="/map" element={<LiveMap />} />
           <Route path="/trains" element={<TrainSearch />} />
           <Route path="/stations" element={<StationInformation />} />
+          <Route path="/settings" element={<Settings />} />
         </Route>
 
         <Route

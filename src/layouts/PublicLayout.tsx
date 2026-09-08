@@ -1,8 +1,4 @@
-import {
-  Activity,
-  Bell,
-  Map,
-} from "lucide-react"
+import { Settings } from "lucide-react"
 import { NavLink, Outlet } from "react-router-dom"
 
 function PublicLayout() {
@@ -34,83 +30,47 @@ function PublicLayout() {
 
           </div>
 
-          <nav className="hidden items-center gap-1 md:flex">
+          <div className="flex items-center gap-2">
 
             <NavLink
-              to="/live"
+              to="/login"
               className={({ isActive }) =>
-                `flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                `flex h-10 items-center justify-center rounded-lg border px-4 text-sm font-semibold transition ${
                   isActive
-                    ? "bg-[#0E7C86]/30 text-white"
-                    : "text-[#AFC0D4] hover:bg-white/5 hover:text-white"
+                    ? "border-[#55D6D1]/50 bg-[#0E7C86]/30 text-white"
+                    : "border-transparent text-[#D5E1EA] hover:border-[#55D6D1]/30 hover:bg-white/5 hover:text-white"
                 }`
               }
             >
-              <Activity size={16} />
-              Live Status
+              Login
             </NavLink>
 
             <NavLink
-              to="/map"
+              to="/register"
               className={({ isActive }) =>
-                `flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                `flex h-10 items-center justify-center rounded-lg border px-4 text-sm font-semibold transition ${
                   isActive
-                    ? "bg-[#0E7C86]/30 text-white"
-                    : "text-[#AFC0D4] hover:bg-white/5 hover:text-white"
+                    ? "border-[#55D6D1] bg-[#0E7C86]/40 text-white"
+                    : "border-[#55D6D1]/50 text-white hover:bg-[#0E7C86]/30"
                 }`
               }
             >
-              <Map size={16} />
-              Network Map
+              Register
             </NavLink>
 
             <NavLink
-              to="/trains"
+              to="/settings"
+              aria-label="Settings"
               className={({ isActive }) =>
-                `rounded-lg px-3 py-2 text-sm font-medium transition ${
+                `ml-1 flex h-10 w-10 items-center justify-center rounded-lg border transition ${
                   isActive
-                    ? "bg-[#0E7C86]/30 text-white"
-                    : "text-[#AFC0D4] hover:bg-white/5 hover:text-white"
+                    ? "border-[#55D6D1]/50 bg-[#0E7C86]/30 text-white"
+                    : "border-transparent text-[#D5E1EA] hover:border-[#55D6D1]/30 hover:bg-white/5 hover:text-white"
                 }`
               }
             >
-              Trains
+              <Settings size={20} strokeWidth={2} />
             </NavLink>
-
-            <NavLink
-              to="/stations"
-              className={({ isActive }) =>
-                `rounded-lg px-3 py-2 text-sm font-medium transition ${
-                  isActive
-                    ? "bg-[#0E7C86]/30 text-white"
-                    : "text-[#AFC0D4] hover:bg-white/5 hover:text-white"
-                }`
-              }
-            >
-              Stations
-            </NavLink>
-
-          </nav>
-
-          <div className="flex items-center gap-3">
-
-            <div className="hidden items-center gap-2 border-r border-[#294665] pr-4 sm:flex">
-              <span className="h-2 w-2 rounded-full bg-green-500" />
-
-              <span className="text-xs font-medium text-[#D5E1EA]">
-                Network Operational
-              </span>
-            </div>
-
-            <button
-              type="button"
-              aria-label="Notifications"
-              className="relative rounded-lg p-2 text-[#D5E1EA] transition hover:bg-white/10 hover:text-white"
-            >
-              <Bell size={19} />
-
-              <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-[#FF8A3D]" />
-            </button>
 
           </div>
 
