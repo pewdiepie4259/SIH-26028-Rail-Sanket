@@ -42,7 +42,6 @@ function AlertMarquee() {
         }
 
         const data: Alert[] = await response.json()
-
         setAlerts(data)
       } catch {
         setAlerts(fallbackAlerts)
@@ -51,7 +50,10 @@ function AlertMarquee() {
 
     fetchAlerts()
 
-    const interval = window.setInterval(fetchAlerts, 30 * 1000)
+    const interval = window.setInterval(
+      fetchAlerts,
+      30 * 1000
+    )
 
     return () => window.clearInterval(interval)
   }, [])
@@ -61,34 +63,26 @@ function AlertMarquee() {
   }
 
   return (
-    <section className="border-b border-[#D7E1E8] bg-white">
-
+    <section className="border-b border-[#F59E0B]/30 bg-[#FFF8EC]">
       <div className="mx-auto flex h-11 max-w-[1600px] items-center px-6 lg:px-12">
-
-        <div className="z-10 flex h-full shrink-0 items-center gap-2 border-r border-[#D7E1E8] bg-white pr-4">
-
+        <div className="z-10 flex h-full shrink-0 items-center gap-2 border-r border-[#F59E0B]/30 bg-[#FFF8EC] pr-4">
           <Radio
             size={16}
-            className="text-[#0E7C86]"
+            className="text-[#F59E0B]"
           />
 
           <span className="text-xs font-bold uppercase tracking-wider text-[#071A33]">
             Live Alerts
           </span>
-
         </div>
 
         <div className="relative flex-1 overflow-hidden">
-
           <div className="alert-marquee flex w-max items-center">
-
             {[...alerts, ...alerts].map((alert, index) => (
-
               <div
                 key={`${alert.id}-${index}`}
                 className="flex items-center gap-2 whitespace-nowrap px-6 text-sm"
               >
-
                 {alert.type === "critical" ? (
                   <AlertTriangle
                     size={15}
@@ -114,20 +108,14 @@ function AlertMarquee() {
                   {alert.time}
                 </span>
 
-                <span className="ml-4 text-slate-300">
+                <span className="ml-4 text-[#F59E0B]/40">
                   •
                 </span>
-
               </div>
-
             ))}
-
           </div>
-
         </div>
-
       </div>
-
     </section>
   )
 }

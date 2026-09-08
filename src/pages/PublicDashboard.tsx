@@ -9,6 +9,16 @@ interface RailwayStation {
   image: string
 }
 
+interface Train {
+  name: string
+  number: string
+  scheduledDeparture: string
+  scheduledArrival: string
+  from: string
+  to: string
+  lastStation: string
+}
+
 const defaultStation: RailwayStation = {
   name: "KSR Bengaluru Railway Station",
   latitude: 12.9775,
@@ -66,6 +76,63 @@ const bengaluruStations: RailwayStation[] = [
     longitude: 77.483789,
     image:
       "https://commons.wikimedia.org/wiki/Special:Redirect/file/Kengeri%20Railway%20Station.jpg",
+  },
+]
+
+const trains: Train[] = [
+  {
+    name: "Karnataka Express",
+    number: "12627",
+    scheduledDeparture: "19:20",
+    scheduledArrival: "06:15",
+    from: "KSR Bengaluru",
+    to: "New Delhi",
+    lastStation: "Kengeri",
+  },
+  {
+    name: "Bengaluru - Mysuru Express",
+    number: "12613",
+    scheduledDeparture: "06:15",
+    scheduledArrival: "08:45",
+    from: "KSR Bengaluru",
+    to: "Mysuru",
+    lastStation: "KSR Bengaluru",
+  },
+  {
+    name: "Brindavan Express",
+    number: "12639",
+    scheduledDeparture: "07:00",
+    scheduledArrival: "13:40",
+    from: "KSR Bengaluru",
+    to: "Chennai Central",
+    lastStation: "Bengaluru Cantonment",
+  },
+  {
+    name: "Mysuru - Chennai Express",
+    number: "12610",
+    scheduledDeparture: "22:15",
+    scheduledArrival: "05:30",
+    from: "Mysuru",
+    to: "Chennai Central",
+    lastStation: "Mandya",
+  },
+  {
+    name: "Lalbagh Express",
+    number: "12608",
+    scheduledDeparture: "06:20",
+    scheduledArrival: "12:35",
+    from: "KSR Bengaluru",
+    to: "Chennai Central",
+    lastStation: "Bengaluru East",
+  },
+  {
+    name: "Hampi Express",
+    number: "16591",
+    scheduledDeparture: "21:00",
+    scheduledArrival: "08:10",
+    from: "KSR Bengaluru",
+    to: "Hubballi",
+    lastStation: "Yelahanka",
   },
 ]
 
@@ -169,24 +236,28 @@ function PublicDashboard() {
           className="absolute inset-0 h-full w-full object-cover"
         />
 
-        <div className="absolute inset-0 bg-gradient-to-r from-[#031426]/90 via-[#06283B]/65 to-[#031426]/35" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#031426]/95 via-[#06283B]/70 to-[#031426]/40" />
 
         <div className="relative z-10 mx-auto flex h-full max-w-[1600px] flex-col justify-between px-6 py-7 lg:px-12">
           <div className="max-w-3xl pt-2">
-            <div className="mb-1 text-xs font-bold uppercase tracking-[0.2em] text-[#55D6D1] sm:text-sm">
+            <div className="mb-1 text-xs font-bold uppercase tracking-[0.2em] text-[#F59E0B] sm:text-sm">
               Welcome to
             </div>
 
             <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl">
-              RailDrishti
+              Rail<span className="text-[#F59E0B]">Drishti</span>
             </h1>
 
             <p className="mt-2 max-w-xl text-sm leading-6 text-[#D7E5EC] sm:text-base">
               Dynamic Estimated Time of Arrival System For Indian Coaching Trains.
             </p>
 
-            <div className="mt-3 flex items-center gap-2 text-xs text-[#B8CBD6] sm:text-sm">
-              <MapPin size={15} />
+            <div className="mt-3 flex items-center gap-2 text-xs text-[#DDE9EF] sm:text-sm">
+              <MapPin
+                size={16}
+                className="text-[#F59E0B]"
+              />
+
               <span>
                 {locationStatus}: {station.name}
               </span>
@@ -221,14 +292,24 @@ function PublicDashboard() {
               </button>
             </div>
 
-            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-[#D0DEE5] sm:text-xs">
+            <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-[11px] text-[#D0DEE5] sm:text-xs">
               <span className="flex items-center gap-1.5">
-                <TrainFront size={13} />
+                <TrainFront
+                  size={14}
+                  className="text-[#F59E0B]"
+                />
                 Live train status
               </span>
 
-              <span>Predictive ETA</span>
-              <span>Network conditions</span>
+              <span className="flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#F59E0B]" />
+                Predictive ETA
+              </span>
+
+              <span className="flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#F59E0B]" />
+                Live tracking
+              </span>
             </div>
           </div>
         </div>
@@ -236,64 +317,99 @@ function PublicDashboard() {
 
       <AlertMarquee />
 
-      <section className="mx-auto max-w-[1600px] px-6 py-7 lg:px-12">
-        <div className="mb-5">
-          <div className="text-xs font-bold uppercase tracking-[0.15em] text-[#0E7C86]">
-            Live Network
-          </div>
-
-          <h2 className="mt-1 text-2xl font-bold tracking-tight text-[#071A33] sm:text-3xl">
-            Railway Network Overview
-          </h2>
-
-          <p className="mt-1 text-sm text-slate-500 sm:text-base">
-            Real-time train movement, delays and network conditions.
-          </p>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm text-slate-500">
+      <section className="bg-gradient-to-br from-[#D6E7EC] via-[#F4F7FA] to-[#BFDDE0]">
+        <div className="mx-auto max-w-[1600px] px-6 py-8 lg:px-12">
+          <div className="mb-6">
+            <div className="text-xs font-bold uppercase tracking-[0.15em] text-[#0E7C86]">
               Live Network
-            </p>
-
-            <div className="mt-2 flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full bg-green-500" />
-
-              <p className="text-xl font-bold text-[#071A33]">
-                Operational
-              </p>
             </div>
-          </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm text-slate-500">
-              Train Movements
-            </p>
+            <h2 className="mt-1 text-2xl font-bold tracking-tight text-[#071A33] sm:text-3xl">
+              Trains on the Move
+            </h2>
 
-            <p className="mt-2 text-2xl font-bold text-[#071A33]">
-              1,248
+            <p className="mt-1 text-sm text-slate-500 sm:text-base">
+              Monitor active trains and track their predicted arrival times.
             </p>
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm text-slate-500">
-              On-Time Services
-            </p>
+          <div className="space-y-4">
+            {trains.map((train) => (
+              <div
+                key={train.number}
+                className="group rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:scale-[1.01] hover:border-[#F59E0B]/60 hover:shadow-[0_10px_30px_rgba(245,158,11,0.15)]"
+              >
+                <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <h3 className="text-lg font-bold text-[#071A33] transition-colors duration-300 group-hover:text-[#0E7C86]">
+                        {train.name}
+                      </h3>
 
-            <p className="mt-2 text-2xl font-bold text-[#071A33]">
-              87%
-            </p>
-          </div>
+                      <span className="rounded-md bg-[#F59E0B] px-2.5 py-1 text-xs font-bold text-[#071A33]">
+                        {train.number}
+                      </span>
+                    </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm text-slate-500">
-              Active Alerts
-            </p>
+                    <div className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                          Scheduled
+                        </p>
 
-            <p className="mt-2 text-2xl font-bold text-[#071A33]">
-              3
-            </p>
+                        <p className="mt-1 text-sm font-semibold text-slate-700">
+                          {train.scheduledDeparture} → {train.scheduledArrival}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                          Route
+                        </p>
+
+                        <p className="mt-1 text-sm font-semibold text-slate-700">
+                          {train.from} → {train.to}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                          Last Station
+                        </p>
+
+                        <p className="mt-1 text-sm font-semibold text-slate-700">
+                          {train.lastStation}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                          Status
+                        </p>
+
+                        <div className="mt-1 flex items-center gap-2">
+                          <span className="h-2 w-2 rounded-full bg-green-500 transition-transform duration-300 group-hover:scale-125" />
+
+                          <span className="text-sm font-semibold text-slate-700">
+                            Running
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="flex h-11 shrink-0 items-center justify-center rounded-lg border border-[#0E7C86] bg-[#0E7C86] px-5 text-sm font-bold text-white transition-all duration-300 hover:scale-105 hover:bg-[#0B6972] hover:shadow-[0_6px_20px_rgba(14,124,134,0.3)] lg:min-w-[135px]"
+                  >
+                    Track ETA
+                    <span className="ml-2 transition-transform duration-300 group-hover:translate-x-1">
+                      →
+                    </span>
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
