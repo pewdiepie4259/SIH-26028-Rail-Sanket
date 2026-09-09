@@ -252,9 +252,24 @@ function PublicDashboard() {
     setSearchQuery(`${search.name} ${search.number}`)
   }
 
+  const filteredTrains = trains.filter((train) => {
+    const query = searchQuery.trim().toLowerCase()
+
+    if (!query) {
+      return true
+    }
+
+    return (
+      train.name.toLowerCase().includes(query) ||
+      train.number.toLowerCase().includes(query) ||
+      train.from.toLowerCase().includes(query) ||
+      train.to.toLowerCase().includes(query) ||
+      train.lastStation.toLowerCase().includes(query)
+    )
+  })
+
   return (
     <div className="min-h-screen bg-[#F4F7FA]">
-      {/* Hero Section */}
       <section className="relative h-[40vh] min-h-[300px] max-h-[420px] overflow-hidden">
         <img
           src={station.image}
@@ -266,7 +281,7 @@ function PublicDashboard() {
 
         <div className="relative z-10 mx-auto flex h-full max-w-[1600px] flex-col justify-between px-6 py-7 lg:px-12">
           <div className="max-w-3xl pt-2">
-            <div className="mb-1 text-xs font-bold uppercase tracking-[0.2em] text-[#F59E0B] sm:text-sm">
+            <div className="mb-1 text-xs font-bold uppercase tracking-[0.2em] text-[#F59E0B]">
               Welcome to
             </div>
 
@@ -279,10 +294,7 @@ function PublicDashboard() {
             </p>
 
             <div className="mt-3 flex items-center gap-2 text-xs text-[#DDE9EF] sm:text-sm">
-              <MapPin
-                size={16}
-                className="text-[#F59E0B]"
-              />
+              <MapPin size={16} className="text-[#F59E0B]" />
 
               <span>
                 {locationStatus}: {station.name}
@@ -290,14 +302,12 @@ function PublicDashboard() {
             </div>
           </div>
 
-          {/* Search Area */}
           <div className="w-full max-w-5xl">
             <div className="mb-2 text-xs font-semibold text-white sm:text-sm">
               Search trains, stations or train numbers
             </div>
 
-            {/* Search Bar */}
-            <div className="flex flex-col overflow-hidden rounded-xl border border-white/20 bg-white/95 shadow-2xl backdrop-blur-xl sm:flex-row">
+            <div className="flex flex-col overflow-hidden rounded-xl border border-[#F59E0B] bg-white/95 shadow-2xl backdrop-blur-xl sm:flex-row">
               <div className="flex min-h-[52px] flex-1 items-center gap-3 px-4 sm:px-5">
                 <Search
                   size={20}
@@ -307,9 +317,7 @@ function PublicDashboard() {
                 <input
                   type="text"
                   value={searchQuery}
-                  onChange={(event) =>
-                    setSearchQuery(event.target.value)
-                  }
+                  onChange={(event) => setSearchQuery(event.target.value)}
                   placeholder="Search train number, train name or station..."
                   className="w-full bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-500 sm:text-base"
                 />
@@ -324,9 +332,8 @@ function PublicDashboard() {
               </button>
             </div>
 
-            {/* Recent Searches */}
             <div className="mt-3">
-              <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[#D0DEE5]">
+              <div className="mb-2 text-[11px] font-semibold text-white sm:text-xs">
                 Recent Searches
               </div>
 
@@ -348,7 +355,6 @@ function PublicDashboard() {
               </div>
             </div>
 
-            {/* Feature Indicators */}
             <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-[11px] text-[#D0DEE5] sm:text-xs">
               <span className="flex items-center gap-1.5">
                 <TrainFront
@@ -372,28 +378,28 @@ function PublicDashboard() {
         </div>
       </section>
 
-      {/* Live Alerts */}
       <AlertMarquee />
 
-      {/* Trains on the Move */}
       <section className="bg-gradient-to-r from-[#FFF4E1] via-white to-[#FFF4E1]">
         <div className="mx-auto max-w-[1600px] px-6 py-8 lg:px-12">
-          <div className="mb-6">
-            <div className="text-xs font-bold uppercase tracking-[0.15em] text-[#0E7C86]">
-              Live Network
+          <div className="mb-8">
+            <div className="rounded-lg bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-5 py-3">
+              <div className="text-xs font-bold uppercase tracking-[0.15em] text-[#F59E0B]">
+                Live Network
+              </div>
+
+              <h2 className="mt-1 text-3xl font-bold tracking-tight text-white">
+                Trains on the Move
+              </h2>
+
+              <p className="mt-2 text-base text-[#D7E5EC]">
+                Monitor active trains and track their predicted arrival times.
+              </p>
             </div>
-
-            <h2 className="mt-1 text-2xl font-bold tracking-tight text-[#071A33] sm:text-3xl">
-              Trains on the Move
-            </h2>
-
-            <p className="mt-1 text-sm text-slate-500 sm:text-base">
-              Monitor active trains and track their predicted arrival times.
-            </p>
           </div>
 
           <div className="space-y-4">
-            {trains.map((train) => (
+            {filteredTrains.map((train) => (
               <div
                 key={train.number}
                 className="group rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:scale-[1.005] hover:border-[#F59E0B]/40 hover:shadow-[0_8px_20px_rgba(245,158,11,0.08)]"
@@ -460,7 +466,7 @@ function PublicDashboard() {
 
                   <button
                     type="button"
-                    className="flex h-11 shrink-0 items-center justify-center rounded-lg border border-[#0E5961] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-5 text-sm font-bold text-white transition-all duration-300 hover:scale-105 hover:shadow-[0_5px_14px_rgba(14,89,97,0.22)] lg:min-w-[135px]"
+                    className="flex h-11 shrink-0 items-center justify-center rounded-lg border border-[#F59E0B] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-5 text-sm font-bold text-white transition-all duration-300 hover:scale-105 hover:shadow-[0_5px_14px_rgba(14,89,97,0.22)] lg:min-w-[135px]"
                   >
                     Track ETA
 
@@ -471,6 +477,18 @@ function PublicDashboard() {
                 </div>
               </div>
             ))}
+
+            {filteredTrains.length === 0 && (
+              <div className="rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+                <p className="text-sm font-semibold text-[#071A33]">
+                  No trains found
+                </p>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  Try searching by train number, train name or station.
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </section>

@@ -73,6 +73,9 @@ function PublicLayout() {
   const textCard =
     "flex min-h-[82px] flex-col items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white p-3 text-center text-[#071A33] shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:scale-[1.005] hover:border-[#F59E0B]/40 hover:shadow-[0_8px_20px_rgba(245,158,11,0.08)]"
 
+  const headerButton =
+    "flex h-10 items-center justify-center rounded-lg border border-[#F59E0B] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-4 text-sm font-semibold text-white transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_5px_14px_rgba(14,89,97,0.28)]"
+
   return (
     <div
       className={`min-h-screen text-slate-900 ${
@@ -111,10 +114,10 @@ function PublicLayout() {
             <NavLink
               to="/login"
               className={({ isActive }) =>
-                `flex h-10 items-center justify-center rounded-lg border px-4 text-sm font-semibold transition ${
+                `${headerButton} ${
                   isActive
-                    ? "border-[#F59E0B] bg-[#F59E0B]/15 text-white"
-                    : "border-[#F59E0B]/70 text-white hover:border-[#F59E0B] hover:bg-[#F59E0B]/10"
+                    ? "shadow-[0_5px_14px_rgba(245,158,11,0.18)]"
+                    : ""
                 }`
               }
             >
@@ -124,10 +127,10 @@ function PublicLayout() {
             <NavLink
               to="/register"
               className={({ isActive }) =>
-                `flex h-10 items-center justify-center rounded-lg border px-4 text-sm font-semibold transition ${
+                `${headerButton} ${
                   isActive
-                    ? "border-[#F59E0B] bg-[#F59E0B]/20 text-white"
-                    : "border-[#F59E0B] text-white hover:bg-[#F59E0B]/10"
+                    ? "shadow-[0_5px_14px_rgba(245,158,11,0.18)]"
+                    : ""
                 }`
               }
             >
@@ -143,11 +146,17 @@ function PublicLayout() {
                   setLanguageOpen(!languageOpen)
                   setAccessibilityOpen(false)
                 }}
-                className="flex h-10 items-center gap-2 rounded-full border border-[#F59E0B] px-3.5 text-sm font-medium text-white transition hover:bg-[#F59E0B]/10"
+                className={`flex h-10 items-center gap-2 rounded-full border border-[#F59E0B] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-3.5 text-sm font-medium text-white transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_5px_14px_rgba(14,89,97,0.28)] ${
+                  languageOpen
+                    ? "shadow-[0_5px_14px_rgba(245,158,11,0.18)]"
+                    : ""
+                }`}
               >
                 <span className="flex items-center gap-1.5">
                   <span className="text-base leading-none">A</span>
-                  <span className="text-base leading-none">अ</span>
+                  <span className="text-base leading-none text-[#F59E0B]">
+                    अ
+                  </span>
                 </span>
 
                 <span className="hidden sm:inline">{language}</span>
@@ -193,10 +202,10 @@ function PublicLayout() {
                   setAccessibilityOpen(!accessibilityOpen)
                   setLanguageOpen(false)
                 }}
-                className={`flex h-10 w-10 items-center justify-center rounded-lg border transition ${
+                className={`flex h-10 w-10 items-center justify-center rounded-lg border border-[#F59E0B] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_5px_14px_rgba(14,89,97,0.28)] ${
                   accessibilityOpen
-                    ? "border-[#F59E0B] bg-[#F59E0B]/15"
-                    : "border-[#F59E0B]/70 hover:border-[#F59E0B] hover:bg-[#F59E0B]/10"
+                    ? "shadow-[0_5px_14px_rgba(245,158,11,0.18)]"
+                    : ""
                 }`}
               >
                 <PersonStanding
@@ -219,34 +228,29 @@ function PublicLayout() {
                       onClick={() => setAccessibilityOpen(false)}
                       className="rounded-md p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
                     >
-                      <ChevronDown
-                        size={19}
-                        className="rotate-180"
-                      />
+                      <ChevronDown size={19} className="rotate-180" />
                     </button>
                   </div>
 
                   <div className="max-h-[calc(100vh-90px)] overflow-y-auto p-4">
                     <section>
                       <div className="mb-3 flex items-center justify-between rounded-lg bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-4 py-3">
-  <h3 className="text-base font-semibold text-white">
-    Color Adjustment
-  </h3>
+                        <h3 className="text-base font-semibold text-white">
+                          Color Adjustment
+                        </h3>
 
-  <Palette
-    size={17}
-    className="text-[#F59E0B]"
-  />
-</div>
+                        <Palette
+                          size={17}
+                          className="text-[#F59E0B]"
+                        />
+                      </div>
 
                       <div className="grid grid-cols-2 gap-2">
                         <button
                           type="button"
                           onClick={() =>
                             setContrastMode(
-                              contrastMode === "high"
-                                ? "normal"
-                                : "high"
+                              contrastMode === "high" ? "normal" : "high"
                             )
                           }
                           className={`${cardBase} ${
@@ -266,9 +270,7 @@ function PublicLayout() {
                           type="button"
                           onClick={() =>
                             setContrastMode(
-                              contrastMode === "dark"
-                                ? "normal"
-                                : "dark"
+                              contrastMode === "dark" ? "normal" : "dark"
                             )
                           }
                           className={`${cardBase} ${
@@ -290,9 +292,7 @@ function PublicLayout() {
                             setColorVisionMode(!colorVisionMode)
                           }
                           className={`${cardBase} ${
-                            colorVisionMode
-                              ? cardActive
-                              : cardInactive
+                            colorVisionMode ? cardActive : cardInactive
                           }`}
                         >
                           <Eye size={22} />
@@ -308,9 +308,7 @@ function PublicLayout() {
                             setHighlightLinks(!highlightLinks)
                           }
                           className={`${cardBase} ${
-                            highlightLinks
-                              ? cardActive
-                              : cardInactive
+                            highlightLinks ? cardActive : cardInactive
                           }`}
                         >
                           <Link2 size={22} />
@@ -322,13 +320,9 @@ function PublicLayout() {
 
                         <button
                           type="button"
-                          onClick={() =>
-                            setInvertColors(!invertColors)
-                          }
+                          onClick={() => setInvertColors(!invertColors)}
                           className={`${cardBase} ${
-                            invertColors
-                              ? cardActive
-                              : cardInactive
+                            invertColors ? cardActive : cardInactive
                           }`}
                         >
                           <Palette size={22} />
