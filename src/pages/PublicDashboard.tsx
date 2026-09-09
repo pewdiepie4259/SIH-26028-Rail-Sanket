@@ -19,6 +19,11 @@ interface Train {
   lastStation: string
 }
 
+interface RecentSearch {
+  name: string
+  number: string
+}
+
 const defaultStation: RailwayStation = {
   name: "KSR Bengaluru Railway Station",
   latitude: 12.9775,
@@ -136,6 +141,21 @@ const trains: Train[] = [
   },
 ]
 
+const recentSearches: RecentSearch[] = [
+  {
+    name: "Karnataka Express",
+    number: "12627",
+  },
+  {
+    name: "Brindavan Express",
+    number: "12639",
+  },
+  {
+    name: "Lalbagh Express",
+    number: "12608",
+  },
+]
+
 function calculateDistance(
   latitude1: number,
   longitude1: number,
@@ -164,6 +184,7 @@ function calculateDistance(
 function PublicDashboard() {
   const [station, setStation] = useState(defaultStation)
   const [locationStatus, setLocationStatus] = useState("Locating...")
+  const [searchQuery, setSearchQuery] = useState("")
 
   useEffect(() => {
     if (!navigator.geolocation) {
@@ -227,8 +248,13 @@ function PublicDashboard() {
     )
   }, [])
 
+  const handleRecentSearch = (search: RecentSearch) => {
+    setSearchQuery(`${search.name} ${search.number}`)
+  }
+
   return (
     <div className="min-h-screen bg-[#F4F7FA]">
+      {/* Hero Section */}
       <section className="relative h-[40vh] min-h-[300px] max-h-[420px] overflow-hidden">
         <img
           src={station.image}
@@ -264,11 +290,13 @@ function PublicDashboard() {
             </div>
           </div>
 
+          {/* Search Area */}
           <div className="w-full max-w-5xl">
             <div className="mb-2 text-xs font-semibold text-white sm:text-sm">
               Search trains, stations or train numbers
             </div>
 
+            {/* Search Bar */}
             <div className="flex flex-col overflow-hidden rounded-xl border border-white/20 bg-white/95 shadow-2xl backdrop-blur-xl sm:flex-row">
               <div className="flex min-h-[52px] flex-1 items-center gap-3 px-4 sm:px-5">
                 <Search
@@ -278,6 +306,10 @@ function PublicDashboard() {
 
                 <input
                   type="text"
+                  value={searchQuery}
+                  onChange={(event) =>
+                    setSearchQuery(event.target.value)
+                  }
                   placeholder="Search train number, train name or station..."
                   className="w-full bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-500 sm:text-base"
                 />
@@ -285,13 +317,38 @@ function PublicDashboard() {
 
               <button
                 type="button"
-                className="flex min-h-[52px] items-center justify-center gap-2 bg-[#0E7C86] px-6 text-sm font-semibold text-white transition hover:bg-[#0B6972] sm:px-7"
+                className="flex min-h-[52px] items-center justify-center gap-2 bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-6 text-sm font-semibold text-white transition-all duration-300 hover:scale-[1.01] hover:shadow-[0_5px_14px_rgba(14,89,97,0.22)] sm:px-7"
               >
                 <Search size={17} />
                 Search
               </button>
             </div>
 
+            {/* Recent Searches */}
+            <div className="mt-3">
+              <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[#D0DEE5]">
+                Recent Searches
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {recentSearches.map((search) => (
+                  <button
+                    key={search.number}
+                    type="button"
+                    onClick={() => handleRecentSearch(search)}
+                    className="flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3.5 py-1.5 text-xs font-medium text-white backdrop-blur-md transition hover:border-[#F59E0B]/70 hover:bg-white/15"
+                  >
+                    <span>{search.name}</span>
+
+                    <span className="rounded-full bg-[#F59E0B] px-1.5 py-0.5 text-[10px] font-bold text-[#071A33]">
+                      {search.number}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Feature Indicators */}
             <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-[11px] text-[#D0DEE5] sm:text-xs">
               <span className="flex items-center gap-1.5">
                 <TrainFront
@@ -315,9 +372,11 @@ function PublicDashboard() {
         </div>
       </section>
 
+      {/* Live Alerts */}
       <AlertMarquee />
 
-      <section className="bg-gradient-to-br from-[#D6E7EC] via-[#F4F7FA] to-[#BFDDE0]">
+      {/* Trains on the Move */}
+      <section className="bg-gradient-to-r from-[#FFF4E1] via-white to-[#FFF4E1]">
         <div className="mx-auto max-w-[1600px] px-6 py-8 lg:px-12">
           <div className="mb-6">
             <div className="text-xs font-bold uppercase tracking-[0.15em] text-[#0E7C86]">
@@ -337,7 +396,7 @@ function PublicDashboard() {
             {trains.map((train) => (
               <div
                 key={train.number}
-                className="group rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:scale-[1.01] hover:border-[#F59E0B]/60 hover:shadow-[0_10px_30px_rgba(245,158,11,0.15)]"
+                className="group rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:scale-[1.005] hover:border-[#F59E0B]/40 hover:shadow-[0_8px_20px_rgba(245,158,11,0.08)]"
               >
                 <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
                   <div className="min-w-0 flex-1">
@@ -358,7 +417,8 @@ function PublicDashboard() {
                         </p>
 
                         <p className="mt-1 text-sm font-semibold text-slate-700">
-                          {train.scheduledDeparture} → {train.scheduledArrival}
+                          {train.scheduledDeparture} →{" "}
+                          {train.scheduledArrival}
                         </p>
                       </div>
 
@@ -400,9 +460,10 @@ function PublicDashboard() {
 
                   <button
                     type="button"
-                    className="flex h-11 shrink-0 items-center justify-center rounded-lg border border-[#0E7C86] bg-[#0E7C86] px-5 text-sm font-bold text-white transition-all duration-300 hover:scale-105 hover:bg-[#0B6972] hover:shadow-[0_6px_20px_rgba(14,124,134,0.3)] lg:min-w-[135px]"
+                    className="flex h-11 shrink-0 items-center justify-center rounded-lg border border-[#0E5961] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-5 text-sm font-bold text-white transition-all duration-300 hover:scale-105 hover:shadow-[0_5px_14px_rgba(14,89,97,0.22)] lg:min-w-[135px]"
                   >
                     Track ETA
+
                     <span className="ml-2 transition-transform duration-300 group-hover:translate-x-1">
                       →
                     </span>
