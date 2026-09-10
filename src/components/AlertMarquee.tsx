@@ -61,7 +61,7 @@ function AlertMarquee() {
   }
 
   return (
-    <section className="border-b border-[#F59E0B]/40 bg-[#FFF8EC]">
+    <section className="relative z-20 border-b border-[#F59E0B]/40 bg-[#FFF8EC]">
       <div className="mx-auto flex h-12 max-w-[1600px] items-center px-6 lg:px-12">
         <div className="z-10 flex h-full shrink-0 items-center gap-2 border-r border-[#F59E0B]/40 bg-[#FFF8EC] pr-5">
           <Radio

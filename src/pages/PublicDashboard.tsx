@@ -270,7 +270,7 @@ function PublicDashboard() {
 
   return (
     <div className="min-h-screen bg-[#F4F7FA]">
-      <section className="relative h-[40vh] min-h-[300px] max-h-[420px] overflow-hidden">
+      <section className="relative min-h-[360px] overflow-hidden sm:min-h-[370px] lg:min-h-[380px]">
         <img
           src={station.image}
           alt={station.name}
@@ -279,7 +279,7 @@ function PublicDashboard() {
 
         <div className="absolute inset-0 bg-gradient-to-r from-[#031426]/95 via-[#06283B]/70 to-[#031426]/40" />
 
-        <div className="relative z-10 mx-auto flex h-full max-w-[1600px] flex-col justify-between px-6 py-7 lg:px-12">
+        <div className="relative z-10 mx-auto flex min-h-[360px] max-w-[1600px] flex-col px-6 py-7 sm:min-h-[370px] lg:min-h-[380px] lg:px-12">
           <div className="max-w-3xl pt-2">
             <div className="mb-1 text-xs font-bold uppercase tracking-[0.2em] text-[#F59E0B]">
               Welcome to
