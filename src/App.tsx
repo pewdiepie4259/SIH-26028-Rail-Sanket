@@ -2,7 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom"
 
 import PublicLayout from "./layouts/PublicLayout"
 import PublicDashboard from "./pages/PublicDashboard"
-import LiveTrainStatus from "./pages/public/LiveTrainStatus"
+import { LiveTrainStatus } from "./pages/public/LiveTrainStatus"
 import LiveMap from "./pages/public/LiveMap"
 import TrainSearch from "./pages/public/TrainSearch"
 import StationInformation from "./pages/public/StationInformation"
@@ -15,6 +15,7 @@ function App() {
         <Route element={<PublicLayout />}>
           <Route path="/" element={<PublicDashboard />} />
           <Route path="/live" element={<LiveTrainStatus />} />
+          <Route path="/live-train-status" element={<LiveTrainStatus />} />
           <Route path="/map" element={<LiveMap />} />
           <Route path="/trains" element={<TrainSearch />} />
           <Route path="/stations" element={<StationInformation />} />
