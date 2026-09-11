@@ -1,71 +1,73 @@
-import asyncio
-import httpx
-from datetime import datetime, timezone
+import time
+import requests
+import json
 
-async def run_simulation():
-    url = "http://127.0.0.1:8000/api/v1/telemetry/rtis"
-    print("\n--- Streaming Bengaluru Division RTIS Telemetry (SBC -> BWT) ---")
+API_URL = "http://127.0.0.1:8000/api/v1/telemetry"
 
-    # Train 1: 06527 Bangarapet MEMU (Leading passenger)
-    t1_lat, t1_lon, t1_speed = 12.9800, 77.5800, 45.0
-    # Train 2: 20608 Vande Bharat Express (Trailing premium rake)
-    t2_lat, t2_lon, t2_speed = 12.9750, 77.5650, 75.0
+SIMULATION_STEPS = [
+    # Step 1: Normal corridor running out of SBC
+    [
+        {"train_number": "06527", "lat": 12.9784, "lon": 77.5680, "speed": 45.0, "signal": "GREEN"},
+        {"train_number": "20608", "lat": 12.9784, "lon": 77.5680, "speed": 80.0, "signal": "GREEN"}
+    ],
+    # Step 2: Passing Bengaluru Cantt (BNC)
+    [
+        {"train_number": "06527", "lat": 12.9934, "lon": 77.5980, "speed": 45.0, "signal": "GREEN"},
+        {"train_number": "20608", "lat": 12.9784, "lon": 77.5680, "speed": 85.0, "signal": "GREEN"}
+    ],
+    # Step 3: Approaching Whitefield (WFD)
+    [
+        {"train_number": "06527", "lat": 12.9934, "lon": 77.7500, "speed": 45.0, "signal": "GREEN"},
+        {"train_number": "20608", "lat": 12.9934, "lon": 77.6603, "speed": 95.0, "signal": "GREEN"}
+    ],
+    # Step 4: Congestion starts at Malur (MLO) - MEMU drops to 25 km/h under Yellow Signal
+    [
+        {"train_number": "06527", "lat": 13.0034, "lon": 77.9380, "speed": 25.0, "signal": "YELLOW"},
+        {"train_number": "20608", "lat": 12.9934, "lon": 77.7500, "speed": 80.0, "signal": "DOUBLE_YELLOW"}
+    ],
+    # Step 5: Heavy cascade at Bangarapet (BWT) approach - Vande Bharat slowed down by MEMU
+    [
+        {"train_number": "06527", "lat": 12.9860, "lon": 78.1970, "speed": 20.0, "signal": "RED"},
+        {"train_number": "20608", "lat": 13.0034, "lon": 77.9380, "speed": 30.0, "signal": "YELLOW"}
+    ]
+]
 
-    async with httpx.AsyncClient() as client:
-        for step in range(10):
-            # Advance coordinates along the eastward SBC-KJM-BWT alignment
-            t1_lat += 0.0025
-            t1_lon += 0.065
-            t2_lat += 0.0028
-            t2_lon += 0.070
+def run_simulation():
+    print("==================================================================")
+    print("🚀 Starting RailDrishti Corridor Simulation: SBC -> BWT")
+    print("   Tracking: MEMU (06527) & Vande Bharat Express (20608)")
+    print("==================================================================")
 
-            # Traffic restriction: MEMU slows down mid-corridor
-            sig1 = "YELLOW" if step >= 4 else "GREEN"
-            t1_speed = 25.0 if step >= 4 else 45.0
+    for step_idx, step in enumerate(SIMULATION_STEPS, 1):
+        print(f"\n--- [TIME STEP {step_idx}] Corridor Block Scan ---")
+        for rake in step:
+            try:
+                res = requests.post(API_URL, json=rake, timeout=3.0)
+                if res.status_code == 200:
+                    data = res.json()["prediction"]
+                    t_num = data["train_number"]
+                    block = data["current_block"]
+                    spd = data["telemetry"]["speed_kmh"]
+                    forecasts = data.get("forecasts", [])
+                    next_stn = forecasts[0]["station"] if forecasts else "TERM"
+                    next_delay = forecasts[0]["predicted_delay_min"] if forecasts else 0.0
+                    risk = forecasts[0]["cascade_risk"] if forecasts else 0.0
 
-            p1 = {
-                "loco_id": "WAP7_30450",
-                "train_number": "06527",
-                "latitude": round(t1_lat, 4),
-                "longitude": round(t1_lon, 4),
-                "speed_kmh": t1_speed,
-                "heading": 85.0,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-                "signal_aspect": sig1
-            }
-
-            # Trailing Vande Bharat experiences headway compression
-            sig2 = "YELLOW" if step >= 5 else "GREEN"
-            t2_speed = 30.0 if step >= 5 else 80.0
-
-            p2 = {
-                "loco_id": "VB_20608",
-                "train_number": "20608",
-                "latitude": round(t2_lat, 4),
-                "longitude": round(t2_lon, 4),
-                "speed_kmh": t2_speed,
-                "heading": 85.0,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-                "signal_aspect": sig2
-            }
-
-            for payload in [p1, p2]:
-                try:
-                    resp = await client.post(url, json=payload, timeout=5)
-                    data = resp.json()
-                    top_fc = data["forecasts"][0] if data["forecasts"] else {
-                        "station": "TERM", "dynamic_eta": "-", "predicted_delay_min": 0, "cascade_risk": 0
-                    }
-                    print(f"[{payload['train_number']}] Block: {data['current_block']:<4} | Spd: {payload['speed_kmh']:>4.1f} km/h | Next: {top_fc['station']} (+{top_fc['predicted_delay_min']}m, Risk: {top_fc['cascade_risk']})")
+                    print(f"[{t_num}] Block: {block:<4} | Spd: {spd:4.1f} km/h | Next: {next_stn} (+{next_delay}m, Risk: {risk})")
 
                     alert = data.get("copilot_alert")
                     if alert:
-                        print(f"   🚨 [ALERT -> LLM] Bottleneck: {alert['bottleneck_station']} | Train: {alert['delayed_train']} | Delay: +{alert['predicted_delay_min']}m | Risk: {alert['downstream_cascade_risk']} | Trailing Impacted: {alert['affected_trains']}")
-                except Exception as e:
-                    print(f"Telemetry error: {e}")
+                        print(f"   🚨 [BOTTLENECK] Choke Station: {alert['bottleneck_station']} | Train: {t_num} | Delay: +{alert['predicted_delay_min']}m")
+                        action = alert.get("dispatcher_precedence_action")
+                        if action:
+                            print(f"   🚦 [DISPATCHER ADVISORY]: {action['advisory_directive']}")
+                            print(f"   📊 [TRADE-OFF GAIN]: {action['tradeoff_analysis']['net_system_efficiency_gain']}")
+                else:
+                    print(f"Failed to post telemetry for {rake['train_number']}: {res.text}")
+            except Exception as e:
+                print(f"Connection error: {e}")
 
-            print("-" * 75)
-            await asyncio.sleep(2)
+        time.sleep(2)
 
 if __name__ == "__main__":
-    asyncio.run(run_simulation())
+    run_simulation()

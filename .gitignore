@@ -34,8 +34,7 @@ ENV/
 .env
 !.env.example
 
-
 sih26028-rail-eta/venv/
-venv/
 *.dll
-__pycache__/
+*.db
+*.sqlite3

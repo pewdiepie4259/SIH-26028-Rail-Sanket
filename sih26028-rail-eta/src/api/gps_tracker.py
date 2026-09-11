@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
 from src.database import get_db
-from src.models import Station, Train, ETAPrediction, DataSourceType
+from src.models import Station, Train, ETAPrediction, ModelVersion, DataSourceType
 
 router = APIRouter(prefix="/api/v1/gps", tags=["GPS Telemetry"])
 
@@ -58,14 +58,22 @@ def update_train_gps(payload: GPSTelemetryInput, db: Session = Depends(get_db)):
 
     station_status = "AT_STATION" if min_dist <= 1.5 else "IN_TRANSIT"
 
+    model_ver = db.query(ModelVersion).filter_by(is_active=True).first()
+    if not model_ver:
+        model_ver = db.query(ModelVersion).first()
+    model_ver_id = model_ver.id if model_ver else 1
+
+    target_stn_id = nearest_station.id if nearest_station else stations[0].id
+
     # Persist live tracking snapshot
     new_prediction = ETAPrediction(
+        model_version_id=model_ver_id,
         train_id=train.id,
-        current_station_id=nearest_station.id if nearest_station else None,
-        next_station_id=nearest_station.id if nearest_station else None,
+        target_station_id=target_stn_id,
+        prediction_generated_at=datetime.now(timezone.utc),
         predicted_delay_minutes=18.0 if payload.train_number == "12627" else 4.0,
         confidence_score=0.94,
-        source_type=DataSourceType.LIVE_GPS if hasattr(DataSourceType, "LIVE_GPS") else DataSourceType.SIMULATED,
+        source_type=DataSourceType.LIVE,
         scheduled_eta=datetime.now(timezone.utc),
         predicted_eta=datetime.now(timezone.utc),
         features_snapshot={
