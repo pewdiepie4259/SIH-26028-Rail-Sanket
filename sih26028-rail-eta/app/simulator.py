@@ -34,7 +34,7 @@ SIMULATION_STEPS = [
 
 def run_simulation():
     print("==================================================================")
-    print("🚀 Starting RailDrishti Corridor Simulation: SBC -> BWT")
+    print("[SIMULATOR] Starting RailDrishti Corridor Simulation: SBC -> BWT")
     print("   Tracking: MEMU (06527) & Vande Bharat Express (20608)")
     print("==================================================================")
 
@@ -57,11 +57,11 @@ def run_simulation():
 
                     alert = data.get("copilot_alert")
                     if alert:
-                        print(f"   🚨 [BOTTLENECK] Choke Station: {alert['bottleneck_station']} | Train: {t_num} | Delay: +{alert['predicted_delay_min']}m")
+                        print(f"   [BOTTLENECK] Choke Station: {alert['bottleneck_station']} | Train: {t_num} | Delay: +{alert['predicted_delay_min']}m")
                         action = alert.get("dispatcher_precedence_action")
                         if action:
-                            print(f"   🚦 [DISPATCHER ADVISORY]: {action['advisory_directive']}")
-                            print(f"   📊 [TRADE-OFF GAIN]: {action['tradeoff_analysis']['net_system_efficiency_gain']}")
+                            print(f"   [DISPATCHER ADVISORY]: {action['advisory_directive']}")
+                            print(f"   [TRADE-OFF GAIN]: {action['tradeoff_analysis']['net_system_efficiency_gain']}")
                 else:
                     print(f"Failed to post telemetry for {rake['train_number']}: {res.text}")
             except Exception as e:

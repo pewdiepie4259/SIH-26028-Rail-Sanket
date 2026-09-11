@@ -45,7 +45,21 @@ TRAIN_METADATA = {
         "priority": 1.0,
         "type": "SUPERFAST_PREMIUM",
         "max_speed": 130.0,
-        "delay_cost_weight": 5.0  # High penalty for delaying premium rake
+        "delay_cost_weight": 5.0
+    },
+    "12245": {
+        "name": "Howrah - SMVT Duronto Express",
+        "priority": 0.9,
+        "type": "DURONTO_SUPERFAST",
+        "max_speed": 120.0,
+        "delay_cost_weight": 4.0
+    },
+    "12246": {
+        "name": "SMVT - Howrah Duronto Express",
+        "priority": 0.9,
+        "type": "DURONTO_SUPERFAST",
+        "max_speed": 120.0,
+        "delay_cost_weight": 4.0
     },
     "06527": {
         "name": "Bangarapet MEMU",
@@ -199,25 +213,22 @@ def evaluate_bottlenecks_and_precedence(source_train: str, current_node_idx: int
                     affected_trains.append(t_num)
                     trailing_meta = get_train_meta(t_num)
 
-                    # Higher priority train behind a lower priority train in the corridor
                     if trailing_meta["priority"] > source_meta["priority"]:
-                        # Lookahead 1 hop for loop line station
                         loop_station_idx = min(current_node_idx + 1, NUM_NODES - 1)
                         loop_station = CORRIDOR_NODES[loop_station_idx]["id"]
 
-                        # Quantitative trade-off calculation:
-                        status_quo_vb_delay = round(fc["predicted_delay_min"] * 1.8, 1)
-                        status_quo_memu_delay = round(fc["predicted_delay_min"], 1)
+                        status_quo_priority_delay = round(fc["predicted_delay_min"] * 1.8, 1)
+                        status_quo_commuter_delay = round(fc["predicted_delay_min"], 1)
                         status_quo_total_cost = (
-                            (status_quo_vb_delay * trailing_meta["delay_cost_weight"]) +
-                            (status_quo_memu_delay * source_meta["delay_cost_weight"])
+                            (status_quo_priority_delay * trailing_meta["delay_cost_weight"]) +
+                            (status_quo_commuter_delay * source_meta["delay_cost_weight"])
                         )
 
-                        overtake_vb_delay = 0.0
-                        overtake_memu_delay = round(status_quo_memu_delay + 6.0, 1)  # 6 min loop dwell
+                        overtake_priority_delay = 0.0
+                        overtake_commuter_delay = round(status_quo_commuter_delay + 6.0, 1)
                         overtake_total_cost = (
-                            (overtake_vb_delay * trailing_meta["delay_cost_weight"]) +
-                            (overtake_memu_delay * source_meta["delay_cost_weight"])
+                            (overtake_priority_delay * trailing_meta["delay_cost_weight"]) +
+                            (overtake_commuter_delay * source_meta["delay_cost_weight"])
                         )
 
                         net_savings = round(status_quo_total_cost - overtake_total_cost, 1)
@@ -239,13 +250,13 @@ def evaluate_bottlenecks_and_precedence(source_train: str, current_node_idx: int
                             "recommended_loop_station": loop_station,
                             "tradeoff_analysis": {
                                 "status_quo": {
-                                    "vande_bharat_delay_min": status_quo_vb_delay,
-                                    "memu_delay_min": status_quo_memu_delay,
+                                    "priority_rake_delay_min": status_quo_priority_delay,
+                                    "commuter_delay_min": status_quo_commuter_delay,
                                     "corridor_penalty_cost": status_quo_total_cost
                                 },
                                 "recommended_overtake": {
-                                    "vande_bharat_delay_min": overtake_vb_delay,
-                                    "memu_delay_min": overtake_memu_delay,
+                                    "priority_rake_delay_min": overtake_priority_delay,
+                                    "commuter_delay_min": overtake_commuter_delay,
                                     "corridor_penalty_cost": overtake_total_cost
                                 },
                                 "net_system_efficiency_gain": f"+{net_savings} points"
@@ -253,7 +264,7 @@ def evaluate_bottlenecks_and_precedence(source_train: str, current_node_idx: int
                             "advisory_directive": (
                                 f"Route {source_meta['name']} ({source_train}) into Loop Line 2 at {loop_station}. "
                                 f"Clear Main Line for {trailing_meta['name']} ({t_num}). "
-                                f"Net network delay savings: {status_quo_vb_delay} min for high-priority rake."
+                                f"Net network delay savings: {status_quo_priority_delay} min for priority rake."
                             )
                         }
 

@@ -83,6 +83,22 @@ def generate_bot_reply(query: str, db: Session) -> str:
     )
 
 
+@router.get("/query")
+def whatsapp_json_query_get(
+    message: Optional[str] = None,
+    query: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """Direct GET JSON endpoint for quick URL queries and testing."""
+    msg = message or query or ""
+    reply = generate_bot_reply(msg, db)
+    return {
+        "status": "success",
+        "query": msg,
+        "reply": reply
+    }
+
+
 @router.post("/query")
 def whatsapp_json_query(payload: WhatsAppQueryRequest, db: Session = Depends(get_db)):
     """Direct JSON endpoint for browser modals and web clients."""

@@ -60,11 +60,38 @@ def get_trains(db: Session = Depends(get_db)):
 # ----------------------------------------------------
 # 2. RTIS / GPS Telemetry Ingestion Pipeline
 # ----------------------------------------------------
-@router.post("/telemetry/ingest")
+class TelemetryPayload(BaseModel):
+    train_number: str = Field(..., example="06527")
+    lat: float = Field(..., example=12.9934)
+    lon: float = Field(..., example=77.6603)
+    speed: float = Field(..., example=45.0, description="Speed in km/h")
+    signal: str = Field(default="GREEN", example="YELLOW")
+
+
 @router.post("/telemetry")
 @router.post("/telemetry/rtis")
-def ingest_telemetry(payload: NormalizedTrainObservation, db: Session = Depends(get_db)):
-    """Ingests, validates, geo-correlates, and stores real-time train telemetry."""
+async def ingest_simulator_telemetry(payload: TelemetryPayload):
+    """Ingests live telemetry from train rakes and computes ST-GNN dynamic cascade prediction."""
+    try:
+        from app.graph_engine import predict_cascade
+        prediction = predict_cascade(
+            train_number=payload.train_number,
+            lat=payload.lat,
+            lon=payload.lon,
+            speed=payload.speed,
+            signal=payload.signal
+        )
+        return {
+            "status": "success",
+            "prediction": prediction
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/telemetry/ingest")
+def ingest_telemetry_event(payload: NormalizedTrainObservation, db: Session = Depends(get_db)):
+    """Ingests, validates, geo-correlates, and stores real-time train telemetry in database."""
     pipeline = IngestionPipeline(db)
     try:
         observation = pipeline.process_observation(payload)
