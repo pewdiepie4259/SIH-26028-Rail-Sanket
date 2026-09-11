@@ -24,7 +24,8 @@ const fallbackAlerts: Alert[] = [
   {
     id: "3",
     type: "warning",
-    message: "Heavy rainfall may affect train movement in the Bengaluru section.",
+    message:
+      "Heavy rainfall may affect train movement in the Bengaluru section.",
     time: "5 min ago",
   },
 ]
@@ -50,10 +51,7 @@ function AlertMarquee() {
 
     fetchAlerts()
 
-    const interval = window.setInterval(
-      fetchAlerts,
-      30 * 1000
-    )
+    const interval = window.setInterval(fetchAlerts, 30 * 1000)
 
     return () => window.clearInterval(interval)
   }, [])
@@ -63,15 +61,16 @@ function AlertMarquee() {
   }
 
   return (
-    <section className="border-b border-[#F59E0B]/30 bg-[#FFF8EC]">
-      <div className="mx-auto flex h-11 max-w-[1600px] items-center px-6 lg:px-12">
-        <div className="z-10 flex h-full shrink-0 items-center gap-2 border-r border-[#F59E0B]/30 bg-[#FFF8EC] pr-4">
+    <section className="relative z-20 border-b border-[#F59E0B]/40 bg-[#FFF8EC]">
+      <div className="mx-auto flex h-12 max-w-[1600px] items-center px-6 lg:px-12">
+        <div className="z-10 flex h-full shrink-0 items-center gap-2 border-r border-[#F59E0B]/40 bg-[#FFF8EC] pr-5">
           <Radio
-            size={16}
+            size={17}
+            strokeWidth={2.5}
             className="text-[#F59E0B]"
           />
 
-          <span className="text-xs font-bold uppercase tracking-wider text-[#071A33]">
+          <span className="text-[13px] font-extrabold uppercase tracking-wider text-[#071A33]">
             Live Alerts
           </span>
         </div>
@@ -86,25 +85,28 @@ function AlertMarquee() {
                 {alert.type === "critical" ? (
                   <AlertTriangle
                     size={15}
+                    strokeWidth={2.5}
                     className="text-red-600"
                   />
                 ) : alert.type === "warning" ? (
                   <AlertTriangle
                     size={15}
+                    strokeWidth={2.5}
                     className="text-[#F59E0B]"
                   />
                 ) : (
                   <Info
                     size={15}
+                    strokeWidth={2.5}
                     className="text-[#2563EB]"
                   />
                 )}
 
-                <span className="font-medium text-slate-700">
+                <span className="font-semibold text-slate-700">
                   {alert.message}
                 </span>
 
-                <span className="text-xs text-slate-400">
+                <span className="text-xs font-medium text-slate-400">
                   {alert.time}
                 </span>
 

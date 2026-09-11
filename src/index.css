@@ -62,3 +62,23 @@ body {
     transform: translateX(-50%);
   }
 }
+
+html.accessibility-high-contrast body {
+  filter: contrast(1.2);
+}
+
+html.accessibility-dark-contrast body {
+  background: #071a33;
+  color: #ffffff;
+}
+
+html.accessibility-color-vision a,
+html.accessibility-color-vision button {
+  outline-offset: 2px;
+}
+
+html.accessibility-highlight-links a {
+  text-decoration: underline !important;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
