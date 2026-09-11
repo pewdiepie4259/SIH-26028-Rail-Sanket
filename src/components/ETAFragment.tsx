@@ -7,8 +7,8 @@ import {
   MapPin,
   Navigation,
   Radio,
-  TrainFront,
 } from "lucide-react"
+import { LiveTrainMap } from "./LiveTrainMap"
 
 export interface ETATrain {
   name: string
@@ -169,9 +169,9 @@ function ETAFragment({ train }: ETAFragmentProps) {
   const visibleUpdates = showAllUpdates
     ? stationUpdates
     : stationUpdates.slice(
-        Math.max(selectedStationIndex - 1, 0),
-        Math.min(selectedStationIndex + 3, stationUpdates.length)
-      )
+      Math.max(selectedStationIndex - 1, 0),
+      Math.min(selectedStationIndex + 3, stationUpdates.length)
+    )
 
   const progressForStation =
     train.stations.length > 1
@@ -205,11 +205,10 @@ function ETAFragment({ train }: ETAFragmentProps) {
               </div>
 
               <div
-                className={`flex w-fit items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-bold ${
-                  isDelayed
-                    ? "border-[#F59E0B] bg-[#FFF8EC] text-[#A16207]"
-                    : "border-green-200 bg-green-50 text-green-700"
-                }`}
+                className={`flex w-fit items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-bold ${isDelayed
+                  ? "border-[#F59E0B] bg-[#FFF8EC] text-[#A16207]"
+                  : "border-green-200 bg-green-50 text-green-700"
+                  }`}
               >
                 {isDelayed ? (
                   <AlertTriangle size={17} />
@@ -243,11 +242,10 @@ function ETAFragment({ train }: ETAFragmentProps) {
                 <button
                   type="button"
                   onClick={() => setMapMode("live")}
-                  className={`px-3 py-1.5 text-xs font-semibold transition ${
-                    mapMode === "live"
-                      ? "bg-[#071A33] text-white"
-                      : "text-slate-500 hover:text-[#071A33]"
-                  }`}
+                  className={`px-3 py-1.5 text-xs font-semibold transition ${mapMode === "live"
+                    ? "bg-[#071A33] text-white"
+                    : "text-slate-500 hover:text-[#071A33]"
+                    }`}
                 >
                   Live
                 </button>
@@ -255,130 +253,114 @@ function ETAFragment({ train }: ETAFragmentProps) {
                 <button
                   type="button"
                   onClick={() => setMapMode("route")}
-                  className={`border-l border-slate-200 px-3 py-1.5 text-xs font-semibold transition ${
-                    mapMode === "route"
-                      ? "bg-[#071A33] text-white"
-                      : "text-slate-500 hover:text-[#071A33]"
-                  }`}
+                  className={`border-l border-slate-200 px-3 py-1.5 text-xs font-semibold transition ${mapMode === "route"
+                    ? "bg-[#071A33] text-white"
+                    : "text-slate-500 hover:text-[#071A33]"
+                    }`}
                 >
                   Route
                 </button>
               </div>
             </div>
 
-            <div className="mt-4 relative h-[320px] overflow-hidden rounded-lg border border-slate-200 bg-[#EEF2F3]">
-              <div
-                className="absolute inset-0 opacity-60"
-                style={{
-                  backgroundImage:
-                    "linear-gradient(rgba(7,26,51,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(7,26,51,0.05) 1px, transparent 1px)",
-                  backgroundSize: "36px 36px",
-                }}
-              />
-
-              <div className="absolute left-[8%] top-[12%] h-20 w-36 rounded-full border border-slate-300/70 bg-white/40" />
-              <div className="absolute right-[7%] top-[52%] h-24 w-44 rounded-full border border-slate-300/70 bg-white/40" />
-              <div className="absolute left-[38%] bottom-[8%] h-16 w-28 rounded-full border border-slate-300/70 bg-white/40" />
-
-              <svg
-                viewBox="0 0 1000 320"
-                className="absolute inset-0 h-full w-full"
-                preserveAspectRatio="none"
-              >
-                <path
-                  d="M70 245 C180 220 210 105 335 115 C465 125 490 235 615 215 C735 195 790 90 930 70"
-                  fill="none"
-                  stroke="#CBD5E1"
-                  strokeWidth="12"
-                  strokeLinecap="round"
+            {/* Dynamic Map Switcher: Live GPS Leaflet Map or Schematic Route View */}
+            {mapMode === "live" ? (
+              <div className="mt-4">
+                <LiveTrainMap trainNumber={train.number} />
+              </div>
+            ) : (
+              <div className="mt-4 relative h-[320px] overflow-hidden rounded-lg border border-slate-200 bg-[#EEF2F3]">
+                <div
+                  className="absolute inset-0 opacity-60"
+                  style={{
+                    backgroundImage:
+                      "linear-gradient(rgba(7,26,51,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(7,26,51,0.05) 1px, transparent 1px)",
+                    backgroundSize: "36px 36px",
+                  }}
                 />
 
-                <path
-                  d="M70 245 C180 220 210 105 335 115 C465 125 490 235 615 215 C735 195 790 90 930 70"
-                  fill="none"
-                  stroke="#0E5961"
-                  strokeWidth="5"
-                  strokeLinecap="round"
-                />
+                <div className="absolute left-[8%] top-[12%] h-20 w-36 rounded-full border border-slate-300/70 bg-white/40" />
+                <div className="absolute right-[7%] top-[52%] h-24 w-44 rounded-full border border-slate-300/70 bg-white/40" />
+                <div className="absolute left-[38%] bottom-[8%] h-16 w-28 rounded-full border border-slate-300/70 bg-white/40" />
 
-                {train.stations.map((station, index) => {
-                  const x =
-                    70 +
-                    (index / Math.max(train.stations.length - 1, 1)) *
+                <svg
+                  viewBox="0 0 1000 320"
+                  className="absolute inset-0 h-full w-full"
+                  preserveAspectRatio="none"
+                >
+                  <path
+                    d="M70 245 C180 220 210 105 335 115 C465 125 490 235 615 215 C735 195 790 90 930 70"
+                    fill="none"
+                    stroke="#CBD5E1"
+                    strokeWidth="12"
+                    strokeLinecap="round"
+                  />
+
+                  <path
+                    d="M70 245 C180 220 210 105 335 115 C465 125 490 235 615 215 C735 195 790 90 930 70"
+                    fill="none"
+                    stroke="#0E5961"
+                    strokeWidth="5"
+                    strokeLinecap="round"
+                  />
+
+                  {train.stations.map((station, index) => {
+                    const x =
+                      70 +
+                      (index / Math.max(train.stations.length - 1, 1)) *
                       860
 
-                  const y =
-                    245 -
-                    Math.sin(
-                      (index / Math.max(train.stations.length - 1, 1)) *
+                    const y =
+                      245 -
+                      Math.sin(
+                        (index / Math.max(train.stations.length - 1, 1)) *
                         Math.PI
-                    ) *
+                      ) *
                       130
 
-                  const isCurrent = station === selectedStation
-                  const isPassed = index < selectedStationIndex
+                    const isCurrent = station === selectedStation
+                    const isPassed = index < selectedStationIndex
 
-                  return (
-                    <g
-                      key={station}
-                      onClick={() => setSelectedStation(station)}
-                      className="cursor-pointer"
-                    >
-                      <circle
-                        cx={x}
-                        cy={y}
-                        r={isCurrent ? 13 : 8}
-                        fill={
-                          isCurrent
-                            ? "#F59E0B"
-                            : isPassed
-                              ? "#0E5961"
-                              : "#FFFFFF"
-                        }
-                        stroke={
-                          isCurrent || isPassed
-                            ? "#FFFFFF"
-                            : "#64748B"
-                        }
-                        strokeWidth={3}
-                      />
-                    </g>
-                  )
-                })}
-              </svg>
+                    return (
+                      <g
+                        key={station}
+                        onClick={() => setSelectedStation(station)}
+                        className="cursor-pointer"
+                      >
+                        <circle
+                          cx={x}
+                          cy={y}
+                          r={isCurrent ? 13 : 8}
+                          fill={
+                            isCurrent
+                              ? "#F59E0B"
+                              : isPassed
+                                ? "#0E5961"
+                                : "#FFFFFF"
+                          }
+                          stroke={
+                            isCurrent || isPassed
+                              ? "#FFFFFF"
+                              : "#64748B"
+                          }
+                          strokeWidth={3}
+                        />
+                      </g>
+                    )
+                  })}
+                </svg>
 
-              <div className="absolute left-4 top-4 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Current Location
-                </div>
+                <div className="absolute left-4 top-4 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Current Location
+                  </div>
 
-                <div className="mt-0.5 flex items-center gap-1.5 text-sm font-bold text-[#071A33]">
-                  <MapPin size={14} className="text-[#F59E0B]" />
-                  {train.currentLocation}
-                </div>
-              </div>
-
-              {mapMode === "live" && (
-                <div
-                  className="absolute bottom-4 right-4 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm"
-                >
-                  <div className="flex items-center gap-2">
-                    <TrainFront size={18} className="text-[#0E5961]" />
-
-                    <div>
-                      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                        Train {train.number}
-                      </div>
-
-                      <div className="text-xs font-bold text-[#071A33]">
-                        {train.currentLocation}
-                      </div>
-                    </div>
+                  <div className="mt-0.5 flex items-center gap-1.5 text-sm font-bold text-[#071A33]">
+                    <MapPin size={14} className="text-[#F59E0B]" />
+                    {train.currentLocation}
                   </div>
                 </div>
-              )}
 
-              {mapMode === "route" && (
                 <div className="absolute bottom-4 left-4 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm">
                   <div className="flex items-center gap-2">
                     <Navigation
@@ -391,8 +373,8 @@ function ETAFragment({ train }: ETAFragmentProps) {
                     </span>
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
             <p className="mt-2 text-[11px] text-slate-400">
               Select a station on the route to view its expected arrival
@@ -427,11 +409,10 @@ function ETAFragment({ train }: ETAFragmentProps) {
                 <div
                   className="absolute left-0 top-0 h-1.5 rounded-full bg-[#0E5961] transition-all duration-500"
                   style={{
-                    width: `${
-                      selectedStation === train.currentLocation
-                        ? train.progress
-                        : progressForStation
-                    }%`,
+                    width: `${selectedStation === train.currentLocation
+                      ? train.progress
+                      : progressForStation
+                      }%`,
                   }}
                 />
 
@@ -453,13 +434,12 @@ function ETAFragment({ train }: ETAFragmentProps) {
                       style={{ left: `${position}%` }}
                     >
                       <span
-                        className={`block rounded-full border-2 border-white transition-all ${
-                          active
-                            ? "h-5 w-5 bg-[#F59E0B] shadow-md"
-                            : passed
-                              ? "h-3.5 w-3.5 bg-[#0E5961]"
-                              : "h-3.5 w-3.5 bg-slate-300"
-                        }`}
+                        className={`block rounded-full border-2 border-white transition-all ${active
+                          ? "h-5 w-5 bg-[#F59E0B] shadow-md"
+                          : passed
+                            ? "h-3.5 w-3.5 bg-[#0E5961]"
+                            : "h-3.5 w-3.5 bg-slate-300"
+                          }`}
                       />
                     </button>
                   )
@@ -608,13 +588,12 @@ function ETAFragment({ train }: ETAFragmentProps) {
                 >
                   <div className="flex w-14 shrink-0 flex-col items-center">
                     <span
-                      className={`mt-1 h-3 w-3 rounded-full border-2 border-white shadow-sm ${
-                        update.status === "current"
-                          ? "bg-[#F59E0B] ring-2 ring-[#F59E0B]/20"
-                          : update.status === "completed"
-                            ? "bg-[#0E5961]"
-                            : "bg-slate-300"
-                      }`}
+                      className={`mt-1 h-3 w-3 rounded-full border-2 border-white shadow-sm ${update.status === "current"
+                        ? "bg-[#F59E0B] ring-2 ring-[#F59E0B]/20"
+                        : update.status === "completed"
+                          ? "bg-[#0E5961]"
+                          : "bg-slate-300"
+                        }`}
                     />
 
                     {index < visibleUpdates.length - 1 && (

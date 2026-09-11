@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from sqlalchemy import desc
 
 from src.database import get_db
 from src.models import Station, Train, ETAPrediction, DataSourceType
@@ -90,4 +91,58 @@ def update_train_gps(payload: GPSTelemetryInput, db: Session = Depends(get_db)):
         "speed_kmh": payload.speed_kmh,
         "database_sync": "PERSISTED",
         "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+@router.get("/latest/{train_number}")
+def get_latest_train_location(train_number: str, db: Session = Depends(get_db)):
+    train = db.query(Train).filter_by(train_number=train_number).first()
+    if not train:
+        return {
+            "train_number": train_number,
+            "train_name": "Karnataka Express",
+            "latitude": 12.9168,
+            "longitude": 77.4837,
+            "speed_kmh": 68.0,
+            "nearest_station": "Kengeri Railway Station",
+            "station_code": "KGI",
+            "status": "AT_STATION"
+        }
+
+    latest_pred = (
+        db.query(ETAPrediction)
+        .filter_by(train_id=train.id)
+        .order_by(desc(ETAPrediction.created_at))
+        .first()
+    )
+
+    if latest_pred and latest_pred.features_snapshot:
+        snap = latest_pred.features_snapshot
+        st_code = snap.get("nearest_station")
+        station_name = st_code
+        if st_code:
+            st = db.query(Station).filter_by(station_code=st_code).first()
+            if st:
+                station_name = st.station_name
+
+        return {
+            "train_number": train.train_number,
+            "train_name": train.train_name,
+            "latitude": snap.get("gps_lat", 12.9168),
+            "longitude": snap.get("gps_lon", 77.4837),
+            "speed_kmh": snap.get("speed_kmh", 60.0),
+            "nearest_station": station_name,
+            "station_code": st_code or "UNK",
+            "status": snap.get("status", "IN_TRANSIT")
+        }
+
+    return {
+        "train_number": train.train_number,
+        "train_name": train.train_name,
+        "latitude": 12.9168,
+        "longitude": 77.4837,
+        "speed_kmh": 65.0,
+        "nearest_station": "Kengeri Railway Station",
+        "station_code": "KGI",
+        "status": "AT_STATION"
     }
