@@ -15,7 +15,22 @@ import {
 import { NavLink, Outlet } from "react-router-dom"
 
 function PublicLayout() {
-  const [language, setLanguage] = useState("English")
+  const languages = [
+    { code: "en", label: "English", native: "English" },
+    { code: "hi", label: "Hindi", native: "हिंदी" },
+    { code: "bn", label: "Bengali", native: "বাংলা" },
+    { code: "mr", label: "Marathi", native: "मराठी" },
+    { code: "gu", label: "Gujarati", native: "ગુજરાતી" },
+    { code: "ks", label: "Kashmiri", native: "کٲشُر / कश्मीरी" },
+    { code: "ta", label: "Tamil", native: "தமிழ்" },
+    { code: "te", label: "Telugu", native: "తెలుగు" },
+    { code: "kn", label: "Kannada", native: "ಕನ್ನಡ" },
+  ]
+
+  const [language, setLanguage] = useState(() => {
+    const saved = localStorage.getItem("raildrishti_lang_native")
+    return saved || "English"
+  })
   const [languageOpen, setLanguageOpen] = useState(false)
   const [accessibilityOpen, setAccessibilityOpen] = useState(false)
   const [contrastMode, setContrastMode] = useState<"normal" | "high" | "dark">(
@@ -29,7 +44,26 @@ function PublicLayout() {
   >("normal")
   const [textScale, setTextScale] = useState(1)
 
-  const languages = ["English", "हिंदी", "ಕನ್ನಡ"]
+  const handleSelectLanguage = (option: { code: string; label: string; native: string }) => {
+    setLanguage(option.native)
+    setLanguageOpen(false)
+    localStorage.setItem("raildrishti_lang_code", option.code)
+    localStorage.setItem("raildrishti_lang_native", option.native)
+
+    const targetCode = option.code
+    const cookieVal = targetCode === "en" ? "" : `/en/${targetCode}`
+
+    document.cookie = `googtrans=${cookieVal}; path=/;`
+    document.cookie = `googtrans=${cookieVal}; path=/; domain=${window.location.hostname};`
+
+    const combo = document.querySelector<HTMLSelectElement>(".goog-te-combo")
+    if (combo) {
+      combo.value = targetCode
+      combo.dispatchEvent(new Event("change"))
+    } else {
+      window.location.reload()
+    }
+  }
 
   const increaseTextSize = () => {
     setTextScale((current) => Math.min(current + 0.1, 1.4))
@@ -171,22 +205,20 @@ function PublicLayout() {
               </button>
 
               {languageOpen && (
-                <div className="absolute right-0 top-12 z-[60] w-40 overflow-hidden rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl">
+                <div className="absolute right-0 top-12 z-[60] w-52 max-h-72 overflow-y-auto rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl">
                   {languages.map((option) => (
                     <button
-                      key={option}
+                      key={option.code}
                       type="button"
-                      onClick={() => {
-                        setLanguage(option)
-                        setLanguageOpen(false)
-                      }}
-                      className={`flex w-full items-center rounded-lg px-3 py-2.5 text-left text-sm font-medium transition ${
-                        language === option
-                          ? "bg-[#FFF4E1] text-[#0E7C86]"
+                      onClick={() => handleSelectLanguage(option)}
+                      className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm font-medium transition ${
+                        language === option.native || language === option.label
+                          ? "bg-[#FFF4E1] text-[#0E7C86] font-semibold"
                           : "text-slate-700 hover:bg-slate-50 hover:text-[#0E7C86]"
                       }`}
                     >
-                      {option}
+                      <span>{option.native}</span>
+                      <span className="text-[11px] font-normal text-slate-400">{option.label}</span>
                     </button>
                   ))}
                 </div>
