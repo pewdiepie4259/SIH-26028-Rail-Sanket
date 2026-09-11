@@ -8,6 +8,7 @@ import TrainSearch from "./pages/public/TrainSearch"
 import StationInformation from "./pages/public/StationInformation"
 import Settings from "./pages/settings"
 import Register from "./pages/register"
+import Login from "./pages/login"
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
           <Route path="/trains" element={<TrainSearch />} />
           <Route path="/stations" element={<StationInformation />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
         </Route>
 
