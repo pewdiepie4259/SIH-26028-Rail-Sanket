@@ -3,6 +3,7 @@ import { Search, MapPin, TrainFront } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import AlertMarquee from "../components/AlertMarquee"
 import ETAFragment, { type ETATrain } from "../components/ETAFragment"
+import { WhatsAppChatModal } from "../components/WhatsAppChatModal"
 
 interface RailwayStation {
   name: string
@@ -20,7 +21,6 @@ interface Train {
   from: string
   to: string
   lastStation: string
-  // Stations where this train stops or passes through in our corridor
   servingStations: string[]
   nextStationCode: string
 }
@@ -98,7 +98,6 @@ const bengaluruStations: RailwayStation[] = [
   },
 ]
 
-// All trains with the stations they connect to in Bengaluru cluster
 const allTrains: Train[] = [
   {
     name: "Karnataka Express",
@@ -108,7 +107,7 @@ const allTrains: Train[] = [
     from: "KSR Bengaluru",
     to: "New Delhi",
     lastStation: "Kengeri",
-    servingStations: ["SBC", "KGI", "BNC"],
+    servingStations: ["SBC", "KGI", "BNC", "YPR"],
     nextStationCode: "KGI",
   },
   {
@@ -396,23 +395,21 @@ function PublicDashboard() {
     )
   }, [])
 
-  // Filter 1: First filter by Nearest Detected Station
   const stationFilteredTrains = allTrains.filter((train) =>
     train.servingStations.includes(station.code)
   )
 
-  // Fallback: If no trains serve that specific station, show all trains
   const displayedTrains =
     stationFilteredTrains.length > 0 ? stationFilteredTrains : allTrains
 
-  // Filter 2: Then filter by user search query (if typed)
-  const finalTrains = displayedTrains.filter(
-    (train) =>
-      train.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      train.number.includes(searchQuery) ||
-      train.from.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      train.to.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  // Multi-term search logic (tolerant to combined train name and number)
+  const searchTokens = searchQuery.trim().toLowerCase().split(/\s+/).filter(Boolean)
+
+  const finalTrains = displayedTrains.filter((train) => {
+    if (searchTokens.length === 0) return true
+    const targetStr = `${train.name} ${train.number} ${train.from} ${train.to} ${train.lastStation}`.toLowerCase()
+    return searchTokens.every((token) => targetStr.includes(token))
+  })
 
   const handleRecentSearch = (search: RecentSearch) => {
     setSearchQuery(`${search.name} ${search.number}`)
@@ -426,14 +423,10 @@ function PublicDashboard() {
       return
     }
 
-    const matchedTrain = allTrains.find(
-      (train) =>
-        train.name.toLowerCase().includes(query) ||
-        train.number.toLowerCase().includes(query) ||
-        train.from.toLowerCase().includes(query) ||
-        train.to.toLowerCase().includes(query) ||
-        train.lastStation.toLowerCase().includes(query)
-    )
+    const matchedTrain = allTrains.find((train) => {
+      const targetStr = `${train.name} ${train.number} ${train.from} ${train.to} ${train.lastStation}`.toLowerCase()
+      return searchTokens.every((token) => targetStr.includes(token))
+    })
 
     if (matchedTrain) {
       setSelectedTrain(matchedTrain)
@@ -449,6 +442,7 @@ function PublicDashboard() {
       navigate(`/live-train-status?train=${train.number}&from=${fromCode}&to=${toCode}`)
     }
   }
+
   return (
     <div className="min-h-screen bg-[#F4F7FA]">
       <section className="relative min-h-[360px] overflow-hidden sm:min-h-[370px] lg:min-h-[380px]">
@@ -678,9 +672,9 @@ function PublicDashboard() {
           </div>
         </section>
       )}
-          </div>
-        </section>
-      )}
+
+      {/* Real-time WhatsApp Bot In-Browser Simulator */}
+      <WhatsAppChatModal />
     </div>
   )
 }
