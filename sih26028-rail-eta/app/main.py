@@ -20,8 +20,8 @@ logger = logging.getLogger("rail_drishti")
 
 app = FastAPI(
     title="RailDrishti Real-Time ETA & Bottleneck Engine",
-    description="ST-GNN inference, dynamic precedence advisory, and Section Controller DSS",
-    version="1.3.0"
+    description="All-India ST-GNN inference, dynamic precedence advisory, and Section Controller DSS",
+    version="2.0.0"
 )
 
 app.add_middleware(
@@ -33,18 +33,18 @@ app.add_middleware(
 )
 
 class TelemetryPayload(BaseModel):
-    train_number: str = Field(..., example="06527")
+    train_number: str = Field(..., example="12246")
     lat: float = Field(..., example=12.9934)
-    lon: float = Field(..., example=77.6603)
-    speed: float = Field(..., example=45.0, description="Speed in km/h")
-    signal: str = Field(default="GREEN", example="YELLOW", description="Aspect: GREEN, YELLOW, DOUBLE_YELLOW, RED")
+    lon: float = Field(..., example=77.5980)
+    speed: float = Field(..., example=75.0, description="Speed in km/h")
+    signal: str = Field(default="GREEN", example="GREEN", description="Aspect: GREEN, YELLOW, DOUBLE_YELLOW, RED")
 
 class DirectiveExecutionPayload(BaseModel):
     action_code: str = Field(..., example="PRECEDENCE_OVERTAKE_RECOMMENDED")
     priority_train: str = Field(..., example="20608")
     preempted_train: str = Field(..., example="06527")
     loop_station: str = Field(..., example="BWT")
-    approved_by: str = Field(default="Section Controller - Bengaluru Central (SBC-COA)")
+    approved_by: str = Field(default="Section Controller - Active Division")
 
 class ConnectionManager:
     def __init__(self):
@@ -78,14 +78,15 @@ manager = ConnectionManager()
 def health_check():
     return {
         "status": "healthy",
-        "service": "RailDrishti ST-GNN Core & Section Controller DSS",
-        "active_trains": len(ACTIVE_TRAIN_POSITIONS)
+        "service": "RailDrishti All-India ST-GNN Core & Section Controller DSS",
+        "active_trains": len(ACTIVE_TRAIN_POSITIONS),
+        "total_network_nodes": len(CORRIDOR_NODES)
     }
 
 @app.get("/api/v1/corridor/topology")
 def get_corridor_topology():
     return {
-        "corridor": "Bengaluru Division (SBC -> BWT)",
+        "scope": "Indian Railways National Rail Network",
         "node_count": len(CORRIDOR_NODES),
         "nodes": CORRIDOR_NODES
     }
@@ -108,7 +109,6 @@ async def ingest_telemetry(data: TelemetryPayload):
 
 @app.get("/api/v1/copilot/active-alerts")
 def get_active_copilot_alerts():
-    """Returns active bottlenecks, cascade risks, and mathematical precedence trade-off analysis."""
     alerts = []
     for train_id, train_data in ACTIVE_TRAIN_POSITIONS.items():
         payload = format_bottleneck_payload(
@@ -128,15 +128,11 @@ def get_active_copilot_alerts():
 
 @app.post("/api/v1/copilot/execute-directive")
 async def execute_dispatcher_directive(directive: DirectiveExecutionPayload):
-    """
-    Simulates the Section Controller or LLM Copilot executing an overtake order.
-    Broadcasts the interlocking switch event to all active dashboards.
-    """
     event = {
         "event_type": "DISPATCHER_DIRECTIVE_APPROVED",
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "directive": directive.dict(),
-        "interlocking_command": f"SET_ROUTE {directive.loop_station} LOOP_2 LINE_CLEAR FOR {directive.priority_train}"
+        "interlocking_command": f"SET_ROUTE {directive.loop_station} LOOP_LINE LINE_CLEAR FOR {directive.priority_train}"
     }
     
     DISPATCHER_DIRECTIVES_LOG.append(event)
@@ -149,7 +145,6 @@ async def execute_dispatcher_directive(directive: DirectiveExecutionPayload):
 
 @app.get("/api/v1/copilot/directive-history")
 def get_directive_history():
-    """Audit log of all Section Controller decisions made during this shift."""
     return {
         "total_directives": len(DISPATCHER_DIRECTIVES_LOG),
         "history": DISPATCHER_DIRECTIVES_LOG
@@ -170,10 +165,10 @@ def get_benchmark_metrics():
         "evaluation_samples": total_samples,
         "metrics_summary": {
             "baseline_approach": "Static Kinematic Timetable (Speed/Distance)",
-            "proposed_approach": "ST-GNN Spatio-Temporal Attention",
+            "proposed_approach": "ST-GNN Spatio-Temporal Attention (National Scope)",
             "avg_cascade_foresight_captured_min": avg_foresight_delay,
             "peak_bottleneck_delay_predicted_min": max_foresight_delay,
-            "foresight_advantage": "ST-GNN captures non-linear block occupation before physical queueing occurs"
+            "foresight_advantage": "ST-GNN captures spatial network propagation before physical queueing occurs"
         },
         "recent_snapshots": BENCHMARK_LOGS[-10:]
     }

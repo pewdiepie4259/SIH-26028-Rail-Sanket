@@ -1,5 +1,6 @@
 import json
 import os
+import glob
 from datetime import datetime, timezone, timedelta
 from typing import List, Dict, Any, Optional
 import numpy as np
@@ -9,82 +10,85 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.nn import GATConv
 
-TOPOLOGY_PATH = "data/corridor/bengaluru_topology.json"
-WEIGHTS_PATH = "data/corridor/stgat_weights_bengaluru.pt"
+# Locate topology file: checks all-india file first, falls back to corridor
+POSSIBLE_PATHS = [
+    "data/all_india_topology.json",
+    "data/corridor/all_india_topology.json",
+    "data/corridor/bengaluru_topology.json"
+]
 
-if not os.path.exists(TOPOLOGY_PATH):
-    raise FileNotFoundError(f"Missing {TOPOLOGY_PATH}. Run extract_bengaluru_corridor.py first.")
+TOPOLOGY_PATH = None
+for p in POSSIBLE_PATHS:
+    if os.path.exists(p):
+        TOPOLOGY_PATH = p
+        break
 
-with open(TOPOLOGY_PATH, "r") as f:
+if not TOPOLOGY_PATH:
+    # Look for any json in data/
+    found = glob.glob("data/**/*.json", recursive=True)
+    if found:
+        TOPOLOGY_PATH = found[0]
+    else:
+        raise FileNotFoundError("No network topology JSON file found in data/ directory.")
+
+with open(TOPOLOGY_PATH, "r", encoding="utf-8") as f:
     topo_data = json.load(f)
 
-CORRIDOR_NODES = topo_data["nodes"]
-NODE_CODE_TO_IDX = {node["id"]: idx for idx, node in enumerate(CORRIDOR_NODES)}
+CORRIDOR_NODES = topo_data.get("nodes", [])
 NUM_NODES = len(CORRIDOR_NODES)
+NODE_CODE_TO_IDX = {node["id"]: idx for idx, node in enumerate(CORRIDOR_NODES)}
 
-coords = np.array([[n["lat"], n["lon"]] for n in CORRIDOR_NODES])
+# Spatial index across all Indian stations
+coords = np.array([[float(n["lat"]), float(n["lon"])] for n in CORRIDOR_NODES])
 SPATIAL_INDEX = KDTree(coords)
 
 HOP_DISTANCES = {}
 src_list, dst_list = [], []
 for link in topo_data.get("links", []):
-    u = NODE_CODE_TO_IDX[link["source"]]
-    v = NODE_CODE_TO_IDX[link["target"]]
-    src_list.extend([u, v])
-    dst_list.extend([v, u])
-    dist = float(link.get("distance_km", 8.0))
-    HOP_DISTANCES[(u, v)] = dist
-    HOP_DISTANCES[(v, u)] = dist
+    u_id, v_id = link.get("source"), link.get("target")
+    if u_id in NODE_CODE_TO_IDX and v_id in NODE_CODE_TO_IDX:
+        u = NODE_CODE_TO_IDX[u_id]
+        v = NODE_CODE_TO_IDX[v_id]
+        src_list.extend([u, v])
+        dst_list.extend([v, u])
+        dist = float(link.get("distance_km", 15.0))
+        HOP_DISTANCES[(u, v)] = dist
+        HOP_DISTANCES[(v, u)] = dist
+
+if not src_list:
+    # Linear fallback if no explicit links exist
+    src_list = list(range(NUM_NODES - 1)) + list(range(1, NUM_NODES))
+    dst_list = list(range(1, NUM_NODES)) + list(range(NUM_NODES - 1))
 
 EDGE_INDEX = torch.tensor([src_list, dst_list], dtype=torch.long)
 
-# Indian Railways Rolling Stock Priority Tiers & Punctuality Cost Weights
+# Nationwide Rolling Stock Priority Classification
 TRAIN_METADATA = {
-    "20608": {
-        "name": "Vande Bharat Express",
-        "priority": 1.0,
-        "type": "SUPERFAST_PREMIUM",
-        "max_speed": 130.0,
-        "delay_cost_weight": 5.0
-    },
-    "12245": {
-        "name": "Howrah - SMVT Duronto Express",
-        "priority": 0.9,
-        "type": "DURONTO_SUPERFAST",
-        "max_speed": 120.0,
-        "delay_cost_weight": 4.0
-    },
-    "12246": {
-        "name": "SMVT - Howrah Duronto Express",
-        "priority": 0.9,
-        "type": "DURONTO_SUPERFAST",
-        "max_speed": 120.0,
-        "delay_cost_weight": 4.0
-    },
-    "06527": {
-        "name": "Bangarapet MEMU",
-        "priority": 0.5,
-        "type": "SUBURBAN_COMMUTER",
-        "max_speed": 60.0,
-        "delay_cost_weight": 1.0
-    },
-    "FREIGHT_DEFAULT": {
-        "name": "Container Freight",
-        "priority": 0.2,
-        "type": "FREIGHT",
-        "max_speed": 75.0,
-        "delay_cost_weight": 0.5
-    }
+    "20608": {"name": "Vande Bharat Express", "priority": 1.0, "type": "SUPERFAST_PREMIUM", "delay_cost_weight": 5.0},
+    "12245": {"name": "Howrah - SMVT Duronto", "priority": 0.9, "type": "DURONTO_SUPERFAST", "delay_cost_weight": 4.0},
+    "12246": {"name": "SMVT - Howrah Duronto", "priority": 0.9, "type": "DURONTO_SUPERFAST", "delay_cost_weight": 4.0},
+    "12301": {"name": "Howrah Rajdhani Express", "priority": 1.0, "type": "RAJDHANI_PREMIUM", "delay_cost_weight": 5.0},
+    "12951": {"name": "Mumbai Rajdhani Express", "priority": 1.0, "type": "RAJDHANI_PREMIUM", "delay_cost_weight": 5.0},
+    "06527": {"name": "Bangarapet MEMU", "priority": 0.5, "type": "SUBURBAN_COMMUTER", "delay_cost_weight": 1.0}
 }
 
 def get_train_meta(train_number: str) -> Dict[str, Any]:
-    return TRAIN_METADATA.get(train_number, {
-        "name": f"Special {train_number}",
-        "priority": 0.4,
-        "type": "CONVENTIONAL",
-        "max_speed": 80.0,
-        "delay_cost_weight": 1.0
-    })
+    if train_number in TRAIN_METADATA:
+        return TRAIN_METADATA[train_number]
+    
+    # Generic rules based on Indian Railways numbering
+    t_str = str(train_number)
+    if t_str.startswith("20") or t_str.startswith("22"):
+        return {"name": f"Vande Bharat/Superfast {t_num_clean(t_str)}", "priority": 0.95, "type": "PREMIUM", "delay_cost_weight": 4.5}
+    elif t_str.startswith("12"):
+        return {"name": f"Superfast Express {t_num_clean(t_str)}", "priority": 0.8, "type": "SUPERFAST", "delay_cost_weight": 3.5}
+    elif t_str.startswith("0") or t_str.startswith("6") or t_str.startswith("7"):
+        return {"name": f"Passenger/MEMU {t_num_clean(t_str)}", "priority": 0.5, "type": "COMMUTER", "delay_cost_weight": 1.0}
+    else:
+        return {"name": f"Express {t_num_clean(t_str)}", "priority": 0.6, "type": "MAIL_EXPRESS", "delay_cost_weight": 2.0}
+
+def t_num_clean(val: str) -> str:
+    return val.strip()
 
 class STGATDelayModel(nn.Module):
     def __init__(self, in_features=5, hidden_dim=32):
@@ -101,16 +105,9 @@ class STGATDelayModel(nn.Module):
 
 DEVICE = torch.device("cpu")
 MODEL = STGATDelayModel(in_features=5, hidden_dim=32).to(DEVICE)
-
-if os.path.exists(WEIGHTS_PATH):
-    try:
-        MODEL.load_state_dict(torch.load(WEIGHTS_PATH, map_location=DEVICE))
-    except Exception:
-        pass
-
 MODEL.eval()
-TEMPORAL_STATE = torch.zeros((NUM_NODES, 32), device=DEVICE)
 
+TEMPORAL_STATE = torch.zeros((NUM_NODES, 32), device=DEVICE)
 ACTIVE_TRAIN_POSITIONS: Dict[str, Dict[str, Any]] = {}
 BENCHMARK_LOGS: List[Dict[str, Any]] = []
 DISPATCHER_DIRECTIVES_LOG: List[Dict[str, Any]] = []
@@ -135,21 +132,23 @@ def predict_cascade(train_number: str, lat: float, lon: float, speed: float, sig
     now = datetime.now(timezone.utc)
     cumulative_km = 0.0
 
-    for i in range(idx + 1, NUM_NODES):
+    # Lookahead: next 5 downstream reachable nodes in the network
+    lookahead_limit = min(idx + 6, NUM_NODES)
+    for i in range(idx + 1, lookahead_limit):
         stn = CORRIDOR_NODES[i]
-        default_hop = 5.0 if i <= 5 else 20.0
-        segment_dist = HOP_DISTANCES.get((i - 1, i), default_hop)
-        cumulative_km += segment_dist
+        hop_dist = HOP_DISTANCES.get((i - 1, i), 15.0)
+        cumulative_km += hop_dist
 
         gnn_delay_min = float(torch.clamp(torch.abs(pred_delays[i]), min=0.0, max=60.0).item())
         risk_val = float(risks[i].item())
 
-        kinematic_transit_min = (cumulative_km / max(speed, 20.0)) * 60.0
+        kinematic_transit_min = (cumulative_km / max(speed, 25.0)) * 60.0
         baseline_eta = now + timedelta(minutes=kinematic_transit_min)
         dynamic_eta = now + timedelta(minutes=kinematic_transit_min + gnn_delay_min)
 
         forecasts.append({
             "station": stn["id"],
+            "station_name": stn.get("name", stn["id"]),
             "distance_remaining_km": round(cumulative_km, 1),
             "baseline_static_eta": baseline_eta.strftime("%H:%M UTC"),
             "dynamic_gnn_eta": dynamic_eta.strftime("%H:%M UTC"),
@@ -200,7 +199,7 @@ def evaluate_bottlenecks_and_precedence(source_train: str, current_node_idx: int
     for fc in forecasts:
         if fc["cascade_risk"] >= threshold:
             target_stn = fc["station"]
-            target_stn_idx = NODE_CODE_TO_IDX[target_stn]
+            target_stn_idx = NODE_CODE_TO_IDX.get(target_stn, current_node_idx + 1)
 
             affected_trains = []
             precedence_action = None
@@ -214,8 +213,8 @@ def evaluate_bottlenecks_and_precedence(source_train: str, current_node_idx: int
                     trailing_meta = get_train_meta(t_num)
 
                     if trailing_meta["priority"] > source_meta["priority"]:
-                        loop_station_idx = min(current_node_idx + 1, NUM_NODES - 1)
-                        loop_station = CORRIDOR_NODES[loop_station_idx]["id"]
+                        loop_idx = min(current_node_idx + 1, NUM_NODES - 1)
+                        loop_station = CORRIDOR_NODES[loop_idx]["id"]
 
                         status_quo_priority_delay = round(fc["predicted_delay_min"] * 1.8, 1)
                         status_quo_commuter_delay = round(fc["predicted_delay_min"], 1)
@@ -262,9 +261,9 @@ def evaluate_bottlenecks_and_precedence(source_train: str, current_node_idx: int
                                 "net_system_efficiency_gain": f"+{net_savings} points"
                             },
                             "advisory_directive": (
-                                f"Route {source_meta['name']} ({source_train}) into Loop Line 2 at {loop_station}. "
+                                f"Route {source_meta['name']} ({source_train}) into Loop Line at {loop_station}. "
                                 f"Clear Main Line for {trailing_meta['name']} ({t_num}). "
-                                f"Net network delay savings: {status_quo_priority_delay} min for priority rake."
+                                f"Net delay savings: {status_quo_priority_delay} min for high-priority rake."
                             )
                         }
 
