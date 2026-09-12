@@ -2,14 +2,22 @@
 import express from 'express';
 import cors from 'cors';
 import sqlite3 from 'sqlite3';
+import { DB_PATH, initializeDatabase } from './init_db.js';
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-const db = new sqlite3.Database('./trains.db', (err) => {
+const db = new sqlite3.Database(DB_PATH, (err) => {
     if (err) console.error("Database connection error:", err.message);
-    else console.log("Connected to trains.db SQLite database.");
+    else {
+        console.log(`Connected to trains.db SQLite database at: ${DB_PATH}`);
+        initializeDatabase(db);
+    }
+});
+
+app.get('/health', (req, res) => {
+    res.json({ status: "healthy", service: "RailDrishti Trains & Schedules SQLite API" });
 });
 
 // ==========================================

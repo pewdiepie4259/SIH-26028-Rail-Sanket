@@ -13,7 +13,10 @@ from torch_geometric.nn import GATConv
 # ---------------------------------------------------------
 # 1. Multi-Corridor Nationwide Aggregator
 # ---------------------------------------------------------
-CORRIDOR_DIR = "data/corridor"
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CORRIDOR_DIR = os.path.join(BASE_DIR, "data", "corridor")
+if not os.path.exists(CORRIDOR_DIR):
+    CORRIDOR_DIR = "data/corridor"
 json_files = glob.glob(os.path.join(CORRIDOR_DIR, "*.json"))
 
 if not json_files:

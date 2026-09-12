@@ -36,7 +36,7 @@ export function useLiveTelemetry() {
     const socketRef = useRef < WebSocket | null > (null);
 
     useEffect(() => {
-        let reconnectTimer: NodeJS.Timeout | null = null;
+        let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
         function connect() {
             const socket = new WebSocket(WS_URL);

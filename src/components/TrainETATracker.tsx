@@ -451,7 +451,7 @@ export default function TrainETATracker() {
                         const coords = f.geometry?.coordinates;
                         if (code && Array.isArray(coords) && coords.length >= 2) {
                             const c0 = Number(coords[0]);
-                            const c1 = Number(coords);
+                            const c1 = Number(coords[1]);
                             const norm = normalizeIndianCoord(c0, c1);
                             if (norm) {
                                 map[String(code).toUpperCase().trim()] = norm;
@@ -575,7 +575,7 @@ export default function TrainETATracker() {
     };
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', background: '#0a0f1d', color: '#f1f5f9', fontFamily: 'system-ui, -apple-system, sans-serif', overflow: 'hidden' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 64px)', width: '100%', background: '#0a0f1d', color: '#f1f5f9', fontFamily: 'system-ui, -apple-system, sans-serif', overflow: 'hidden' }}>
 
             {/* HEADER */}
             <header style={{ height: '64px', padding: '0 24px', background: '#0f172a', borderBottom: '1px solid #1e293b', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 9999 }}>

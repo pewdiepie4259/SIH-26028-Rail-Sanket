@@ -1,6 +1,8 @@
 import json
 import logging
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import List, Dict, Any, Optional
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,37 +16,15 @@ from app.graph_engine import (
     BENCHMARK_LOGS,
     DISPATCHER_DIRECTIVES_LOG
 )
+from src.database import init_db
+from src.api.routes import router as core_router
+from src.api.gps_tracker import router as gps_router
+from src.api.whatsapp_bot import router as whatsapp_router
+import src.main
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("rail_drishti")
 
-app = FastAPI(
-    title="RailDrishti Real-Time ETA & Bottleneck Engine",
-    description="All-India ST-GNN inference, dynamic precedence advisory, and Section Controller DSS",
-    version="2.0.0"
-)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-class TelemetryPayload(BaseModel):
-    train_number: str = Field(..., example="12246")
-    lat: float = Field(..., example=12.9934)
-    lon: float = Field(..., example=77.5980)
-    speed: float = Field(..., example=75.0, description="Speed in km/h")
-    signal: str = Field(default="GREEN", example="GREEN", description="Aspect: GREEN, YELLOW, DOUBLE_YELLOW, RED")
-
-class DirectiveExecutionPayload(BaseModel):
-    action_code: str = Field(..., example="PRECEDENCE_OVERTAKE_RECOMMENDED")
-    priority_train: str = Field(..., example="20608")
-    preempted_train: str = Field(..., example="06527")
-    loop_station: str = Field(..., example="BWT")
-    approved_by: str = Field(default="Section Controller - Active Division")
 
 class ConnectionManager:
     def __init__(self):
@@ -72,7 +52,57 @@ class ConnectionManager:
         for dead in dead_connections:
             self.disconnect(dead)
 
+
 manager = ConnectionManager()
+# Sync manager with src.main ws_manager for cross-module WebSocket dispatch
+src.main.ws_manager = manager
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("Initializing RailDrishti Unified Engine & SQLite database...")
+    init_db()
+    yield
+    logger.info("Shutting down RailDrishti Unified Engine...")
+
+
+app = FastAPI(
+    title="RailDrishti Real-Time ETA & Section Controller Core",
+    description="Unified All-India ST-GNN inference, Section Controller AI Copilot, RTIS/GPS Tracking & Passenger Telemetry.",
+    version="2.1.0",
+    lifespan=lifespan
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+class TelemetryPayload(BaseModel):
+    train_number: str = Field(..., example="12246")
+    lat: float = Field(..., example=12.9934)
+    lon: float = Field(..., example=77.5980)
+    speed: float = Field(..., example=75.0, description="Speed in km/h")
+    signal: str = Field(default="GREEN", example="GREEN", description="Aspect: GREEN, YELLOW, DOUBLE_YELLOW, RED")
+
+
+class DirectiveExecutionPayload(BaseModel):
+    action_code: str = Field(..., example="PRECEDENCE_OVERTAKE_RECOMMENDED")
+    priority_train: str = Field(..., example="20608")
+    preempted_train: str = Field(..., example="06527")
+    loop_station: str = Field(..., example="BWT")
+    approved_by: str = Field(default="Section Controller - Active Division")
+
+
+# Mount unified database, LightGBM, GPS, and WhatsApp routers
+app.include_router(core_router)
+app.include_router(gps_router)
+app.include_router(whatsapp_router)
+
 
 @app.get("/health")
 def health_check():
@@ -80,16 +110,27 @@ def health_check():
         "status": "healthy",
         "service": "RailDrishti All-India ST-GNN Core & Section Controller DSS",
         "active_trains": len(ACTIVE_TRAIN_POSITIONS),
-        "total_network_nodes": len(CORRIDOR_NODES)
+        "total_network_nodes": len(CORRIDOR_NODES),
+        "ws_active_subscribers": len(manager.active_connections)
     }
 
+
 @app.get("/api/v1/corridor/topology")
+@app.get("/api/v1/corridors/bengaluru/topology")
 def get_corridor_topology():
+    corridor_file = Path(__file__).resolve().parent.parent / "data" / "corridor" / "bengaluru_topology.json"
+    if corridor_file.exists():
+        with open(corridor_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            data["scope"] = "Bengaluru Metropolitan & National Rail Corridors"
+            return data
     return {
         "scope": "Indian Railways National Rail Network",
         "node_count": len(CORRIDOR_NODES),
-        "nodes": CORRIDOR_NODES
+        "nodes": CORRIDOR_NODES,
+        "links": []
     }
+
 
 @app.post("/api/v1/telemetry")
 async def ingest_telemetry(data: TelemetryPayload):
@@ -106,6 +147,7 @@ async def ingest_telemetry(data: TelemetryPayload):
     except Exception as e:
         logger.error(f"Inference error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.get("/api/v1/copilot/active-alerts")
 def get_active_copilot_alerts():
@@ -126,12 +168,14 @@ def get_active_copilot_alerts():
         "bottlenecks": alerts
     }
 
+
 @app.post("/api/v1/copilot/execute-directive")
 async def execute_dispatcher_directive(directive: DirectiveExecutionPayload):
+    directive_dict = directive.model_dump() if hasattr(directive, "model_dump") else directive.dict()
     event = {
         "event_type": "DISPATCHER_DIRECTIVE_APPROVED",
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "directive": directive.dict(),
+        "directive": directive_dict,
         "interlocking_command": f"SET_ROUTE {directive.loop_station} LOOP_LINE LINE_CLEAR FOR {directive.priority_train}"
     }
     
@@ -143,12 +187,14 @@ async def execute_dispatcher_directive(directive: DirectiveExecutionPayload):
         "event": event
     }
 
+
 @app.get("/api/v1/copilot/directive-history")
 def get_directive_history():
     return {
         "total_directives": len(DISPATCHER_DIRECTIVES_LOG),
         "history": DISPATCHER_DIRECTIVES_LOG
     }
+
 
 @app.get("/api/v1/metrics/eval")
 def get_benchmark_metrics():
@@ -172,6 +218,7 @@ def get_benchmark_metrics():
         },
         "recent_snapshots": BENCHMARK_LOGS[-10:]
     }
+
 
 @app.websocket("/ws/telemetry")
 async def websocket_telemetry_stream(websocket: WebSocket):

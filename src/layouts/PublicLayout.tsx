@@ -11,8 +11,11 @@ import {
   Type,
   ZoomIn,
   ZoomOut,
+  Menu,
+  X,
+  ShieldAlert,
 } from "lucide-react"
-import { NavLink, Outlet } from "react-router-dom"
+import { NavLink, Link, Outlet } from "react-router-dom"
 
 function PublicLayout() {
   const languages = [
@@ -33,6 +36,7 @@ function PublicLayout() {
   })
   const [languageOpen, setLanguageOpen] = useState(false)
   const [accessibilityOpen, setAccessibilityOpen] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [contrastMode, setContrastMode] = useState<"normal" | "high" | "dark">(
     "normal"
   )
@@ -108,7 +112,14 @@ function PublicLayout() {
     "flex min-h-[82px] flex-col items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white p-3 text-center text-[#071A33] shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:scale-[1.005] hover:border-[#F59E0B]/40 hover:shadow-[0_8px_20px_rgba(245,158,11,0.08)]"
 
   const headerButton =
-    "flex h-10 items-center justify-center rounded-lg border border-[#F59E0B] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-4 text-sm font-semibold text-white transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_5px_14px_rgba(14,89,97,0.28)]"
+    "flex h-9 items-center justify-center rounded-lg border border-[#F59E0B]/80 bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-3.5 text-xs font-semibold text-white transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_4px_12px_rgba(14,89,97,0.28)]"
+
+  const navLinkClass = ({ isActive }: { isActive: boolean }) =>
+    `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${
+      isActive
+        ? "bg-white/20 text-[#F59E0B] shadow-sm font-bold border border-white/10"
+        : "text-slate-200 hover:text-white hover:bg-white/10"
+    }`
 
   return (
     <div
@@ -122,10 +133,11 @@ function PublicLayout() {
         filter: accessibilityFilters || undefined,
       }}
     >
-      <header className="border-b border-[#164B5A] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33]">
-        <div className="mx-auto flex h-16 max-w-[1600px] items-center justify-between px-5 lg:px-8">
-          <div className="flex items-center gap-3">
-            <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full border border-[#294665] bg-[#071A33]">
+      <header className="border-b border-[#164B5A] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] sticky top-0 z-40 shadow-lg">
+        <div className="mx-auto flex h-16 max-w-[1600px] items-center justify-between px-4 sm:px-6 lg:px-8 gap-4">
+          {/* Brand Logo & Title */}
+          <Link to="/" className="flex items-center gap-3 shrink-0">
+            <div className="h-11 w-11 shrink-0 overflow-hidden rounded-full border border-[#294665] bg-[#071A33] shadow-sm">
               <img
                 src="/logos/raildrishti-dark.png"
                 alt="RailDrishti"
@@ -134,44 +146,91 @@ function PublicLayout() {
             </div>
 
             <div>
-              <div className="text-lg font-bold leading-none tracking-tight text-white">
-                RailDrishti
+              <div className="text-lg font-extrabold leading-none tracking-tight text-white flex items-center">
+                Rail<span className="text-[#F59E0B]">Drishti</span>
               </div>
 
-              <div className="mt-1 hidden text-[10px] font-medium uppercase tracking-wider text-[#F59E0B] sm:block">
-                India Railways ETA System
+              <div className="mt-1 hidden text-[9px] font-bold uppercase tracking-wider text-[#F59E0B] sm:block">
+                Dynamic Train ETA & Copilot
               </div>
             </div>
-          </div>
+          </Link>
 
+          {/* Desktop Navigation Links */}
+          <nav className="hidden xl:flex items-center gap-1">
+            <NavLink to="/" end className={navLinkClass}>
+              Dashboard
+            </NavLink>
+
+            <NavLink to="/live" className={navLinkClass}>
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+              Live Monitor
+            </NavLink>
+
+            <NavLink to="/eta" className={navLinkClass}>
+              Dynamic ETA
+            </NavLink>
+
+            <NavLink to="/map" className={navLinkClass}>
+              Live Map
+            </NavLink>
+
+            <NavLink to="/trains" className={navLinkClass}>
+              Train Search
+            </NavLink>
+
+            <NavLink to="/stations" className={navLinkClass}>
+              Stations
+            </NavLink>
+
+            <NavLink to="/controller" className={({ isActive }) =>
+              `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${
+                isActive
+                  ? "bg-amber-500 text-[#071A33] font-bold shadow-sm"
+                  : "bg-indigo-950/60 border border-indigo-700/60 text-indigo-300 hover:bg-indigo-900/60 hover:text-white"
+              }`
+            }>
+              <ShieldAlert size={13} />
+              Controller DSS
+            </NavLink>
+
+            <NavLink to="/settings" className={navLinkClass}>
+              Settings
+            </NavLink>
+          </nav>
+
+          {/* Right Actions: Login, Register, Language, Accessibility, Mobile Toggle */}
           <div className="flex items-center gap-2">
-            <NavLink
-              to="/login"
-              className={({ isActive }) =>
-                `${headerButton} ${
-                  isActive
-                    ? "shadow-[0_5px_14px_rgba(245,158,11,0.18)]"
-                    : ""
-                }`
-              }
-            >
-              Login
-            </NavLink>
+            <div className="hidden sm:flex items-center gap-2">
+              <NavLink
+                to="/login"
+                className={({ isActive }) =>
+                  `${headerButton} ${
+                    isActive
+                      ? "shadow-[0_5px_14px_rgba(245,158,11,0.18)]"
+                      : ""
+                  }`
+                }
+              >
+                Login
+              </NavLink>
 
-            <NavLink
-              to="/register"
-              className={({ isActive }) =>
-                `${headerButton} ${
-                  isActive
-                    ? "shadow-[0_5px_14px_rgba(245,158,11,0.18)]"
-                    : ""
-                }`
-              }
-            >
-              Register
-            </NavLink>
+              <NavLink
+                to="/register"
+                className={({ isActive }) =>
+                  `${headerButton} ${
+                    isActive
+                      ? "shadow-[0_5px_14px_rgba(245,158,11,0.18)]"
+                      : ""
+                  }`
+                }
+              >
+                Register
+              </NavLink>
+            </div>
 
-            <div className="relative ml-1">
+            {/* Language Selector */}
+            <div className="relative">
               <button
                 type="button"
                 aria-label="Change language"
@@ -180,32 +239,22 @@ function PublicLayout() {
                   setLanguageOpen(!languageOpen)
                   setAccessibilityOpen(false)
                 }}
-                className={`flex h-10 items-center gap-2 rounded-full border border-[#F59E0B] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-3.5 text-sm font-medium text-white transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_5px_14px_rgba(14,89,97,0.28)] ${
+                className={`flex h-9 items-center gap-1.5 rounded-full border border-[#F59E0B] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-3 text-xs font-medium text-white transition-all duration-300 hover:scale-[1.02] ${
                   languageOpen
                     ? "shadow-[0_5px_14px_rgba(245,158,11,0.18)]"
                     : ""
                 }`}
               >
-                <span className="flex items-center gap-1.5">
-                  <span className="text-base leading-none">A</span>
-                  <span className="text-base leading-none text-[#F59E0B]">
-                    अ
-                  </span>
+                <span className="flex items-center gap-1">
+                  <span className="text-xs leading-none">A</span>
+                  <span className="text-xs leading-none text-[#F59E0B]">अ</span>
                 </span>
-
-                <span className="hidden sm:inline">{language}</span>
-
-                <ChevronDown
-                  size={17}
-                  strokeWidth={2.2}
-                  className={`transition-transform duration-200 ${
-                    languageOpen ? "rotate-180" : ""
-                  }`}
-                />
+                <span className="hidden md:inline text-xs">{language}</span>
+                <ChevronDown size={14} className={`transition-transform duration-200 ${languageOpen ? "rotate-180" : ""}`} />
               </button>
 
               {languageOpen && (
-                <div className="absolute right-0 top-12 z-[60] w-52 max-h-72 overflow-y-auto rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl">
+                <div className="absolute right-0 top-11 z-[60] w-52 max-h-72 overflow-y-auto rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl">
                   {languages.map((option) => (
                     <button
                       key={option.code}
@@ -225,6 +274,7 @@ function PublicLayout() {
               )}
             </div>
 
+            {/* Accessibility Button */}
             <div className="relative ml-1">
               <button
                 type="button"
@@ -234,18 +284,28 @@ function PublicLayout() {
                   setAccessibilityOpen(!accessibilityOpen)
                   setLanguageOpen(false)
                 }}
-                className={`flex h-10 w-10 items-center justify-center rounded-lg border border-[#F59E0B] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_5px_14px_rgba(14,89,97,0.28)] ${
+                className={`flex h-9 w-9 items-center justify-center rounded-lg border border-[#F59E0B] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] transition-all duration-300 hover:scale-[1.02] ${
                   accessibilityOpen
                     ? "shadow-[0_5px_14px_rgba(245,158,11,0.18)]"
                     : ""
                 }`}
               >
                 <PersonStanding
-                  size={22}
+                  size={20}
                   strokeWidth={2}
                   className="text-white"
                 />
               </button>
+
+            {/* Mobile Hamburger Menu Toggle */}
+            <button
+              type="button"
+              aria-label="Open Navigation Menu"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="xl:hidden flex h-9 w-9 items-center justify-center rounded-lg border border-[#F59E0B]/80 bg-white/10 text-white hover:bg-white/20 transition cursor-pointer"
+            >
+              {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
 
               {accessibilityOpen && (
                 <div className="absolute right-0 top-12 z-50 w-[390px] max-w-[calc(100vw-24px)] overflow-hidden rounded-2xl border border-[#F59E0B]/25 bg-gradient-to-br from-[#FFF8EC] via-[#FFF4E1] to-[#FFECCF] shadow-xl">
@@ -513,6 +573,123 @@ function PublicLayout() {
             </div>
           </div>
         </div>
+
+        {/* Mobile Navigation Drawer */}
+        {mobileMenuOpen && (
+          <div className="xl:hidden border-t border-[#164B5A] bg-[#071A33]/98 px-5 py-4 space-y-2 backdrop-blur-md">
+            <NavLink
+              to="/"
+              end
+              onClick={() => setMobileMenuOpen(false)}
+              className={({ isActive }) =>
+                `flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold ${
+                  isActive ? "bg-white/20 text-[#F59E0B]" : "text-slate-200 hover:bg-white/10"
+                }`
+              }
+            >
+              Dashboard
+            </NavLink>
+
+            <NavLink
+              to="/live"
+              onClick={() => setMobileMenuOpen(false)}
+              className={({ isActive }) =>
+                `flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold ${
+                  isActive ? "bg-white/20 text-[#F59E0B]" : "text-slate-200 hover:bg-white/10"
+                }`
+              }
+            >
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+              Live Telemetry Monitor
+            </NavLink>
+
+            <NavLink
+              to="/eta"
+              onClick={() => setMobileMenuOpen(false)}
+              className={({ isActive }) =>
+                `flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold ${
+                  isActive ? "bg-white/20 text-[#F59E0B]" : "text-slate-200 hover:bg-white/10"
+                }`
+              }
+            >
+              Dynamic ETA Tracker
+            </NavLink>
+
+            <NavLink
+              to="/map"
+              onClick={() => setMobileMenuOpen(false)}
+              className={({ isActive }) =>
+                `flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold ${
+                  isActive ? "bg-white/20 text-[#F59E0B]" : "text-slate-200 hover:bg-white/10"
+                }`
+              }
+            >
+              Live Corridor Map
+            </NavLink>
+
+            <NavLink
+              to="/trains"
+              onClick={() => setMobileMenuOpen(false)}
+              className={({ isActive }) =>
+                `flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold ${
+                  isActive ? "bg-white/20 text-[#F59E0B]" : "text-slate-200 hover:bg-white/10"
+                }`
+              }
+            >
+              Train Search
+            </NavLink>
+
+            <NavLink
+              to="/stations"
+              onClick={() => setMobileMenuOpen(false)}
+              className={({ isActive }) =>
+                `flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold ${
+                  isActive ? "bg-white/20 text-[#F59E0B]" : "text-slate-200 hover:bg-white/10"
+                }`
+              }
+            >
+              Stations & Amenities
+            </NavLink>
+
+            <NavLink
+              to="/controller"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-bold bg-amber-500 text-[#071A33]"
+            >
+              <ShieldAlert size={16} />
+              Section Controller DSS
+            </NavLink>
+
+            <NavLink
+              to="/settings"
+              onClick={() => setMobileMenuOpen(false)}
+              className={({ isActive }) =>
+                `flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold ${
+                  isActive ? "bg-white/20 text-[#F59E0B]" : "text-slate-200 hover:bg-white/10"
+                }`
+              }
+            >
+              Settings & Diagnostics
+            </NavLink>
+
+            <div className="pt-3 border-t border-slate-700/60 flex items-center gap-2">
+              <NavLink
+                to="/login"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex-1 text-center py-2 rounded-lg border border-[#F59E0B] text-white text-xs font-bold"
+              >
+                Login
+              </NavLink>
+              <NavLink
+                to="/register"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex-1 text-center py-2 rounded-lg bg-[#F59E0B] text-[#071A33] text-xs font-bold"
+              >
+                Register
+              </NavLink>
+            </div>
+          </div>
+        )}
       </header>
 
       <main>

@@ -28,7 +28,7 @@ async function importData() {
 
                 if (p.code && p.name && coords && coords.length >= 2) {
                     const lon = parseFloat(coords[0]); // Index 0 = Longitude
-                    const lat = parseFloat(coords); // Index 1 = Latitude (FIXED:)
+                    const lat = parseFloat(coords[1]); // Index 1 = Latitude (FIXED)
 
                     if (!isNaN(lat) && !isNaN(lon)) {
                         stmt.run(p.code.toUpperCase().trim(), p.name.trim(), p.state || null, p.zone || null, lat, lon);

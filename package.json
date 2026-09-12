@@ -5,6 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "server": "node server/server.js",
+    "db:init": "node server/init_db.js",
+    "db:import": "node server/import_trains.js",
+    "db:schedules": "node server/import_schedules.js",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
