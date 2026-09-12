@@ -173,7 +173,95 @@ export const LiveMap: React.FC = () => {
       .catch(() => {});
   }, []);
 
-  // Live simulation tick
+  // Real-Time WebSocket Telemetry Listener
+  useEffect(() => {
+    const WS_URL = "ws://127.0.0.1:8000/ws/telemetry";
+    let socket: WebSocket | null = null;
+    let reconnectTimer: any = null;
+
+    function connect() {
+      socket = new WebSocket(WS_URL);
+
+      socket.onopen = () => {
+        console.log("RailDrishti Live Telemetry Connected");
+      };
+
+      socket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+
+          if (data.train_number) {
+            const nextStn = data.forecasts?.[0]?.station || "BWT";
+            const delay = data.forecasts?.[0]?.predicted_delay_min ?? 0;
+
+            setRakes((prevRakes) => {
+              const exists = prevRakes.some((r) => r.number === data.train_number);
+              if (exists) {
+                return prevRakes.map((r) =>
+                  r.number === data.train_number
+                    ? {
+                        ...r,
+                        currentStation: data.current_block,
+                        nextStation: nextStn,
+                        speedKmh: Number(data.telemetry.speed_kmh),
+                        signalAspect: data.telemetry.signal,
+                        delayMinutes: delay,
+                        progress: (r.progress + 15) % 100,
+                      }
+                    : r
+                );
+              }
+              return [
+                ...prevRakes,
+                {
+                  id: String(data.train_number),
+                  name: data.train_name,
+                  number: String(data.train_number),
+                  currentStation: data.current_block,
+                  nextStation: nextStn,
+                  progress: 20,
+                  speedKmh: Number(data.telemetry.speed_kmh),
+                  delayMinutes: delay,
+                  signalAspect: data.telemetry.signal,
+                  route: [data.current_block, nextStn],
+                },
+              ];
+            });
+
+            if (data.forecasts && data.forecasts.length > 0) {
+              setGnnDelays((prev) => ({
+                ...prev,
+                [data.train_number]: delay,
+              }));
+            }
+
+            if (data.copilot_alert) {
+              setBottleneckAlerts((prev) => [data.copilot_alert, ...prev.slice(0, 4)]);
+            }
+          }
+        } catch (err) {
+          console.error("Error parsing telemetry WebSocket frame:", err);
+        }
+      };
+
+      socket.onerror = () => {
+        socket?.close();
+      };
+
+      socket.onclose = () => {
+        reconnectTimer = setTimeout(connect, 3000);
+      };
+    }
+
+    connect();
+
+    return () => {
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (socket) socket.close();
+    };
+  }, []);
+
+  // Live simulation tick (Fallback when backend offline)
   useEffect(() => {
     if (!isSimulating) return;
 
@@ -210,7 +298,7 @@ export const LiveMap: React.FC = () => {
 
     return () => clearInterval(interval);
   }, [isSimulating]);
-
+  
   // Compute interpolated train coordinate
   const getRakePosition = (rake: LiveRake) => {
     const posA = STATION_POSITIONS[rake.currentStation] || { x: 220, y: 190 };

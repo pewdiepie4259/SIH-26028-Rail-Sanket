@@ -9,6 +9,7 @@ import StationInformation from "./pages/public/StationInformation"
 import Settings from "./pages/settings"
 import Register from "./pages/register"
 import Login from "./pages/login"
+import ControllerDashboard from "./pages/ControllerDashboard"
 
 function App() {
   return (
@@ -28,7 +29,7 @@ function App() {
 
         <Route
           path="/controller"
-          element={<div className="p-10">Controller Dashboard</div>}
+          element={<ControllerDashboard />}
         />
 
         <Route
