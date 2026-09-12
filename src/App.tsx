@@ -1,3 +1,4 @@
+// src/App.tsx
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom"
 
 import PublicLayout from "./layouts/PublicLayout"
@@ -10,6 +11,9 @@ import Settings from "./pages/settings"
 import Register from "./pages/register"
 import Login from "./pages/login"
 import ControllerDashboard from "./pages/ControllerDashboard"
+
+// Dynamic ETA Tracker Component
+import TrainETATracker from "./components/TrainETATracker"
 
 function App() {
   return (
@@ -25,6 +29,10 @@ function App() {
           <Route path="/settings" element={<Settings />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+
+          {/* New Dynamic ETA Tracking Routes */}
+          <Route path="/eta" element={<TrainETATracker />} />
+          <Route path="/eta-tracker" element={<TrainETATracker />} />
         </Route>
 
         <Route
