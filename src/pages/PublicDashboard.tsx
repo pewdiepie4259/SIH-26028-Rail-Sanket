@@ -565,7 +565,7 @@ function PublicDashboard() {
           <ETAFragment train={etaData[selectedTrain.number]} />
         </div>
       ) : (
-        <section className="bg-gradient-to-br from-[#D6E7EC] via-[#F4F7FA] to-[#BFDDE0]">
+        <section className="bg-gradient-to-r from-[#FFF4E1] via-white to-[#FFF4E1]">
           <div className="mx-auto max-w-[1600px] px-6 py-8 lg:px-12">
             <div className="mb-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
               <div>

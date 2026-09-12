@@ -235,9 +235,9 @@ export default function Register() {
 
       {/* Centered Registration Card Container with Glassmorphism */}
       <div className="relative z-10 w-full max-w-lg mx-auto px-4 py-8">
-        <div className="w-full bg-white/80 backdrop-blur-2xl rounded-3xl border border-white/70 shadow-[0_12px_40px_rgba(0,0,0,0.35)] overflow-hidden">
+        <div className="w-full overflow-hidden rounded-3xl border border-[#F59E0B] bg-gradient-to-br from-[#FFF8EC] via-white to-[#FFF4E1] shadow-[0_12px_40px_rgba(7,26,51,0.35)]">
           {/* Header Title inside Card */}
-          <div className="px-6 pt-6 pb-2 text-center">
+          <div className="bg-gradient-to-r from-[#FFF4E1] via-white to-[#FFF4E1] px-6 pt-7 pb-5 text-center">
             <div className="mb-1 text-xs font-bold uppercase tracking-[0.2em] text-[#F59E0B]">
               Registration Portal
             </div>
@@ -247,8 +247,8 @@ export default function Register() {
           </div>
 
           {/* Public Registration Tab Selector with Glassmorphic Container */}
-          <div className="border-b border-slate-200/50 bg-slate-100/50 backdrop-blur-md p-3 mt-2">
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-600 mb-2 px-1">
+          <div className="border-b border-[#F59E0B]/20 bg-gradient-to-r from-[#FFF4E1] via-white to-[#FFF4E1] p-3">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-[#465B6B] mb-2 px-1">
               Select Registration Type
             </div>
             <div className="grid grid-cols-2 gap-2">
@@ -261,13 +261,13 @@ export default function Register() {
                 }}
                 className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                   activeTab === "user"
-                    ? "bg-[#0B3D91] text-white shadow-md ring-2 ring-[#0B3D91]/25"
-                    : "bg-white/70 hover:bg-white/95 text-slate-700 border border-white/80 backdrop-blur-xs"
+                    ? "border border-[#F59E0B] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] text-white shadow-[0_5px_16px_rgba(7,26,51,0.28)] ring-2 ring-[#F59E0B]/20"
+                    : "border border-slate-200 bg-white/90 text-[#071A33] shadow-sm hover:border-[#F59E0B]/50 hover:bg-[#FFF8EC]"
                 }`}
               >
                 <User
                   className={`w-4 h-4 ${
-                    activeTab === "user" ? "text-[#F59E0B]" : "text-slate-500"
+                    activeTab === "user" ? "text-[#F59E0B]" : "text-[#6B7C8C]"
                   }`}
                 />
                 <span>Create User Account</span>
@@ -282,13 +282,13 @@ export default function Register() {
                 }}
                 className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                   activeTab === "employee"
-                    ? "bg-[#0B3D91] text-white shadow-md ring-2 ring-[#0B3D91]/25"
-                    : "bg-white/70 hover:bg-white/95 text-slate-700 border border-white/80 backdrop-blur-xs"
+                    ? "border border-[#F59E0B] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] text-white shadow-[0_5px_16px_rgba(7,26,51,0.28)] ring-2 ring-[#F59E0B]/20"
+                    : "border border-slate-200 bg-white/90 text-[#071A33] shadow-sm hover:border-[#F59E0B]/50 hover:bg-[#FFF8EC]"
                 }`}
               >
                 <Briefcase
                   className={`w-4 h-4 ${
-                    activeTab === "employee" ? "text-[#F59E0B]" : "text-slate-500"
+                    activeTab === "employee" ? "text-[#F59E0B]" : "text-[#6B7C8C]"
                   }`}
                 />
                 <span>Employee Registration</span>
@@ -298,8 +298,8 @@ export default function Register() {
 
           <div className="p-6">
                 {/* Security Restriction Notice */}
-                <div className="mb-4 rounded-xl border border-blue-100/80 bg-blue-50/85 backdrop-blur-md p-3 text-xs text-slate-700 flex items-start gap-2.5">
-                  <ShieldCheck className="w-4 h-4 text-[#0B3D91] shrink-0 mt-0.5" />
+                <div className="mb-4 rounded-xl border border-[#0E7C86]/20 bg-[#EAF4F5]/90 p-3 text-xs text-[#071A33] flex items-start gap-2.5">
+                  <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#0E5961]" />
                   <div className="text-[11px] leading-relaxed">
                     <span className="font-semibold text-[#071A33]">Admin & Controller Notice: </span>
                     Admin accounts have <strong>no public registration</strong>. Section Controller
@@ -336,7 +336,7 @@ export default function Register() {
                         <h3 className="text-lg font-bold text-[#071A33]">
                           Account Created Successfully!
                         </h3>
-                        <p className="text-xs text-slate-600 max-w-sm mx-auto">
+                        <p className="text-xs text-[#465B6B] max-w-sm mx-auto">
                           Your passenger account is active and ready. You can now sign in using your
                           mobile number, email, or OTP.
                         </p>
@@ -354,11 +354,11 @@ export default function Register() {
                       <form onSubmit={handleUserSubmit} className="space-y-3">
                         {/* Full Name */}
                         <div>
-                          <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
+                          <label className="block text-xs font-semibold uppercase tracking-wider text-[#071A33] mb-1">
                             Full Name
                           </label>
                           <div className="relative">
-                            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-[#0E5961]">
                               <User className="w-4 h-4" />
                             </div>
                             <input
@@ -367,7 +367,7 @@ export default function Register() {
                               value={userFullName}
                               onChange={(e) => setUserFullName(e.target.value)}
                               placeholder="e.g. Ramesh Sharma"
-                              className="w-full rounded-xl border border-slate-300/80 bg-white/70 backdrop-blur-md py-2 pl-10 pr-3 text-sm text-slate-900 transition-colors placeholder:text-slate-400 focus:border-[#0B3D91] focus:bg-white/95 focus:outline-none focus:ring-2 focus:ring-[#0B3D91]/20 shadow-xs"
+                              className="w-full rounded-xl border border-[#B8C9D2] bg-white/90 backdrop-blur-md py-2 pl-10 pr-3 text-sm text-slate-900 transition-colors placeholder:text-[#0E5961] focus:border-[#0E7C86] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E7C86]/20 shadow-xs"
                               disabled={isLoading}
                             />
                           </div>
@@ -376,11 +376,11 @@ export default function Register() {
                         {/* Phone Number & Email ID */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div>
-                            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
+                            <label className="block text-xs font-semibold uppercase tracking-wider text-[#071A33] mb-1">
                               Phone Number
                             </label>
                             <div className="relative">
-                              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-[#0E5961]">
                                 <Phone className="w-4 h-4" />
                               </div>
                               <input
@@ -390,18 +390,18 @@ export default function Register() {
                                 value={userPhone}
                                 onChange={(e) => setUserPhone(e.target.value.replace(/\D/g, ""))}
                                 placeholder="9876543210"
-                                className="w-full rounded-xl border border-slate-300/80 bg-white/70 backdrop-blur-md py-2 pl-10 pr-3 text-sm text-slate-900 transition-colors placeholder:text-slate-400 focus:border-[#0B3D91] focus:bg-white/95 focus:outline-none focus:ring-2 focus:ring-[#0B3D91]/20 shadow-xs"
+                                className="w-full rounded-xl border border-[#B8C9D2] bg-white/90 backdrop-blur-md py-2 pl-10 pr-3 text-sm text-slate-900 transition-colors placeholder:text-[#0E5961] focus:border-[#0E7C86] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E7C86]/20 shadow-xs"
                                 disabled={isLoading}
                               />
                             </div>
                           </div>
 
                           <div>
-                            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
+                            <label className="block text-xs font-semibold uppercase tracking-wider text-[#071A33] mb-1">
                               Email ID
                             </label>
                             <div className="relative">
-                              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-[#0E5961]">
                                 <Mail className="w-4 h-4" />
                               </div>
                               <input
@@ -410,7 +410,7 @@ export default function Register() {
                                 value={userEmail}
                                 onChange={(e) => setUserEmail(e.target.value)}
                                 placeholder="passenger@example.com"
-                                className="w-full rounded-xl border border-slate-300/80 bg-white/70 backdrop-blur-md py-2 pl-10 pr-3 text-sm text-slate-900 transition-colors placeholder:text-slate-400 focus:border-[#0B3D91] focus:bg-white/95 focus:outline-none focus:ring-2 focus:ring-[#0B3D91]/20 shadow-xs"
+                                className="w-full rounded-xl border border-[#B8C9D2] bg-white/90 backdrop-blur-md py-2 pl-10 pr-3 text-sm text-slate-900 transition-colors placeholder:text-[#0E5961] focus:border-[#0E7C86] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E7C86]/20 shadow-xs"
                                 disabled={isLoading}
                               />
                             </div>
@@ -420,11 +420,11 @@ export default function Register() {
                         {/* Password & Confirm Password */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div>
-                            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
+                            <label className="block text-xs font-semibold uppercase tracking-wider text-[#071A33] mb-1">
                               Password
                             </label>
                             <div className="relative">
-                              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-[#0E5961]">
                                 <Lock className="w-4 h-4" />
                               </div>
                               <input
@@ -433,13 +433,13 @@ export default function Register() {
                                 value={userPassword}
                                 onChange={(e) => setUserPassword(e.target.value)}
                                 placeholder="••••••••••••"
-                                className="w-full rounded-xl border border-slate-300/80 bg-white/70 backdrop-blur-md py-2 pl-10 pr-9 text-sm text-slate-900 transition-colors placeholder:text-slate-400 focus:border-[#0B3D91] focus:bg-white/95 focus:outline-none focus:ring-2 focus:ring-[#0B3D91]/20 shadow-xs"
+                                className="w-full rounded-xl border border-[#B8C9D2] bg-white/90 backdrop-blur-md py-2 pl-10 pr-9 text-sm text-slate-900 transition-colors placeholder:text-[#0E5961] focus:border-[#0E7C86] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E7C86]/20 shadow-xs"
                                 disabled={isLoading}
                               />
                               <button
                                 type="button"
                                 onClick={() => setShowUserPassword(!showUserPassword)}
-                                className="absolute inset-y-0 right-0 flex items-center pr-2.5 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer"
+                                className="absolute inset-y-0 right-0 flex items-center pr-2.5 text-[#0E5961] hover:text-[#465B6B] focus:outline-none cursor-pointer"
                               >
                                 {showUserPassword ? (
                                   <EyeOff className="w-4 h-4" />
@@ -451,11 +451,11 @@ export default function Register() {
                           </div>
 
                           <div>
-                            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
+                            <label className="block text-xs font-semibold uppercase tracking-wider text-[#071A33] mb-1">
                               Confirm Password
                             </label>
                             <div className="relative">
-                              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-[#0E5961]">
                                 <Lock className="w-4 h-4" />
                               </div>
                               <input
@@ -464,13 +464,13 @@ export default function Register() {
                                 value={userConfirmPassword}
                                 onChange={(e) => setUserConfirmPassword(e.target.value)}
                                 placeholder="••••••••••••"
-                                className="w-full rounded-xl border border-slate-300/80 bg-white/70 backdrop-blur-md py-2 pl-10 pr-9 text-sm text-slate-900 transition-colors placeholder:text-slate-400 focus:border-[#0B3D91] focus:bg-white/95 focus:outline-none focus:ring-2 focus:ring-[#0B3D91]/20 shadow-xs"
+                                className="w-full rounded-xl border border-[#B8C9D2] bg-white/90 backdrop-blur-md py-2 pl-10 pr-9 text-sm text-slate-900 transition-colors placeholder:text-[#0E5961] focus:border-[#0E7C86] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E7C86]/20 shadow-xs"
                                 disabled={isLoading}
                               />
                               <button
                                 type="button"
                                 onClick={() => setShowUserConfirmPassword(!showUserConfirmPassword)}
-                                className="absolute inset-y-0 right-0 flex items-center pr-2.5 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer"
+                                className="absolute inset-y-0 right-0 flex items-center pr-2.5 text-[#0E5961] hover:text-[#465B6B] focus:outline-none cursor-pointer"
                               >
                                 {showUserConfirmPassword ? (
                                   <EyeOff className="w-4 h-4" />
@@ -484,8 +484,8 @@ export default function Register() {
 
                         {/* Password Strength Indicator Checklist */}
                         {userPassword && (
-                          <div className="rounded-xl bg-slate-50/80 backdrop-blur-md border border-slate-200/80 p-2.5 text-xs space-y-1">
-                            <div className="font-semibold text-slate-700 mb-1 text-[11px]">
+                          <div className="rounded-xl border border-[#0E5961]/15 bg-[#F4FAFA]/95 p-2.5 text-xs space-y-1">
+                            <div className="font-semibold text-[#071A33] mb-1 text-[11px]">
                               Password Strength Indicator:
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-[10px]">
@@ -495,7 +495,7 @@ export default function Register() {
                                   <div
                                     key={rule.id}
                                     className={`flex items-center gap-1.5 ${
-                                      isValid ? "text-emerald-600 font-medium" : "text-slate-500"
+                                      isValid ? "font-medium text-emerald-600" : "text-[#6B7C8C]"
                                     }`}
                                   >
                                     <CheckCircle2
@@ -513,12 +513,12 @@ export default function Register() {
 
                         {/* Terms & Conditions Checkbox */}
                         <div className="pt-0.5">
-                          <label className="flex items-start gap-2 cursor-pointer text-xs text-slate-600 leading-tight">
+                          <label className="flex items-start gap-2 cursor-pointer text-xs text-[#465B6B] leading-tight">
                             <input
                               type="checkbox"
                               checked={userTermsAccepted}
                               onChange={(e) => setUserTermsAccepted(e.target.checked)}
-                              className="mt-0.5 w-3.5 h-3.5 rounded border-slate-300 text-[#0B3D91] focus:ring-[#0B3D91]"
+                              className="mt-0.5 w-3.5 h-3.5 rounded border-[#B8C9D2] text-[#071A33] focus:ring-[#0E7C86]"
                             />
                             <span className="text-[11px]">
                               I accept the RailDrishti Platform Terms & Conditions, Privacy Policy,
@@ -550,9 +550,9 @@ export default function Register() {
                       <div className="mt-4">
                         <div className="relative flex items-center justify-center">
                           <div className="absolute inset-0 flex items-center">
-                            <div className="w-full border-t border-slate-200/70" />
+                            <div className="w-full border-t border-[#0E5961]/20" />
                           </div>
-                          <span className="relative bg-white/70 backdrop-blur-md px-3 text-xs text-slate-500 uppercase tracking-wider rounded-md">
+                          <span className="relative rounded-md bg-white px-3 text-xs uppercase tracking-wider text-[#0E5961]">
                             Or register with
                           </span>
                         </div>
@@ -562,7 +562,7 @@ export default function Register() {
                             type="button"
                             onClick={onGoogleRegister}
                             disabled={isLoading || isGoogleLoading}
-                            className="w-full flex items-center justify-center gap-3 rounded-xl border border-slate-300/80 bg-white/80 hover:bg-white backdrop-blur-md py-2 px-4 text-sm font-medium text-slate-700 transition-all shadow-xs disabled:opacity-60 cursor-pointer"
+                            className="w-full flex items-center justify-center gap-3 rounded-xl border border-[#B8C9D2] bg-white/80 hover:bg-white backdrop-blur-md py-2 px-4 text-sm font-medium text-[#071A33] transition-all shadow-xs disabled:opacity-60 cursor-pointer"
                           >
                             {isGoogleLoading ? (
                               <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-600 border-t-transparent" />
@@ -601,14 +601,14 @@ export default function Register() {
                   <>
                     {isEmployeeSubmitted ? (
                       <div className="text-center py-6 space-y-4">
-                        <div className="w-12 h-12 rounded-full bg-blue-100 text-[#0B3D91] mx-auto flex items-center justify-center">
+                        <div className="w-12 h-12 rounded-full bg-[#EAF4F5] text-[#0E5961] mx-auto flex items-center justify-center">
                           <CheckCircle2 className="w-7 h-7" />
                         </div>
                         <h3 className="text-lg font-bold text-[#071A33]">
                           Application Submitted for Review
                         </h3>
-                        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-left text-xs text-amber-900 flex items-start gap-2.5">
-                          <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-left text-xs text-[#6B4A12] flex items-start gap-2.5">
+                          <Info className="w-4 h-4 text-[#F59E0B] shrink-0 mt-0.5" />
                           <div className="leading-relaxed">
                             Your employee account registration has been submitted and is under
                             review. Please check your official email for further updates.
@@ -628,11 +628,11 @@ export default function Register() {
                       <form onSubmit={handleEmployeeSubmit} className="space-y-3.5">
                         {/* Full Name */}
                         <div>
-                          <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
+                          <label className="block text-xs font-semibold uppercase tracking-wider text-[#071A33] mb-1">
                             Full Name
                           </label>
                           <div className="relative">
-                            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-[#0E5961]">
                               <User className="w-4 h-4" />
                             </div>
                             <input
@@ -641,7 +641,7 @@ export default function Register() {
                               value={empFullName}
                               onChange={(e) => setEmpFullName(e.target.value)}
                               placeholder="e.g. Ramesh Sharma"
-                              className="w-full rounded-xl border border-slate-300/80 bg-white/70 backdrop-blur-md py-2 pl-10 pr-3 text-sm text-slate-900 transition-colors placeholder:text-slate-400 focus:border-[#0B3D91] focus:bg-white/95 focus:outline-none focus:ring-2 focus:ring-[#0B3D91]/20 shadow-xs"
+                              className="w-full rounded-xl border border-[#B8C9D2] bg-white/90 backdrop-blur-md py-2 pl-10 pr-3 text-sm text-slate-900 transition-colors placeholder:text-[#0E5961] focus:border-[#0E7C86] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E7C86]/20 shadow-xs"
                               disabled={isLoading}
                             />
                           </div>
@@ -650,11 +650,11 @@ export default function Register() {
                         {/* Employee ID & Official Email */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div>
-                            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
+                            <label className="block text-xs font-semibold uppercase tracking-wider text-[#071A33] mb-1">
                               Employee ID
                             </label>
                             <div className="relative">
-                              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-[#0E5961]">
                                 <BadgeAlert className="w-4 h-4" />
                               </div>
                               <input
@@ -663,18 +663,18 @@ export default function Register() {
                                 value={empId}
                                 onChange={(e) => setEmpId(e.target.value)}
                                 placeholder="e.g. IR-2024-8841"
-                                className="w-full rounded-xl border border-slate-300/80 bg-white/70 backdrop-blur-md py-2 pl-10 pr-3 text-sm text-slate-900 uppercase transition-colors placeholder:text-slate-400 placeholder:normal-case focus:border-[#0B3D91] focus:bg-white/95 focus:outline-none focus:ring-2 focus:ring-[#0B3D91]/20 shadow-xs"
+                                className="w-full rounded-xl border border-[#B8C9D2] bg-white/90 backdrop-blur-md py-2 pl-10 pr-3 text-sm text-slate-900 uppercase transition-colors placeholder:text-[#0E5961] placeholder:normal-case focus:border-[#0E7C86] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E7C86]/20 shadow-xs"
                                 disabled={isLoading}
                               />
                             </div>
                           </div>
 
                           <div>
-                            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
+                            <label className="block text-xs font-semibold uppercase tracking-wider text-[#071A33] mb-1">
                               Official Email ID
                             </label>
                             <div className="relative">
-                              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-[#0E5961]">
                                 <Mail className="w-4 h-4" />
                               </div>
                               <input
@@ -683,7 +683,7 @@ export default function Register() {
                                 value={empEmail}
                                 onChange={(e) => setEmpEmail(e.target.value)}
                                 placeholder="name@raildrishti.gov.in"
-                                className="w-full rounded-xl border border-slate-300/80 bg-white/70 backdrop-blur-md py-2 pl-10 pr-3 text-sm text-slate-900 transition-colors placeholder:text-slate-400 focus:border-[#0B3D91] focus:bg-white/95 focus:outline-none focus:ring-2 focus:ring-[#0B3D91]/20 shadow-xs"
+                                className="w-full rounded-xl border border-[#B8C9D2] bg-white/90 backdrop-blur-md py-2 pl-10 pr-3 text-sm text-slate-900 transition-colors placeholder:text-[#0E5961] focus:border-[#0E7C86] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E7C86]/20 shadow-xs"
                                 disabled={isLoading}
                               />
                             </div>
@@ -693,17 +693,17 @@ export default function Register() {
                         {/* Department & Role Selection */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div>
-                            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
+                            <label className="block text-xs font-semibold uppercase tracking-wider text-[#071A33] mb-1">
                               Department
                             </label>
                             <div className="relative">
-                              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-[#0E5961]">
                                 <Building className="w-4 h-4" />
                               </div>
                               <select
                                 value={empDepartment}
                                 onChange={(e) => setEmpDepartment(e.target.value)}
-                                className="w-full rounded-xl border border-slate-300/80 bg-white/70 backdrop-blur-md py-2 pl-10 pr-3 text-sm text-slate-900 transition-colors focus:border-[#0B3D91] focus:bg-white/95 focus:outline-none focus:ring-2 focus:ring-[#0B3D91]/20 cursor-pointer shadow-xs"
+                                className="w-full rounded-xl border border-[#B8C9D2] bg-white/90 backdrop-blur-md py-2 pl-10 pr-3 text-sm text-slate-900 transition-colors focus:border-[#0E7C86] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E7C86]/20 cursor-pointer shadow-xs"
                                 disabled={isLoading}
                               >
                                 {DEPARTMENTS.map((dept) => (
@@ -716,11 +716,11 @@ export default function Register() {
                           </div>
 
                           <div>
-                            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
+                            <label className="block text-xs font-semibold uppercase tracking-wider text-[#071A33] mb-1">
                               Role
                             </label>
                             <div className="relative">
-                              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-[#0E5961]">
                                 <Layers className="w-4 h-4" />
                               </div>
                               <select
@@ -728,7 +728,7 @@ export default function Register() {
                                 onChange={(e) =>
                                   setEmpRequestedRole(e.target.value as "employee" | "controller")
                                 }
-                                className="w-full rounded-xl border border-slate-300/80 bg-white/70 backdrop-blur-md py-2 pl-10 pr-3 text-sm text-slate-900 transition-colors focus:border-[#0B3D91] focus:bg-white/95 focus:outline-none focus:ring-2 focus:ring-[#0B3D91]/20 cursor-pointer font-medium shadow-xs"
+                                className="w-full rounded-xl border border-[#B8C9D2] bg-white/90 backdrop-blur-md py-2 pl-10 pr-3 text-sm text-slate-900 transition-colors focus:border-[#0E7C86] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E7C86]/20 cursor-pointer font-medium shadow-xs"
                                 disabled={isLoading}
                               >
                                 <option value="employee">Employee</option>
@@ -740,8 +740,8 @@ export default function Register() {
 
                         {/* Explanatory Notice for Controller Application */}
                         {empRequestedRole === "controller" && (
-                          <div className="rounded-xl border border-amber-200/80 bg-amber-50/85 backdrop-blur-md p-2.5 text-[11px] text-amber-800 flex items-start gap-2">
-                            <Info className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                          <div className="rounded-xl border border-[#F59E0B]/30 bg-[#FFF8EC] backdrop-blur-md p-2.5 text-[11px] text-[#7A5515] flex items-start gap-2">
+                            <Info className="w-3.5 h-3.5 text-[#F59E0B] shrink-0 mt-0.5" />
                             <span>
                               Controller accounts are strictly regulated and will require divisional
                               verification prior to activation.
@@ -770,11 +770,11 @@ export default function Register() {
                 )}
 
                 {/* Footer Navigation Link */}
-                <div className="mt-4 pt-3 border-t border-slate-100 text-center text-xs text-slate-600">
+                <div className="mt-4 pt-3 border-t border-[#0E5961]/20 text-center text-xs text-[#465B6B]">
                   Already have an account?{" "}
                   <Link
                     to="/login"
-                    className="font-semibold text-[#0B3D91] hover:text-[#0E7C86] hover:underline"
+                    className="font-semibold text-[#0E5961] hover:text-[#071A33] hover:underline"
                   >
                     Sign in to your account
                   </Link>

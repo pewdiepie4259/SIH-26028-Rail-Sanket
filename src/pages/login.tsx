@@ -221,7 +221,7 @@ export default function Login() {
   const currentRoleConfig = roleConfig[selectedRole];
 
   return (
-    <div className="relative min-h-[calc(100vh-4rem)] flex items-center justify-center bg-slate-950 overflow-hidden">
+    <div className="relative flex min-h-[calc(100vh-4rem)] items-center justify-center overflow-hidden bg-slate-950">
       {/* Background Image Slideshow (2-second rotation) */}
       {BACKGROUND_SLIDES.map((slide, idx) => (
         <div
@@ -239,9 +239,9 @@ export default function Login() {
 
       {/* Centered Authentication Card Container with Glassmorphism */}
       <div className="relative z-10 w-full max-w-md mx-auto px-4 py-8">
-        <div className="w-full bg-white/80 backdrop-blur-2xl rounded-3xl border border-white/70 shadow-[0_12px_40px_rgba(0,0,0,0.35)] overflow-hidden">
+        <div className="w-full overflow-hidden rounded-3xl border border-[#F59E0B] bg-gradient-to-br from-[#FFF8EC] via-white to-[#FFF4E1] shadow-[0_12px_40px_rgba(7,26,51,0.35)]">
           {/* Header Title inside Card */}
-          <div className="px-6 pt-6 pb-2 text-center">
+          <div className="bg-gradient-to-r from-[#FFF4E1] via-white to-[#FFF4E1] px-6 pt-7 pb-5 text-center">
             <div className="mb-1 text-xs font-bold uppercase tracking-[0.2em] text-[#F59E0B]">
               Welcome to
             </div>
@@ -251,8 +251,8 @@ export default function Login() {
           </div>
 
           {/* 4-Role Tabs Selector with Glassmorphic Container */}
-          <div className="border-b border-slate-200/50 bg-slate-100/50 backdrop-blur-md p-3 mt-2">
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-600 mb-2 px-1">
+          <div className="border-b border-[#F59E0B]/20 bg-gradient-to-r from-[#FFF4E1] via-white to-[#FFF4E1] p-3">
+            <div className="mb-2 px-1 text-[11px] font-bold uppercase tracking-wider text-[#071A33]">
               Select Access Role
             </div>
             <div className="grid grid-cols-4 gap-1.5">
@@ -264,15 +264,15 @@ export default function Login() {
                     key={r}
                     type="button"
                     onClick={() => handleRoleChange(r)}
-                    className={`flex flex-col items-center justify-center py-2 px-1 rounded-xl text-xs font-medium transition-all duration-200 cursor-pointer ${
+                    className={`flex flex-col items-center justify-center rounded-xl border px-1 py-2 text-xs font-medium transition-all duration-200 cursor-pointer ${
                       isSelected
-                        ? "bg-[#0B3D91] text-white shadow-md font-semibold ring-2 ring-[#0B3D91]/25"
-                        : "bg-white/70 hover:bg-white/95 text-slate-700 border border-white/80 backdrop-blur-xs"
+                        ? "border-[#F59E0B] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] font-semibold text-white shadow-[0_5px_16px_rgba(7,26,51,0.28)] ring-2 ring-[#F59E0B]/20"
+                        : "border-slate-200 bg-white/90 text-[#071A33] shadow-sm hover:border-[#F59E0B]/50 hover:bg-[#FFF8EC]"
                     }`}
                   >
                     <IconComponent
                       className={`w-3.5 h-3.5 mb-1 ${
-                        isSelected ? "text-[#F59E0B]" : "text-slate-500"
+                        isSelected ? "text-[#F59E0B]" : "text-[#6B7C8C]"
                       }`}
                     />
                     <span className="truncate capitalize text-[11px]">{r}</span>
@@ -302,17 +302,17 @@ export default function Login() {
 
             {/* Sub-Methods for USER role: Password vs OTP */}
             {selectedRole === "user" && (
-              <div className="mb-4 grid grid-cols-2 gap-1 rounded-xl bg-slate-200/60 backdrop-blur-md p-1 border border-white/60">
+              <div className="mb-4 grid grid-cols-2 gap-1 rounded-xl border border-[#0E5961]/15 bg-gradient-to-r from-[#EAF4F5] via-white to-[#EAF4F5] p-1">
                 <button
                   type="button"
                   onClick={() => {
                     setUserLoginMethod("password");
                     setErrorMessage(null);
                   }}
-                  className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                  className={`flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-medium transition-all cursor-pointer ${
                     userLoginMethod === "password"
-                      ? "bg-white/95 text-[#0B3D91] font-semibold shadow-xs"
-                      : "text-slate-600 hover:text-slate-900"
+                      ? "bg-white text-[#0E5961] font-semibold shadow-sm ring-1 ring-[#F59E0B]/20"
+                      : "text-[#071A33] hover:text-[#0E7C86]"
                   }`}
                 >
                   <KeyRound className="w-3.5 h-3.5" />
@@ -325,10 +325,10 @@ export default function Login() {
                     setUserLoginMethod("otp");
                     setErrorMessage(null);
                   }}
-                  className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                  className={`flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-medium transition-all cursor-pointer ${
                     userLoginMethod === "otp"
-                      ? "bg-white/95 text-[#0B3D91] font-semibold shadow-xs"
-                      : "text-slate-600 hover:text-slate-900"
+                      ? "bg-white text-[#0E5961] font-semibold shadow-sm ring-1 ring-[#F59E0B]/20"
+                      : "text-[#071A33] hover:text-[#0E7C86]"
                   }`}
                 >
                   <Phone className="w-3.5 h-3.5" />
@@ -359,11 +359,11 @@ export default function Login() {
               {selectedRole === "user" && (
                 <>
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-[#071A33] mb-1">
                       Mobile Number or Email
                     </label>
                     <div className="relative">
-                      <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                      <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-[#0E5961]">
                         {emailOrPhone.includes("@") ? (
                           <Mail className="w-4 h-4" />
                         ) : (
@@ -375,7 +375,7 @@ export default function Login() {
                         value={emailOrPhone}
                         onChange={(e) => setEmailOrPhone(e.target.value)}
                         placeholder="e.g. 9876543210 or name@example.com"
-                        className="w-full rounded-xl border border-slate-300/80 bg-white/70 backdrop-blur-md py-2.5 pl-10 pr-3 text-sm text-slate-900 transition-colors placeholder:text-slate-400 focus:border-[#0B3D91] focus:bg-white/95 focus:outline-none focus:ring-2 focus:ring-[#0B3D91]/20 shadow-xs"
+                        className="w-full rounded-xl border border-[#B8C9D2] bg-white/90 backdrop-blur-md py-2.5 pl-10 pr-3 text-sm text-slate-900 transition-colors placeholder:text-[#78909C] focus:border-[#0E7C86] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E7C86]/20 shadow-xs"
                         disabled={isLoading}
                       />
                     </div>
@@ -385,19 +385,19 @@ export default function Login() {
                   {userLoginMethod === "password" && (
                     <div>
                       <div className="flex items-center justify-between mb-1">
-                        <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700">
+                        <label className="block text-xs font-semibold uppercase tracking-wider text-[#071A33]">
                           Password
                         </label>
                         <button
                           type="button"
                           onClick={() => setShowForgotModal(true)}
-                          className="text-xs font-medium text-[#0E7C86] hover:text-[#0B3D91] hover:underline cursor-pointer"
+                          className="text-xs font-medium text-[#0E7C86] hover:text-[#0E5961] hover:underline cursor-pointer"
                         >
                           Forgot Password?
                         </button>
                       </div>
                       <div className="relative">
-                        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-[#0E5961]">
                           <Lock className="w-4 h-4" />
                         </div>
                         <input
@@ -405,13 +405,13 @@ export default function Login() {
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                           placeholder="••••••••••••"
-                          className="w-full rounded-xl border border-slate-300/80 bg-white/70 backdrop-blur-md py-2.5 pl-10 pr-10 text-sm text-slate-900 transition-colors placeholder:text-slate-400 focus:border-[#0B3D91] focus:bg-white/95 focus:outline-none focus:ring-2 focus:ring-[#0B3D91]/20 shadow-xs"
+                          className="w-full rounded-xl border border-[#B8C9D2] bg-white/90 backdrop-blur-md py-2.5 pl-10 pr-10 text-sm text-slate-900 transition-colors placeholder:text-[#78909C] focus:border-[#0E7C86] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E7C86]/20 shadow-xs"
                           disabled={isLoading}
                         />
                         <button
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
-                          className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer"
+                          className="absolute inset-y-0 right-0 flex items-center pr-3 text-[#78909C] hover:text-[#465B6B] focus:outline-none cursor-pointer"
                         >
                           {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
@@ -427,7 +427,7 @@ export default function Login() {
                           type="button"
                           onClick={handleSendOTP}
                           disabled={isSendingOTP || !emailOrPhone.trim()}
-                          className="w-full flex items-center justify-center gap-2 rounded-xl bg-slate-800/90 hover:bg-slate-900 backdrop-blur-md py-2.5 text-xs font-semibold text-white transition-all disabled:opacity-60 cursor-pointer shadow-sm"
+                          className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#F59E0B] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] py-2.5 text-xs font-semibold text-white shadow-sm transition-all hover:shadow-[0_6px_16px_rgba(14,89,97,0.25)] disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           {isSendingOTP ? (
                             <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
@@ -441,11 +441,11 @@ export default function Login() {
                       ) : (
                         <div>
                           <div className="flex items-center justify-between mb-1">
-                            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700">
+                            <label className="block text-xs font-semibold uppercase tracking-wider text-[#071A33]">
                               Enter OTP Code
                             </label>
                             {otpTimer > 0 ? (
-                              <span className="text-[11px] text-slate-500 font-medium">
+                              <span className="text-[11px] text-[#6B7C8C] font-medium">
                                 Resend in {otpTimer}s
                               </span>
                             ) : (
@@ -466,7 +466,7 @@ export default function Login() {
                             value={otpCode}
                             onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
                             placeholder="123456"
-                            className="w-full tracking-widest text-center font-mono text-base font-bold rounded-xl border border-slate-300/80 bg-white/70 backdrop-blur-md py-2 text-slate-900 focus:border-[#0B3D91] focus:bg-white/95 focus:outline-none focus:ring-2 focus:ring-[#0B3D91]/20 shadow-xs"
+                            className="w-full tracking-widest text-center font-mono text-base font-bold rounded-xl border border-[#B8C9D2] bg-white/90 backdrop-blur-md py-2 text-slate-900 focus:border-[#0E7C86] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E7C86]/20 shadow-xs"
                             disabled={isLoading}
                           />
                         </div>
@@ -480,11 +480,11 @@ export default function Login() {
               {selectedRole === "employee" && (
                 <>
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-[#071A33] mb-1">
                       Employee ID
                     </label>
                     <div className="relative">
-                      <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                      <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-[#0E5961]">
                         <Briefcase className="w-4 h-4" />
                       </div>
                       <input
@@ -492,18 +492,18 @@ export default function Login() {
                         value={employeeId}
                         onChange={(e) => setEmployeeId(e.target.value)}
                         placeholder="e.g. IR-2024-8841"
-                        className="w-full rounded-xl border border-slate-300/80 bg-white/70 backdrop-blur-md py-2.5 pl-10 pr-3 text-sm text-slate-900 uppercase transition-colors placeholder:text-slate-400 placeholder:normal-case focus:border-[#0B3D91] focus:bg-white/95 focus:outline-none focus:ring-2 focus:ring-[#0B3D91]/20 shadow-xs"
+                        className="w-full rounded-xl border border-[#B8C9D2] bg-white/90 backdrop-blur-md py-2.5 pl-10 pr-3 text-sm text-slate-900 uppercase transition-colors placeholder:text-[#78909C] placeholder:normal-case focus:border-[#0E7C86] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E7C86]/20 shadow-xs"
                         disabled={isLoading}
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-[#071A33] mb-1">
                       Password
                     </label>
                     <div className="relative">
-                      <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                      <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-[#0E5961]">
                         <Lock className="w-4 h-4" />
                       </div>
                       <input
@@ -511,13 +511,13 @@ export default function Login() {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="••••••••••••"
-                        className="w-full rounded-xl border border-slate-300/80 bg-white/70 backdrop-blur-md py-2.5 pl-10 pr-10 text-sm text-slate-900 transition-colors placeholder:text-slate-400 focus:border-[#0B3D91] focus:bg-white/95 focus:outline-none focus:ring-2 focus:ring-[#0B3D91]/20 shadow-xs"
+                        className="w-full rounded-xl border border-[#B8C9D2] bg-white/90 backdrop-blur-md py-2.5 pl-10 pr-10 text-sm text-slate-900 transition-colors placeholder:text-[#78909C] focus:border-[#0E7C86] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E7C86]/20 shadow-xs"
                         disabled={isLoading}
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer"
+                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-[#78909C] hover:text-[#465B6B] focus:outline-none cursor-pointer"
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
@@ -530,11 +530,11 @@ export default function Login() {
               {selectedRole === "controller" && (
                 <>
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-[#071A33] mb-1">
                       Section Controller ID
                     </label>
                     <div className="relative">
-                      <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                      <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-[#0E5961]">
                         <Sliders className="w-4 h-4" />
                       </div>
                       <input
@@ -542,18 +542,18 @@ export default function Login() {
                         value={controllerId}
                         onChange={(e) => setControllerId(e.target.value)}
                         placeholder="e.g. CTRL-SBC-01"
-                        className="w-full rounded-xl border border-slate-300/80 bg-white/70 backdrop-blur-md py-2.5 pl-10 pr-3 text-sm text-slate-900 uppercase transition-colors placeholder:text-slate-400 placeholder:normal-case focus:border-[#0B3D91] focus:bg-white/95 focus:outline-none focus:ring-2 focus:ring-[#0B3D91]/20 shadow-xs"
+                        className="w-full rounded-xl border border-[#B8C9D2] bg-white/90 backdrop-blur-md py-2.5 pl-10 pr-3 text-sm text-slate-900 uppercase transition-colors placeholder:text-[#78909C] placeholder:normal-case focus:border-[#0E7C86] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E7C86]/20 shadow-xs"
                         disabled={isLoading}
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-[#071A33] mb-1">
                       Authorization Password
                     </label>
                     <div className="relative">
-                      <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                      <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-[#0E5961]">
                         <Lock className="w-4 h-4" />
                       </div>
                       <input
@@ -561,13 +561,13 @@ export default function Login() {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="••••••••••••"
-                        className="w-full rounded-xl border border-slate-300/80 bg-white/70 backdrop-blur-md py-2.5 pl-10 pr-10 text-sm text-slate-900 transition-colors placeholder:text-slate-400 focus:border-[#0B3D91] focus:bg-white/95 focus:outline-none focus:ring-2 focus:ring-[#0B3D91]/20 shadow-xs"
+                        className="w-full rounded-xl border border-[#B8C9D2] bg-white/90 backdrop-blur-md py-2.5 pl-10 pr-10 text-sm text-slate-900 transition-colors placeholder:text-[#78909C] focus:border-[#0E7C86] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E7C86]/20 shadow-xs"
                         disabled={isLoading}
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer"
+                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-[#78909C] hover:text-[#465B6B] focus:outline-none cursor-pointer"
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
@@ -580,11 +580,11 @@ export default function Login() {
               {selectedRole === "admin" && (
                 <>
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-[#071A33] mb-1">
                       Unique Admin ID
                     </label>
                     <div className="relative">
-                      <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                      <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-[#0E5961]">
                         <ShieldCheck className="w-4 h-4" />
                       </div>
                       <input
@@ -592,18 +592,18 @@ export default function Login() {
                         value={adminId}
                         onChange={(e) => setAdminId(e.target.value)}
                         placeholder="e.g. ADM-9001"
-                        className="w-full rounded-xl border border-slate-300/80 bg-white/70 backdrop-blur-md py-2.5 pl-10 pr-3 text-sm text-slate-900 uppercase transition-colors placeholder:text-slate-400 placeholder:normal-case focus:border-[#0B3D91] focus:bg-white/95 focus:outline-none focus:ring-2 focus:ring-[#0B3D91]/20 shadow-xs"
+                        className="w-full rounded-xl border border-[#B8C9D2] bg-white/90 backdrop-blur-md py-2.5 pl-10 pr-3 text-sm text-slate-900 uppercase transition-colors placeholder:text-[#78909C] placeholder:normal-case focus:border-[#0E7C86] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E7C86]/20 shadow-xs"
                         disabled={isLoading}
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-[#071A33] mb-1">
                       Master Password
                     </label>
                     <div className="relative">
-                      <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                      <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-[#0E5961]">
                         <Lock className="w-4 h-4" />
                       </div>
                       <input
@@ -611,13 +611,13 @@ export default function Login() {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="••••••••••••"
-                        className="w-full rounded-xl border border-slate-300/80 bg-white/70 backdrop-blur-md py-2.5 pl-10 pr-10 text-sm text-slate-900 transition-colors placeholder:text-slate-400 focus:border-[#0B3D91] focus:bg-white/95 focus:outline-none focus:ring-2 focus:ring-[#0B3D91]/20 shadow-xs"
+                        className="w-full rounded-xl border border-[#B8C9D2] bg-white/90 backdrop-blur-md py-2.5 pl-10 pr-10 text-sm text-slate-900 transition-colors placeholder:text-[#78909C] focus:border-[#0E7C86] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E7C86]/20 shadow-xs"
                         disabled={isLoading}
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer"
+                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-[#78909C] hover:text-[#465B6B] focus:outline-none cursor-pointer"
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
@@ -628,12 +628,12 @@ export default function Login() {
 
               {/* Keep signed in */}
               <div className="flex items-center justify-between pt-0.5">
-                <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-600">
+                <label className="flex items-center gap-2 cursor-pointer text-xs text-[#465B6B]">
                   <input
                     type="checkbox"
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
-                    className="w-4 h-4 rounded border-slate-300 text-[#0B3D91] focus:ring-[#0B3D91]"
+                    className="h-4 w-4 rounded border-[#B8C9D2] text-[#0E7C86] focus:ring-[#0E7C86]"
                   />
                   <span>Keep me signed in</span>
                 </label>
@@ -671,9 +671,9 @@ export default function Login() {
               <div className="mt-4">
                 <div className="relative flex items-center justify-center">
                   <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-slate-200/70" />
+                    <div className="w-full border-t border-[#0E5961]/20" />
                   </div>
-                  <span className="relative bg-white/70 backdrop-blur-md px-3 text-xs text-slate-500 uppercase tracking-wider rounded-md">
+                  <span className="relative rounded-md bg-white px-3 text-xs uppercase tracking-wider text-[#0E5961]">
                     Or continue with
                   </span>
                 </div>
@@ -683,7 +683,7 @@ export default function Login() {
                     type="button"
                     onClick={onGoogleLogin}
                     disabled={isLoading || isGoogleLoading}
-                    className="w-full flex items-center justify-center gap-3 rounded-xl border border-slate-300/80 bg-white/80 hover:bg-white backdrop-blur-md py-2 px-4 text-sm font-medium text-slate-700 transition-all shadow-xs disabled:opacity-60 cursor-pointer"
+                    className="w-full flex items-center justify-center gap-3 rounded-xl border border-[#B8C9D2]/80 bg-white/80 hover:bg-white backdrop-blur-md py-2 px-4 text-sm font-medium text-[#071A33] transition-all shadow-xs disabled:opacity-60 cursor-pointer"
                   >
                     {isGoogleLoading ? (
                       <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-600 border-t-transparent" />
@@ -714,13 +714,13 @@ export default function Login() {
             )}
 
             {/* Footer Navigation Link */}
-            <div className="mt-4 pt-3 border-t border-slate-200/60 text-center text-xs text-slate-600">
+            <div className="mt-4 pt-3 border-t border-[#0E5961]/20 text-center text-xs text-[#465B6B]">
               {selectedRole === "user" ? (
                 <div>
                   Don't have an account?{" "}
                   <Link
                     to="/register"
-                    className="font-semibold text-[#0B3D91] hover:text-[#0E7C86] hover:underline"
+                    className="font-semibold text-[#0E5961] hover:text-[#071A33] hover:underline"
                   >
                     Create User Account
                   </Link>
@@ -730,7 +730,7 @@ export default function Login() {
                   New Indian Railways staff?{" "}
                   <Link
                     to="/register"
-                    className="font-semibold text-[#0B3D91] hover:text-[#0E7C86] hover:underline"
+                    className="font-semibold text-[#0E5961] hover:text-[#071A33] hover:underline"
                   >
                     Employee Registration
                   </Link>
@@ -744,15 +744,15 @@ export default function Login() {
       {/* Forgot Password Modal */}
       {showForgotModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
+          <div className="w-full max-w-md rounded-2xl border border-[#F59E0B] bg-gradient-to-br from-[#FFF8EC] via-white to-[#FFF4E1] p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
             <h3 className="text-lg font-bold text-[#071A33]">Password Assistance</h3>
-            <p className="text-xs text-slate-600 mt-1">
+            <p className="text-xs text-[#465B6B] mt-1">
               Enter your registered RailDrishti identifier to receive verification instructions.
             </p>
 
             <form onSubmit={handleForgotSubmit} className="mt-4 space-y-3">
               <div>
-                <label className="block text-xs font-semibold uppercase text-slate-700 mb-1">
+                <label className="block text-xs font-semibold uppercase text-[#071A33] mb-1">
                   Email or Mobile Number
                 </label>
                 <input
@@ -761,7 +761,7 @@ export default function Login() {
                   value={forgotIdentifier}
                   onChange={(e) => setForgotIdentifier(e.target.value)}
                   placeholder="name@example.com or 9876543210"
-                  className="w-full rounded-xl border border-slate-300 py-2 px-3 text-sm focus:border-[#0B3D91] focus:outline-none"
+                  className="w-full rounded-xl border border-[#B8C9D2] bg-white px-3 py-2 text-sm text-[#071A33] focus:border-[#0E7C86] focus:outline-none focus:ring-2 focus:ring-[#0E7C86]/20"
                 />
               </div>
 
@@ -776,14 +776,14 @@ export default function Login() {
                 <button
                   type="button"
                   onClick={() => setShowForgotModal(false)}
-                  className="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
+                  className="cursor-pointer rounded-lg px-4 py-2 text-xs font-medium text-[#465B6B] hover:bg-[#FFF4E1]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={forgotSent}
-                  className="px-4 py-2 text-xs font-semibold text-white bg-[#0B3D91] hover:bg-[#082e6d] rounded-lg cursor-pointer"
+                  className="cursor-pointer rounded-lg border border-[#F59E0B] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-4 py-2 text-xs font-semibold text-white"
                 >
                   Submit
                 </button>
