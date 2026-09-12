@@ -81,6 +81,12 @@ async def ingest_simulator_telemetry(payload: TelemetryPayload):
             speed=payload.speed,
             signal=payload.signal
         )
+        try:
+            from src.main import ws_manager
+            await ws_manager.broadcast(prediction)
+        except Exception:
+            pass
+
         return {
             "status": "success",
             "prediction": prediction

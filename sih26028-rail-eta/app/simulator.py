@@ -32,42 +32,54 @@ SIMULATION_STEPS = [
     ]
 ]
 
-def run_simulation():
+import sys
+
+def run_simulation(loop: bool = False):
     print("==================================================================")
     print("[SIMULATOR] Starting RailDrishti Corridor Simulation: SBC -> BWT")
     print("   Tracking: MEMU (06527) & Vande Bharat Express (20608)")
+    print(f"   Mode: {'Continuous Stream' if loop else 'Single Pass (5 Steps)'}")
     print("==================================================================")
 
-    for step_idx, step in enumerate(SIMULATION_STEPS, 1):
-        print(f"\n--- [TIME STEP {step_idx}] Corridor Block Scan ---")
-        for rake in step:
-            try:
-                res = requests.post(API_URL, json=rake, timeout=3.0)
-                if res.status_code == 200:
-                    data = res.json()["prediction"]
-                    t_num = data["train_number"]
-                    block = data["current_block"]
-                    spd = data["telemetry"]["speed_kmh"]
-                    forecasts = data.get("forecasts", [])
-                    next_stn = forecasts[0]["station"] if forecasts else "TERM"
-                    next_delay = forecasts[0]["predicted_delay_min"] if forecasts else 0.0
-                    risk = forecasts[0]["cascade_risk"] if forecasts else 0.0
+    iteration = 1
+    while True:
+        for step_idx, step in enumerate(SIMULATION_STEPS, 1):
+            print(f"\n--- [CYCLE {iteration} | STEP {step_idx}] Corridor Block Scan ---")
+            for rake in step:
+                try:
+                    res = requests.post(API_URL, json=rake, timeout=3.0)
+                    if res.status_code == 200:
+                        data = res.json()["prediction"]
+                        t_num = data["train_number"]
+                        block = data["current_block"]
+                        spd = data["telemetry"]["speed_kmh"]
+                        forecasts = data.get("forecasts", [])
+                        next_stn = forecasts[0]["station"] if forecasts else "TERM"
+                        next_delay = forecasts[0]["predicted_delay_min"] if forecasts else 0.0
+                        risk = forecasts[0]["cascade_risk"] if forecasts else 0.0
 
-                    print(f"[{t_num}] Block: {block:<4} | Spd: {spd:4.1f} km/h | Next: {next_stn} (+{next_delay}m, Risk: {risk})")
+                        print(f"[{t_num}] Block: {block:<4} | Spd: {spd:4.1f} km/h | Next: {next_stn} (+{next_delay}m, Risk: {risk})")
 
-                    alert = data.get("copilot_alert")
-                    if alert:
-                        print(f"   [BOTTLENECK] Choke Station: {alert['bottleneck_station']} | Train: {t_num} | Delay: +{alert['predicted_delay_min']}m")
-                        action = alert.get("dispatcher_precedence_action")
-                        if action:
-                            print(f"   [DISPATCHER ADVISORY]: {action['advisory_directive']}")
-                            print(f"   [TRADE-OFF GAIN]: {action['tradeoff_analysis']['net_system_efficiency_gain']}")
-                else:
-                    print(f"Failed to post telemetry for {rake['train_number']}: {res.text}")
-            except Exception as e:
-                print(f"Connection error: {e}")
+                        alert = data.get("copilot_alert")
+                        if alert:
+                            print(f"   [BOTTLENECK] Choke Station: {alert['bottleneck_station']} | Train: {t_num} | Delay: +{alert['predicted_delay_min']}m")
+                            action = alert.get("dispatcher_precedence_action")
+                            if action:
+                                print(f"   [DISPATCHER ADVISORY]: {action['advisory_directive']}")
+                                print(f"   [TRADE-OFF GAIN]: {action['tradeoff_analysis']['net_system_efficiency_gain']}")
+                    else:
+                        print(f"Failed to post telemetry for {rake['train_number']}: {res.text}")
+                except Exception as e:
+                    print(f"Connection error: {e}")
 
+            time.sleep(3)
+
+        if not loop:
+            break
+        iteration += 1
+        print("\n--- Cycling Corridor Telemetry Stream ---")
         time.sleep(2)
 
 if __name__ == "__main__":
-    run_simulation()
+    is_continuous = "--continuous" in sys.argv or "--loop" in sys.argv
+    run_simulation(loop=is_continuous)
