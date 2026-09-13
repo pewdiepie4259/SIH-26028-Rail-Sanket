@@ -5,10 +5,18 @@ from datetime import datetime, timezone, timedelta
 from typing import List, Dict, Any, Optional
 import numpy as np
 from scipy.spatial import KDTree
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from torch_geometric.nn import GATConv
+
+# Optional PyTorch & PyG Imports (with zero-dependency NumPy fallback for teammate laptops)
+HAS_TORCH = False
+try:
+    import torch
+    import torch.nn as nn
+    import torch.nn.functional as F
+    from torch_geometric.nn import GATConv
+    HAS_TORCH = True
+except ImportError:
+    HAS_TORCH = False
+    print("ℹ️ PyTorch/PyG not found: Using lightweight mathematical GNN physics engine fallback.")
 
 # ---------------------------------------------------------
 # 1. Multi-Corridor Nationwide Aggregator
@@ -62,7 +70,10 @@ if not src_list:
     src_list = list(range(NUM_NODES - 1)) + list(range(1, NUM_NODES))
     dst_list = list(range(1, NUM_NODES)) + list(range(NUM_NODES - 1))
 
-EDGE_INDEX = torch.tensor([src_list, dst_list], dtype=torch.long)
+if HAS_TORCH:
+    EDGE_INDEX = torch.tensor([src_list, dst_list], dtype=torch.long)
+else:
+    EDGE_INDEX = [src_list, dst_list]
 
 # ---------------------------------------------------------
 # 2. Rolling Stock Priority Hierarchy
@@ -97,26 +108,41 @@ def get_train_meta(train_number: str) -> Dict[str, Any]:
         return {"name": f"Mail/Express {t_str}", "priority": 0.6, "type": "MAIL_EXPRESS", "delay_cost_weight": 2.0}
 
 # ---------------------------------------------------------
-# 3. Spatio-Temporal GNN Model
+# 3. Spatio-Temporal GNN Model (PyTorch or NumPy Fallback)
 # ---------------------------------------------------------
-class STGATDelayModel(nn.Module):
-    def __init__(self, in_features=5, hidden_dim=32):
-        super().__init__()
-        self.gat = GATConv(in_channels=in_features, out_channels=hidden_dim, heads=1)
-        self.gru = nn.GRUCell(hidden_dim, hidden_dim)
-        self.delay_head = nn.Linear(hidden_dim, 1)
-        self.risk_head = nn.Sequential(nn.Linear(hidden_dim, 1), nn.Sigmoid())
+if HAS_TORCH:
+    class STGATDelayModel(nn.Module):
+        def __init__(self, in_features=5, hidden_dim=32):
+            super().__init__()
+            self.gat = GATConv(in_channels=in_features, out_channels=hidden_dim, heads=1)
+            self.gru = nn.GRUCell(hidden_dim, hidden_dim)
+            self.delay_head = nn.Linear(hidden_dim, 1)
+            self.risk_head = nn.Sequential(nn.Linear(hidden_dim, 1), nn.Sigmoid())
 
-    def forward(self, x, edge_index, h_prev):
-        spatial_out = F.relu(self.gat(x, edge_index))
-        h_next = self.gru(spatial_out, h_prev)
-        return self.delay_head(h_next), self.risk_head(h_next), h_next
+        def forward(self, x, edge_index, h_prev):
+            spatial_out = F.relu(self.gat(x, edge_index))
+            h_next = self.gru(spatial_out, h_prev)
+            return self.delay_head(h_next), self.risk_head(h_next), h_next
 
-DEVICE = torch.device("cpu")
-MODEL = STGATDelayModel(in_features=5, hidden_dim=32).to(DEVICE)
-MODEL.eval()
+    DEVICE = torch.device("cpu")
+    MODEL = STGATDelayModel(in_features=5, hidden_dim=32).to(DEVICE)
+    MODEL.eval()
+    TEMPORAL_STATE = torch.zeros((NUM_NODES, 32), device=DEVICE)
+else:
+    class STGATLightweightFallback:
+        def __call__(self, idx: int, speed: float, sig_weight: float, weather_penalty: float):
+            base_delay = (1.0 - sig_weight) * 15.0 + (weather_penalty * 10.0) + max(0.0, (50.0 - speed) * 0.2)
+            delays = np.zeros(NUM_NODES, dtype=np.float32)
+            risks = np.zeros(NUM_NODES, dtype=np.float32)
+            for i in range(idx + 1, NUM_NODES):
+                decay = 0.85 ** (i - idx)
+                delays[i] = base_delay * decay
+                risks[i] = min(1.0, (base_delay / 20.0) * decay)
+            return delays, risks
 
-TEMPORAL_STATE = torch.zeros((NUM_NODES, 32), device=DEVICE)
+    MODEL = STGATLightweightFallback()
+    TEMPORAL_STATE = None
+
 ACTIVE_TRAIN_POSITIONS: Dict[str, Dict[str, Any]] = {}
 BENCHMARK_LOGS: List[Dict[str, Any]] = []
 DISPATCHER_DIRECTIVES_LOG: List[Dict[str, Any]] = []
@@ -136,9 +162,14 @@ def predict_cascade(train_number: str, lat: float, lon: float, speed: float, sig
     features = np.zeros((NUM_NODES, 5), dtype=np.float32)
     features[idx] = [1.0, min(speed / 130.0, 1.0), sig_weight, weather_penalty, meta["priority"]]
 
-    with torch.no_grad():
-        x_tensor = torch.tensor(features, dtype=torch.float, device=DEVICE)
-        pred_delays, risks, TEMPORAL_STATE = MODEL(x_tensor, EDGE_INDEX, TEMPORAL_STATE)
+    if HAS_TORCH:
+        with torch.no_grad():
+            x_tensor = torch.tensor(features, dtype=torch.float, device=DEVICE)
+            pred_delays, risks, TEMPORAL_STATE = MODEL(x_tensor, EDGE_INDEX, TEMPORAL_STATE)
+            pred_delays_np = pred_delays.squeeze().cpu().numpy()
+            risks_np = risks.squeeze().cpu().numpy()
+    else:
+        pred_delays_np, risks_np = MODEL(idx, speed, sig_weight, weather_penalty)
 
     forecasts = []
     now = datetime.now(timezone.utc)
@@ -150,8 +181,8 @@ def predict_cascade(train_number: str, lat: float, lon: float, speed: float, sig
         hop_dist = HOP_DISTANCES.get((i - 1, i), 15.0)
         cumulative_km += hop_dist
 
-        gnn_delay_min = float(torch.clamp(torch.abs(pred_delays[i]), min=0.0, max=60.0).item())
-        risk_val = float(risks[i].item())
+        gnn_delay_min = float(np.clip(abs(pred_delays_np[i]), 0.0, 60.0))
+        risk_val = float(risks_np[i])
 
         kinematic_transit_min = (cumulative_km / max(speed, 25.0)) * 60.0
         baseline_eta = now + timedelta(minutes=kinematic_transit_min)
