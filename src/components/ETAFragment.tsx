@@ -440,7 +440,7 @@ function ETAFragment({ train }: ETAFragmentProps) {
             <div className="relative select-none">
               
               {/* Header: Live Badge & Progress Percentage */}
-              <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center justify-between mb-16 sm:mb-20">
                 <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-[#FAFCFD] px-3.5 py-1 shadow-xs">
                   <span className="relative flex h-2.5 w-2.5">
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
@@ -464,7 +464,7 @@ function ETAFragment({ train }: ETAFragmentProps) {
               </div>
 
               {/* Sleek Route Line & Train Stage */}
-              <div className="relative my-10 select-none">
+              <div className="relative mt-16 sm:mt-20 mb-10 select-none">
                 {/* Sleek Glowing Route Conduit / Track Line */}
                 <div className="relative h-10 w-full flex items-center justify-center">
                   
