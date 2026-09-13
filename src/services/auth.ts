@@ -385,6 +385,18 @@ export async function registerEmployee(payload: EmployeeRegistrationPayload): Pr
     return { success: false, message: "Please enter a valid official email address." };
   }
 
+  const ALLOWED_CONTROLLER_DEPTS = [
+    "Operations & Traffic Control",
+    "Safety & Disaster Management",
+  ];
+
+  if (requestedRole === "controller" && !ALLOWED_CONTROLLER_DEPTS.includes(department)) {
+    return {
+      success: false,
+      message: "This role is not available for the selected department.",
+    };
+  }
+
   // Security guardrail: Controller can never self-provision
   await new Promise((resolve) => setTimeout(resolve, 700));
 

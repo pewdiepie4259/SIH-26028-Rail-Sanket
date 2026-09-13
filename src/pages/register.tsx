@@ -37,13 +37,42 @@ const BACKGROUND_SLIDES = [
 
 const DEPARTMENTS = [
   "Operations & Traffic Control",
+  "Safety & Disaster Management",
   "Signal & Telecommunication (S&T)",
   "Civil & Track Engineering",
   "Mechanical & Rolling Stock",
   "Electrical & Traction (OHE)",
   "Commercial & Passenger Amenities",
-  "Safety & Disaster Management",
 ];
+
+const DEPARTMENT_ROLES_MAP: Record<
+  string,
+  { value: "employee" | "controller"; label: string }[]
+> = {
+  "Operations & Traffic Control": [
+    { value: "employee", label: "Employee" },
+    { value: "controller", label: "Controller (Under Approval)" },
+  ],
+  "Safety & Disaster Management": [
+    { value: "employee", label: "Employee" },
+    { value: "controller", label: "Controller (Under Approval)" },
+  ],
+  "Signal & Telecommunication (S&T)": [
+    { value: "employee", label: "Employee" },
+  ],
+  "Civil & Track Engineering": [
+    { value: "employee", label: "Employee" },
+  ],
+  "Mechanical & Rolling Stock": [
+    { value: "employee", label: "Employee" },
+  ],
+  "Electrical & Traction (OHE)": [
+    { value: "employee", label: "Employee" },
+  ],
+  "Commercial & Passenger Amenities": [
+    { value: "employee", label: "Employee" },
+  ],
+};
 
 export default function Register() {
   const navigate = useNavigate();
@@ -75,8 +104,8 @@ export default function Register() {
   const [empFullName, setEmpFullName] = useState("");
   const [empId, setEmpId] = useState("");
   const [empEmail, setEmpEmail] = useState("");
-  const [empDepartment, setEmpDepartment] = useState(DEPARTMENTS[0]);
-  const [empRequestedRole, setEmpRequestedRole] = useState<"employee" | "controller">("employee");
+  const [empDepartment, setEmpDepartment] = useState("");
+  const [empRequestedRole, setEmpRequestedRole] = useState<"employee" | "controller" | "">("");
 
   // Flow & Notification States
   const [isLoading, setIsLoading] = useState(false);
@@ -149,6 +178,16 @@ export default function Register() {
     }
   };
 
+  // Department change handler with automatic role reset
+  const handleDepartmentChange = (newDept: string) => {
+    setEmpDepartment(newDept);
+    const allowed = DEPARTMENT_ROLES_MAP[newDept] || [];
+    const isStillValid = allowed.some((r) => r.value === empRequestedRole);
+    if (!isStillValid) {
+      setEmpRequestedRole(allowed[0]?.value || "employee");
+    }
+  };
+
   // 2. EMPLOYEE REGISTRATION HANDLER
   const handleEmployeeSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -169,6 +208,23 @@ export default function Register() {
       return;
     }
 
+    if (!empDepartment) {
+      setErrorMessage("Please select your department.");
+      return;
+    }
+
+    if (!empRequestedRole) {
+      setErrorMessage("Please select your role.");
+      return;
+    }
+
+    const allowedRoles = DEPARTMENT_ROLES_MAP[empDepartment] || [];
+    const isRoleValid = allowedRoles.some((r) => r.value === empRequestedRole);
+    if (!isRoleValid) {
+      setErrorMessage("This role is not available for the selected department.");
+      return;
+    }
+
     setIsLoading(true);
     try {
       const res = await registerEmployee({
@@ -176,7 +232,7 @@ export default function Register() {
         employeeId: empId,
         officialEmail: empEmail,
         department: empDepartment,
-        requestedRole: empRequestedRole,
+        requestedRole: empRequestedRole as "employee" | "controller",
       });
 
       if (res.success) {
@@ -701,11 +757,15 @@ export default function Register() {
                                 <Building className="w-4 h-4" />
                               </div>
                               <select
+                                required
                                 value={empDepartment}
-                                onChange={(e) => setEmpDepartment(e.target.value)}
+                                onChange={(e) => handleDepartmentChange(e.target.value)}
                                 className="w-full rounded-xl border border-[#B8C9D2] bg-white/90 backdrop-blur-md py-2 pl-10 pr-3 text-sm text-slate-900 transition-colors focus:border-[#0E7C86] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E7C86]/20 cursor-pointer shadow-xs"
                                 disabled={isLoading}
                               >
+                                <option value="" disabled>
+                                  Select Department
+                                </option>
                                 {DEPARTMENTS.map((dept) => (
                                   <option key={dept} value={dept}>
                                     {dept}
@@ -724,15 +784,25 @@ export default function Register() {
                                 <Layers className="w-4 h-4" />
                               </div>
                               <select
+                                required
                                 value={empRequestedRole}
                                 onChange={(e) =>
                                   setEmpRequestedRole(e.target.value as "employee" | "controller")
                                 }
-                                className="w-full rounded-xl border border-[#B8C9D2] bg-white/90 backdrop-blur-md py-2 pl-10 pr-3 text-sm text-slate-900 transition-colors focus:border-[#0E7C86] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E7C86]/20 cursor-pointer font-medium shadow-xs"
-                                disabled={isLoading}
+                                disabled={!empDepartment || isLoading}
+                                className="w-full rounded-xl border border-[#B8C9D2] bg-white/90 backdrop-blur-md py-2 pl-10 pr-3 text-sm text-slate-900 transition-colors focus:border-[#0E7C86] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E7C86]/20 cursor-pointer font-medium shadow-xs disabled:opacity-60 disabled:cursor-not-allowed"
                               >
-                                <option value="employee">Employee</option>
-                                <option value="controller">Controller (Under Approval)</option>
+                                {!empDepartment ? (
+                                  <option value="" disabled>
+                                    Select Department First
+                                  </option>
+                                ) : (
+                                  (DEPARTMENT_ROLES_MAP[empDepartment] || []).map((role) => (
+                                    <option key={role.value} value={role.value}>
+                                      {role.label}
+                                    </option>
+                                  ))
+                                )}
                               </select>
                             </div>
                           </div>
