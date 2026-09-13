@@ -1,6 +1,4 @@
-// src/App.tsx
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom"
-
 import PublicLayout from "./layouts/PublicLayout"
 import PublicDashboard from "./pages/PublicDashboard"
 import { LiveTrainStatus } from "./pages/public/LiveTrainStatus"
@@ -10,10 +8,11 @@ import StationInformation from "./pages/public/StationInformation"
 import Settings from "./pages/settings"
 import Register from "./pages/register"
 import Login from "./pages/login"
-import ControllerDashboard from "./pages/ControllerDashboard"
-
-// Dynamic ETA Tracker Component
+import ControllerDashboardLegacy from "./pages/ControllerDashboard"
+import ControllerLayout from "./layouts/ControllerLayout"
+import ControllerDashboard from "./pages/controller/Dashboard"
 import TrainETATracker from "./components/TrainETATracker"
+import TrainDetails from "./pages/controller/TrainDetails"
 
 function App() {
   return (
@@ -22,30 +21,49 @@ function App() {
         <Route element={<PublicLayout />}>
           <Route path="/" element={<PublicDashboard />} />
           <Route path="/live" element={<LiveTrainStatus />} />
-          <Route path="/live-train-status" element={<LiveTrainStatus />} />
+          <Route
+            path="/live-train-status"
+            element={<LiveTrainStatus />}
+          />
           <Route path="/map" element={<LiveMap />} />
           <Route path="/trains" element={<TrainSearch />} />
           <Route path="/stations" element={<StationInformation />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-
-          {/* New Dynamic ETA Tracking Routes */}
           <Route path="/eta" element={<TrainETATracker />} />
-          <Route path="/eta-tracker" element={<TrainETATracker />} />
+          <Route
+            path="/eta-tracker"
+            element={<TrainETATracker />}
+          />
         </Route>
 
         <Route
           path="/controller"
-          element={<ControllerDashboard />}
+          element={<ControllerDashboardLegacy />}
         />
+
+        <Route element={<ControllerLayout />}>
+          <Route
+            path="/controller/dashboard"
+            element={<ControllerDashboard />}
+          />
+
+          <Route
+            path="/controller/trains/:trainNumber"
+            element={<TrainDetails />}
+          />
+        </Route>
 
         <Route
           path="/admin"
           element={<div className="p-10">Admin Dashboard</div>}
         />
 
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route
+          path="*"
+          element={<Navigate to="/" replace />}
+        />
       </Routes>
     </BrowserRouter>
   )
