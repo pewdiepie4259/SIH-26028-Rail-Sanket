@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom"
 import AlertMarquee from "../components/AlertMarquee"
 import ETAFragment, { type ETATrain } from "../components/ETAFragment"
 import { WhatsAppChatModal } from "../components/WhatsAppChatModal"
+import StationClock from "../components/StationClock"
 
 interface RailwayStation {
   name: string
@@ -454,100 +455,108 @@ function PublicDashboard() {
 
         <div className="absolute inset-0 bg-gradient-to-r from-[#031426]/95 via-[#06283B]/70 to-[#031426]/40" />
 
-        <div className="relative z-10 mx-auto flex min-h-[360px] max-w-[1600px] flex-col px-6 py-7 sm:min-h-[370px] lg:min-h-[380px] lg:px-12">
-          <div className="max-w-3xl pt-2">
-            <div className="mb-1 text-xs font-bold uppercase tracking-[0.2em] text-[#F59E0B]">
-              Welcome to
+        <div className="relative z-10 mx-auto flex min-h-[360px] max-w-[1600px] flex-col justify-between gap-6 px-6 py-7 sm:min-h-[370px] lg:min-h-[380px] lg:flex-row lg:items-center lg:gap-10 lg:px-12">
+          {/* Left Column: Hero Information & Search Bar */}
+          <div className="flex-1 max-w-4xl">
+            <div className="max-w-3xl pt-2">
+              <div className="mb-1 text-xs font-bold uppercase tracking-[0.2em] text-[#F59E0B]">
+                Welcome to
+              </div>
+
+              <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl">
+                Rail<span className="text-[#F59E0B]">Drishti</span>
+              </h1>
+
+              <p className="mt-2 max-w-xl text-sm leading-6 text-[#D7E5EC] sm:text-base">
+                Dynamic Estimated Time of Arrival System For Indian Coaching Trains.
+              </p>
+
+              <div className="mt-3 flex items-center gap-2 text-xs text-[#DDE9EF] sm:text-sm">
+                <MapPin size={16} className="text-[#F59E0B]" />
+                <span>
+                  {locationStatus}: <strong className="text-white">{station.name} ({station.code})</strong>
+                </span>
+              </div>
             </div>
 
-            <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl">
-              Rail<span className="text-[#F59E0B]">Drishti</span>
-            </h1>
+            <div className="mt-6 w-full max-w-4xl">
+              <div className="mb-2 text-xs font-semibold text-white sm:text-sm">
+                Search trains, stations or train numbers
+              </div>
 
-            <p className="mt-2 max-w-xl text-sm leading-6 text-[#D7E5EC] sm:text-base">
-              Dynamic Estimated Time of Arrival System For Indian Coaching Trains.
-            </p>
+              <div className="flex flex-col overflow-hidden rounded-xl border border-[#F59E0B] bg-white/95 shadow-2xl backdrop-blur-xl sm:flex-row">
+                <div className="flex min-h-[52px] flex-1 items-center gap-3 px-4 sm:px-5">
+                  <Search size={20} className="shrink-0 text-[#0E7C86]" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(event) => {
+                      setSearchQuery(event.target.value)
+                      setSelectedTrain(null)
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        handleSearch()
+                      }
+                    }}
+                    placeholder="Search train number, train name or station..."
+                    className="w-full bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-500 sm:text-base"
+                  />
+                </div>
 
-            <div className="mt-3 flex items-center gap-2 text-xs text-[#DDE9EF] sm:text-sm">
-              <MapPin size={16} className="text-[#F59E0B]" />
-              <span>
-                {locationStatus}: <strong className="text-white">{station.name} ({station.code})</strong>
-              </span>
+                <button
+                  type="button"
+                  onClick={handleSearch}
+                  className="flex min-h-[52px] items-center justify-center gap-2 bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-6 text-sm font-semibold text-white transition-all duration-300 hover:scale-[1.01] hover:shadow-[0_5px_14px_rgba(14,89,97,0.22)] sm:px-7"
+                >
+                  <Search size={17} />
+                  Search
+                </button>
+              </div>
+
+              <div className="mt-3">
+                <div className="mb-2 text-[11px] font-semibold text-white sm:text-xs">
+                  Recent Searches
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {recentSearches.map((search) => (
+                    <button
+                      key={search.number}
+                      type="button"
+                      onClick={() => handleRecentSearch(search)}
+                      className="flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3.5 py-1.5 text-xs font-medium text-white backdrop-blur-md transition hover:border-[#F59E0B]/70 hover:bg-white/15"
+                    >
+                      <span>{search.name}</span>
+
+                      <span className="rounded-full bg-[#F59E0B] px-1.5 py-0.5 text-[10px] font-bold text-[#071A33]">
+                        {search.number}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-[11px] text-[#D0DEE5] sm:text-xs">
+                <span className="flex items-center gap-1.5 cursor-pointer hover:text-white" onClick={() => navigate('/live-train-status')}>
+                  <TrainFront size={14} className="text-[#F59E0B]" />
+                  Live train status
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#F59E0B]" />
+                  Predictive ETA
+                </span>
+                <span className="flex items-center gap-1.5 cursor-pointer hover:text-white" onClick={() => navigate('/map')}>
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#F59E0B]" />
+                  Live tracking
+                </span>
+              </div>
             </div>
           </div>
 
-          <div className="mt-6 w-full max-w-5xl">
-            <div className="mb-2 text-xs font-semibold text-white sm:text-sm">
-              Search trains, stations or train numbers
-            </div>
-
-            <div className="flex flex-col overflow-hidden rounded-xl border border-[#F59E0B] bg-white/95 shadow-2xl backdrop-blur-xl sm:flex-row">
-              <div className="flex min-h-[52px] flex-1 items-center gap-3 px-4 sm:px-5">
-                <Search size={20} className="shrink-0 text-[#0E7C86]" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(event) => {
-                    setSearchQuery(event.target.value)
-                    setSelectedTrain(null)
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      handleSearch()
-                    }
-                  }}
-                  placeholder="Search train number, train name or station..."
-                  className="w-full bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-500 sm:text-base"
-                />
-              </div>
-
-              <button
-                type="button"
-                onClick={handleSearch}
-                className="flex min-h-[52px] items-center justify-center gap-2 bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-6 text-sm font-semibold text-white transition-all duration-300 hover:scale-[1.01] hover:shadow-[0_5px_14px_rgba(14,89,97,0.22)] sm:px-7"
-              >
-                <Search size={17} />
-                Search
-              </button>
-            </div>
-
-            <div className="mt-3">
-              <div className="mb-2 text-[11px] font-semibold text-white sm:text-xs">
-                Recent Searches
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                {recentSearches.map((search) => (
-                  <button
-                    key={search.number}
-                    type="button"
-                    onClick={() => handleRecentSearch(search)}
-                    className="flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3.5 py-1.5 text-xs font-medium text-white backdrop-blur-md transition hover:border-[#F59E0B]/70 hover:bg-white/15"
-                  >
-                    <span>{search.name}</span>
-
-                    <span className="rounded-full bg-[#F59E0B] px-1.5 py-0.5 text-[10px] font-bold text-[#071A33]">
-                      {search.number}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-[11px] text-[#D0DEE5] sm:text-xs">
-              <span className="flex items-center gap-1.5 cursor-pointer hover:text-white" onClick={() => navigate('/live-train-status')}>
-                <TrainFront size={14} className="text-[#F59E0B]" />
-                Live train status
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#F59E0B]" />
-                Predictive ETA
-              </span>
-              <span className="flex items-center gap-1.5 cursor-pointer hover:text-white" onClick={() => navigate('/map')}>
-                <span className="h-1.5 w-1.5 rounded-full bg-[#F59E0B]" />
-                Live tracking
-              </span>
-            </div>
+          {/* Right Column: Live Station Clock (Analog + Embedded Digital HUD) */}
+          <div className="mt-4 flex shrink-0 items-center justify-center lg:mt-0 lg:justify-end">
+            <StationClock stationName={station.name} className="w-full max-w-[310px] sm:max-w-[330px]" />
           </div>
         </div>
       </section>
