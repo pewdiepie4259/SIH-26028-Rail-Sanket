@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   ChevronDown,
   Eye,
@@ -29,6 +29,24 @@ function PublicLayout() {
     { code: "te", label: "Telugu", native: "తెలుగు" },
     { code: "kn", label: "Kannada", native: "ಕನ್ನಡ" },
   ]
+
+  const [clockTime, setClockTime] = useState<Date>(new Date())
+  const [is24HourHeader, setIs24HourHeader] = useState<boolean>(true)
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setClockTime(new Date())
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [])
+
+  const headerHours = clockTime.getHours()
+  const headerMinutes = clockTime.getMinutes()
+  const headerSeconds = clockTime.getSeconds()
+
+  const formattedHeaderTime = is24HourHeader
+    ? `${String(headerHours).padStart(2, "0")}:${String(headerMinutes).padStart(2, "0")}:${String(headerSeconds).padStart(2, "0")}`
+    : `${String(headerHours % 12 || 12).padStart(2, "0")}:${String(headerMinutes).padStart(2, "0")}:${String(headerSeconds).padStart(2, "0")} ${headerHours >= 12 ? "PM" : "AM"}`
 
   const [language, setLanguage] = useState(() => {
     const saved = localStorage.getItem("raildrishti_lang_native")
@@ -199,8 +217,26 @@ function PublicLayout() {
             </NavLink>
           </nav>
 
-          {/* Right Actions: Login, Register, Language, Accessibility, Mobile Toggle */}
+          {/* Right Actions: Live Clock Pill, Login, Register, Language, Accessibility, Mobile Toggle */}
           <div className="flex items-center gap-2">
+            {/* Live IST Digital Clock Capsule (Click to toggle 12H/24H) */}
+            <button
+              type="button"
+              onClick={() => setIs24HourHeader(!is24HourHeader)}
+              title="Live Indian Standard Time (IST) • Click to toggle 12H / 24H mode"
+              className="flex h-9 items-center gap-2 rounded-full border border-[#F59E0B]/70 bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-3 text-xs font-bold text-white shadow-sm transition-all duration-300 hover:scale-[1.02] hover:border-[#F59E0B] hover:shadow-[0_4px_12px_rgba(245,158,11,0.25)] select-none cursor-pointer"
+            >
+              <span className="relative flex h-2 w-2 shrink-0">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_6px_#10B981]" />
+              </span>
+              <span className="text-[10px] font-black tracking-wider text-[#F59E0B] uppercase">IST</span>
+              <span className="font-mono tracking-wide text-white">{formattedHeaderTime}</span>
+              <span className="hidden md:inline-block rounded bg-black/40 px-1.5 py-0.5 text-[9px] font-sans font-bold text-teal-300">
+                {is24HourHeader ? "24H" : "12H"}
+              </span>
+            </button>
+
             <div className="hidden sm:flex items-center gap-2">
               <NavLink
                 to="/login"
@@ -672,21 +708,43 @@ function PublicLayout() {
               Settings & Diagnostics
             </NavLink>
 
-            <div className="pt-3 border-t border-slate-700/60 flex items-center gap-2">
-              <NavLink
-                to="/login"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex-1 text-center py-2 rounded-lg border border-[#F59E0B] text-white text-xs font-bold"
+            <div className="pt-3 border-t border-slate-700/60 flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => setIs24HourHeader(!is24HourHeader)}
+                className="flex w-full items-center justify-between rounded-lg border border-[#F59E0B]/50 bg-black/30 px-3 py-2 text-xs font-bold text-white"
               >
-                Login
-              </NavLink>
-              <NavLink
-                to="/register"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex-1 text-center py-2 rounded-lg bg-[#F59E0B] text-[#071A33] text-xs font-bold"
-              >
-                Register
-              </NavLink>
+                <div className="flex items-center gap-2">
+                  <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                  </span>
+                  <span className="text-[#F59E0B] font-extrabold">LIVE IST</span>
+                </div>
+                <div className="flex items-center gap-2 font-mono">
+                  <span>{formattedHeaderTime}</span>
+                  <span className="rounded bg-[#F59E0B] px-1 py-0.5 text-[9px] font-sans font-bold text-[#071A33]">
+                    {is24HourHeader ? "24H" : "12H"}
+                  </span>
+                </div>
+              </button>
+
+              <div className="flex items-center gap-2">
+                <NavLink
+                  to="/login"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex-1 text-center py-2 rounded-lg border border-[#F59E0B] text-white text-xs font-bold"
+                >
+                  Login
+                </NavLink>
+                <NavLink
+                  to="/register"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex-1 text-center py-2 rounded-lg bg-[#F59E0B] text-[#071A33] text-xs font-bold"
+                >
+                  Register
+                </NavLink>
+              </div>
             </div>
           </div>
         )}

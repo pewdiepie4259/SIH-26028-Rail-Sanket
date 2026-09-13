@@ -4,7 +4,6 @@ import { useNavigate } from "react-router-dom"
 import AlertMarquee from "../components/AlertMarquee"
 import ETAFragment, { type ETATrain } from "../components/ETAFragment"
 import { WhatsAppChatModal } from "../components/WhatsAppChatModal"
-import StationClock from "../components/StationClock"
 
 interface RailwayStation {
   name: string
@@ -453,11 +452,11 @@ function PublicDashboard() {
           className="absolute inset-0 h-full w-full object-cover"
         />
 
-        <div className="absolute inset-0 bg-gradient-to-r from-[#031426]/95 via-[#06283B]/70 to-[#031426]/40" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#031426]/95 via-[#06283B]/75 to-[#031426]/60" />
 
-        <div className="relative z-10 mx-auto flex min-h-[360px] max-w-[1600px] flex-col justify-between gap-6 px-6 py-7 sm:min-h-[370px] lg:min-h-[380px] lg:flex-row lg:items-center lg:gap-10 lg:px-12">
-          {/* Left Column: Hero Information & Search Bar */}
-          <div className="flex-1 max-w-4xl">
+        <div className="relative z-10 mx-auto flex min-h-[340px] max-w-[1600px] flex-col justify-center px-6 py-8 sm:min-h-[350px] lg:min-h-[360px] lg:px-12">
+          {/* Hero Information & Search Bar */}
+          <div className="w-full max-w-4xl">
             <div className="max-w-3xl pt-2">
               <div className="mb-1 text-xs font-bold uppercase tracking-[0.2em] text-[#F59E0B]">
                 Welcome to
@@ -552,11 +551,6 @@ function PublicDashboard() {
                 </span>
               </div>
             </div>
-          </div>
-
-          {/* Right Column: Live Station Clock (Analog + Embedded Digital HUD) */}
-          <div className="mt-4 flex shrink-0 items-center justify-center lg:mt-0 lg:justify-end">
-            <StationClock stationName={station.name} className="w-full max-w-[310px] sm:max-w-[330px]" />
           </div>
         </div>
       </section>
