@@ -59,15 +59,22 @@ def run_seed():
                 db.flush()
             station_map[s["code"]] = st
 
-        # 2. All 7 Trains Matching the Frontend UI
+        # 2. All Monitored Trains Matching Official trains.db Database
         trains_data = [
+            {"num": "12245", "name": "Howrah - SMVT Bengaluru Duronto Express", "type": "DURONTO_PREMIUM", "prio": 1, "orig": "HWH", "dest": "SMVB"},
+            {"num": "12246", "name": "SMVT Bengaluru - Howrah Duronto Express", "type": "DURONTO_PREMIUM", "prio": 1, "orig": "SMVB", "dest": "HWH"},
+            {"num": "20608", "name": "Mysore - MGR Chennai Central Vande Bharat Express", "type": "VANDE_BHARAT", "prio": 1, "orig": "MYS", "dest": "MAS"},
+            {"num": "12301", "name": "Howrah-New Delhi Rajdhani Express", "type": "RAJDHANI_PREMIUM", "prio": 1, "orig": "HWH", "dest": "NDLS"},
             {"num": "12627", "name": "Karnataka Express", "type": "SUPERFAST", "prio": 2, "orig": "SBC", "dest": "NDLS"},
-            {"num": "12613", "name": "Bengaluru - Mysuru Express", "type": "SUPERFAST", "prio": 3, "orig": "SBC", "dest": "MYS"},
-            {"num": "12639", "name": "Brindavan Express", "type": "SUPERFAST", "prio": 2, "orig": "SBC", "dest": "MAS"},
-            {"num": "12610", "name": "Mysuru - Chennai Express", "type": "SUPERFAST", "prio": 2, "orig": "MYS", "dest": "MAS"},
+            {"num": "12639", "name": "Brindavan Express", "type": "SUPERFAST", "prio": 2, "orig": "MAS", "dest": "SBC"},
+            {"num": "12613", "name": "Tippu Express", "type": "SUPERFAST", "prio": 2, "orig": "MYS", "dest": "SBC"},
+            {"num": "12610", "name": "Mysuru - Chennai Central Superfast Express", "type": "SUPERFAST", "prio": 2, "orig": "SBC", "dest": "MAS"},
             {"num": "12608", "name": "Lalbagh Express", "type": "SUPERFAST", "prio": 2, "orig": "SBC", "dest": "MAS"},
-            {"num": "16591", "name": "Hampi Express", "type": "EXPRESS", "prio": 3, "orig": "UBL", "dest": "MYS"},
-            {"num": "20661", "name": "Vande Bharat Express", "type": "VANDE_BHARAT", "prio": 1, "orig": "SBC", "dest": "DWR"},
+            {"num": "06527", "name": "Bangarapet MEMU Commuter", "type": "COMMUTER", "prio": 4, "orig": "SBC", "dest": "BWT"},
+            {"num": "10111", "name": "Konkan Kanya Express", "type": "EXPRESS", "prio": 3, "orig": "CSTM", "dest": "MAO"},
+            {"num": "04601", "name": "Jammu Tawi Udhampur Special", "type": "DEMU", "prio": 4, "orig": "JAT", "dest": "UHP"},
+            {"num": "16591", "name": "Hampi Express", "type": "EXPRESS", "prio": 3, "orig": "UBL", "dest": "SBC"},
+            {"num": "20661", "name": "SBC-DWR Vande Bharat Express", "type": "VANDE_BHARAT", "prio": 1, "orig": "SBC", "dest": "DWR"},
         ]
 
         train_map = {}

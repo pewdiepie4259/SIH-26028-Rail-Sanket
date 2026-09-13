@@ -23,25 +23,82 @@ app.get('/health', (req, res) => {
 // ==========================================
 // 1. SEARCH TRAINS (By Name or Number)
 // ==========================================
+// 1. SEARCH TRAINS (By Name, Number, or Station)
+// ==========================================
 app.get('/api/trains/search', (req, res) => {
     const query = (req.query.q || '').trim();
+    const limit = parseInt(req.query.limit) || 100;
+
+    if (!query) {
+        // Return active corridor rakes first, followed by general database trains
+        const sql = `
+        SELECT 
+          t.train_number, 
+          t.train_name, 
+          t.train_type, 
+          t.source_station_code, 
+          t.dest_station_code, 
+          t.total_distance_km,
+          COALESCE(s1.name, t.source_station_code) as source_station_name,
+          COALESCE(s2.name, t.dest_station_code) as dest_station_name
+        FROM trains t
+        LEFT JOIN stations s1 ON t.source_station_code = s1.code
+        LEFT JOIN stations s2 ON t.dest_station_code = s2.code
+        ORDER BY 
+          CASE 
+            WHEN t.train_number IN ('12246', '12245', '20608', '12301', '12627', '20661', '12639', '12613', '12610', '12608', '06527', '10111', '04601', '16591') THEN 0
+            WHEN t.train_number LIKE '20%' OR t.train_number LIKE '123%' OR t.train_number LIKE '122%' THEN 1
+            WHEN t.train_number LIKE '12%' THEN 2
+            ELSE 3
+          END,
+          t.train_number ASC
+        LIMIT ?
+      `;
+        return db.all(sql, [limit], (err, rows) => {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ trains: rows || [] });
+        });
+    }
+
+    const searchPattern = `%${query}%`;
+    const exactStart = `${query}%`;
     const sql = `
-    SELECT 
+    SELECT DISTINCT
       t.train_number, 
       t.train_name, 
       t.train_type, 
       t.source_station_code, 
       t.dest_station_code, 
       t.total_distance_km,
-      s1.name as source_station_name,
-      s2.name as dest_station_name
+      COALESCE(s1.name, t.source_station_code) as source_station_name,
+      COALESCE(s2.name, t.dest_station_code) as dest_station_name
     FROM trains t
     LEFT JOIN stations s1 ON t.source_station_code = s1.code
     LEFT JOIN stations s2 ON t.dest_station_code = s2.code
-    WHERE t.train_number LIKE ? OR t.train_name LIKE ?
-    LIMIT 20
+    WHERE t.train_number LIKE ? 
+       OR t.train_name LIKE ? 
+       OR t.source_station_code LIKE ? 
+       OR t.dest_station_code LIKE ? 
+       OR s1.name LIKE ? 
+       OR s2.name LIKE ?
+       OR t.train_number IN (SELECT train_number FROM train_schedules WHERE station_code = ? OR station_code LIKE ?)
+    ORDER BY 
+      CASE 
+        WHEN t.source_station_code = ? OR t.dest_station_code = ? THEN 1
+        WHEN t.train_number LIKE ? THEN 2
+        WHEN t.train_number LIKE ? THEN 3
+        WHEN t.train_name LIKE ? THEN 4
+        ELSE 5
+      END,
+      t.train_number ASC
+    LIMIT ?
   `;
-    db.all(sql, [`%${query}%`, `%${query}%`], (err, rows) => {
+    db.all(sql, [
+      searchPattern, searchPattern, searchPattern, searchPattern, searchPattern, searchPattern,
+      query, searchPattern,
+      query, query, exactStart, searchPattern, searchPattern,
+      limit
+    ], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json({ trains: rows || [] });
     });
@@ -164,7 +221,46 @@ app.get('/api/trains/:trainNo/live', (req, res) => {
 });
 
 // ==========================================
-// 4. ALL STATIONS LIST (For Dropdowns & Map)
+// 4. SEARCH STATIONS (By Name or Code)
+// ==========================================
+app.get('/api/stations/search', (req, res) => {
+    const query = (req.query.q || '').trim();
+    const limit = parseInt(req.query.limit) || 100;
+
+    const searchPattern = `%${query}%`;
+    const exactStart = `${query}%`;
+    const sql = `
+    SELECT 
+      s.code, 
+      s.name, 
+      s.state, 
+      s.zone, 
+      s.latitude, 
+      s.longitude,
+      COALESCE(sc.train_count, 0) AS train_count
+    FROM stations s
+    LEFT JOIN station_counts sc ON s.code = sc.code
+    WHERE (s.code NOT LIKE 'XX%' AND s.code NOT LIKE 'YY%')
+      AND (s.code LIKE ? OR s.name LIKE ? OR (s.state IS NOT NULL AND s.state LIKE ?) OR (s.zone IS NOT NULL AND s.zone LIKE ?))
+    ORDER BY 
+      CASE 
+        WHEN s.code IN ('SBC', 'HWH', 'SMVB', 'NDLS', 'MAS', 'MYS', 'JAT', 'YPR', 'BDTS', 'BKN', 'CBE', 'CSTM', 'UHP', 'BNC', 'KJM', 'BYPL', 'WFD', 'BWT') THEN 0
+        WHEN s.code LIKE ? THEN 1
+        WHEN s.name LIKE ? THEN 2
+        ELSE 3
+      END,
+      sc.train_count DESC,
+      s.code ASC
+    LIMIT ?
+  `;
+    db.all(sql, [searchPattern, searchPattern, searchPattern, searchPattern, exactStart, searchPattern, limit], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ stations: rows || [] });
+    });
+});
+
+// ==========================================
+// 5. ALL STATIONS LIST (For Dropdowns & Map)
 // ==========================================
 app.get('/api/stations/all', (req, res) => {
     db.all(

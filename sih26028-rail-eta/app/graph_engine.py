@@ -75,8 +75,8 @@ TRAIN_METADATA = {
     "12424": {"name": "Dibrugarh Rajdhani Express", "priority": 1.0, "type": "RAJDHANI_PREMIUM", "delay_cost_weight": 5.0},
     "12951": {"name": "Mumbai Rajdhani Express", "priority": 1.0, "type": "RAJDHANI_PREMIUM", "delay_cost_weight": 5.0},
     # Duronto
-    "12245": {"name": "Howrah - SMVT Duronto", "priority": 0.9, "type": "DURONTO_SUPERFAST", "delay_cost_weight": 4.0},
-    "12246": {"name": "SMVT - Howrah Duronto", "priority": 0.9, "type": "DURONTO_SUPERFAST", "delay_cost_weight": 4.0},
+    "12245": {"name": "Howrah - SMVT Bengaluru Duronto Express", "priority": 0.9, "type": "DURONTO_SUPERFAST", "delay_cost_weight": 4.0},
+    "12246": {"name": "SMVT Bengaluru - Howrah Duronto Express", "priority": 0.9, "type": "DURONTO_SUPERFAST", "delay_cost_weight": 4.0},
     # Commuter / Freight
     "06527": {"name": "Bangarapet MEMU", "priority": 0.4, "type": "SUBURBAN_COMMUTER", "delay_cost_weight": 1.0},
     "04403": {"name": "Delhi - Kanpur MEMU Special", "priority": 0.4, "type": "SUBURBAN_COMMUTER", "delay_cost_weight": 1.0},

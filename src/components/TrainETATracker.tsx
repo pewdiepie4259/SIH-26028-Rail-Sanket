@@ -1,5 +1,6 @@
 // src/components/TrainETATracker.tsx
 import { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -420,9 +421,12 @@ interface LiveStatus {
 const API_BASE = "http://localhost:5000/api";
 
 export default function TrainETATracker() {
-    const [searchQuery, setSearchQuery] = useState<string>("10111");
+    const [searchParams] = useSearchParams();
+    const initialTrainNumber = searchParams.get('train') || searchParams.get('q') || "12246";
+
+    const [searchQuery, setSearchQuery] = useState<string>(initialTrainNumber);
     const [searchResults, setSearchResults] = useState<Train[]>([]);
-    const [selectedTrain, setSelectedTrain] = useState<string>("10111");
+    const [selectedTrain, setSelectedTrain] = useState<string>(initialTrainNumber);
     const [route, setRoute] = useState<RouteStop[]>([]);
     const [liveStatus, setLiveStatus] = useState<LiveStatus | null>(null);
     const [loading, setLoading] = useState<boolean>(false);
@@ -509,8 +513,10 @@ export default function TrainETATracker() {
     };
 
     useEffect(() => {
-        loadTrainData("10111");
-    }, []);
+        const targetTrain = searchParams.get('train') || searchParams.get('q') || "12246";
+        setSearchQuery(targetTrain);
+        loadTrainData(targetTrain);
+    }, [searchParams]);
 
     // Polling
     useEffect(() => {

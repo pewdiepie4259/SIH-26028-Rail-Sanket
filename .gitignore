@@ -38,3 +38,4 @@ sih26028-rail-eta/venv/
 *.dll
 *.db
 *.sqlite3
+scratch/
