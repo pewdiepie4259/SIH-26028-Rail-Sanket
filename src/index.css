@@ -124,3 +124,121 @@ body > .skiptranslate {
   border: none !important;
   box-shadow: none !important;
 }
+
+:root {
+  --rd-controller-bg: #031A1F;
+  --rd-controller-surface: #062A2F;
+  --rd-controller-surface-2: #08383D;
+  --rd-controller-border: #145158;
+
+  --rd-controller-navy: #071A33;
+  --rd-controller-teal: #0E5961;
+  --rd-controller-teal-bright: #0E7C86;
+
+  --rd-controller-orange: #F59E0B;
+
+  --rd-controller-text: #FFFFFF;
+  --rd-controller-text-secondary: #D7E5EC;
+  --rd-controller-text-muted: #9FB8BE;
+}
+
+.controller-page {
+  min-height: 100%;
+  background: var(--rd-controller-bg);
+  color: var(--rd-controller-text);
+}
+
+.controller-gradient {
+  background: linear-gradient(
+    90deg,
+    var(--rd-controller-navy) 0%,
+    var(--rd-controller-teal) 50%,
+    var(--rd-controller-navy) 100%
+  );
+}
+
+.controller-header {
+  background: linear-gradient(
+    90deg,
+    var(--rd-controller-navy) 0%,
+    var(--rd-controller-teal) 50%,
+    var(--rd-controller-navy) 100%
+  );
+  border-bottom: 1px solid var(--rd-controller-border);
+}
+
+.controller-panel {
+  background: var(--rd-controller-surface);
+  border: 1px solid var(--rd-controller-border);
+}
+
+.controller-panel-secondary {
+  background: var(--rd-controller-surface-2);
+  border: 1px solid var(--rd-controller-border);
+}
+
+.controller-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+
+  background: linear-gradient(
+    90deg,
+    var(--rd-controller-navy) 0%,
+    var(--rd-controller-teal) 50%,
+    var(--rd-controller-navy) 100%
+  );
+
+  border: 1px solid var(--rd-controller-orange);
+  color: white;
+
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.controller-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(14, 89, 97, 0.28);
+}
+
+.controller-sidebar {
+  background: linear-gradient(
+    180deg,
+    var(--rd-controller-navy) 0%,
+    var(--rd-controller-teal) 100%
+  );
+
+  border-right: 1px solid var(--rd-controller-border);
+}
+
+.controller-sidebar-active {
+  background: linear-gradient(
+    90deg,
+    var(--rd-controller-navy) 0%,
+    var(--rd-controller-teal) 100%
+  );
+
+  border-left: 3px solid var(--rd-controller-orange);
+  color: white;
+}
+
+.controller-section-heading {
+  background: linear-gradient(
+    90deg,
+    var(--rd-controller-navy) 0%,
+    var(--rd-controller-teal) 50%,
+    var(--rd-controller-navy) 100%
+  );
+
+  border: 1px solid var(--rd-controller-border);
+}
+
+.controller-accent {
+  color: var(--rd-controller-orange);
+}
+
+.controller-divider {
+  border-color: var(--rd-controller-border);
+}

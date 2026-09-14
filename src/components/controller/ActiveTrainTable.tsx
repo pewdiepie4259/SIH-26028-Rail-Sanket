@@ -6,8 +6,8 @@ import {
   Radio,
   TrainFront,
 } from "lucide-react"
-import { Link } from "react-router-dom"
 
+import { Link } from "react-router-dom"
 import type { LiveTrain } from "../../hooks/useLiveTelemetry"
 
 interface ActiveTrainTableProps {
