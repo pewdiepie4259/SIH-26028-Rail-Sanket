@@ -13,55 +13,68 @@ import {
   User,
   LogOut,
   Clock,
-  MapPin,
   ShieldCheck,
   ChevronLeft,
   ChevronRight,
   Menu,
   X,
   Radio,
-  CheckCircle2,
   Building2,
   CircleDot,
   CheckCheck,
-  Lock,
-  Gauge,
-  CloudRain,
-  Activity,
-  AlertOctagon,
-  Wrench,
-  Compass,
   Zap,
   UserCircle,
+  GitCommit,
+  HeartPulse,
+  Ticket,
+  Wrench,
+  CheckCircle2,
+  Lock,
+  ArrowRight,
+  Activity,
+  Layers,
 } from "lucide-react";
-import { logout } from "../../services/auth";
+import { getCurrentUser, logout } from "../../services/auth";
 import {
-  demoAssignments,
-  type OperationalRoleType,
-  type EmployeeNavItem,
-} from "../../services/employee";
+  getRoleAssignmentViewData,
+  type MetricCard,
+} from "../../services/employeeAssignmentService";
+import RoleDepartmentWarning from "../../components/employee/RoleDepartmentWarning";
+import type { EmployeeNavItem } from "../../services/employee";
 
 export default function EmployeeAssignment() {
   const navigate = useNavigate();
 
-  // State Setup
+  // Authentication & System State
+  const [currentUser, setCurrentUser] = useState(getCurrentUser());
   const [is24Hour, setIs24Hour] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Role-Dependent State (Default: train_manager)
-  const [selectedRole, setSelectedRole] = useState<OperationalRoleType>("train_manager");
+  // Sync auth state & safeguard controller redirection
+  useEffect(() => {
+    const user = getCurrentUser();
+    if (user) {
+      if (user.role === "controller") {
+        navigate("/controller/dashboard", { replace: true });
+        return;
+      }
+      setCurrentUser(user);
+    }
+  }, [navigate]);
 
-
-  // Live IST Clock (Frontend display only)
+  // Live IST Clock
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // Compute dynamic role assignment data
+  const assignmentData = getRoleAssignmentViewData(currentUser);
 
   const formatIST = (date: Date, use24: boolean) => {
     return date.toLocaleTimeString("en-IN", {
@@ -75,7 +88,7 @@ export default function EmployeeAssignment() {
 
   const handleLogout = () => {
     logout();
-    navigate("/employee/login", { replace: true });
+    navigate("/login", { replace: true });
   };
 
   const showToast = (msg: string) => {
@@ -83,7 +96,47 @@ export default function EmployeeAssignment() {
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  const currentAssignment = demoAssignments[selectedRole];
+  const getMetricIcon = (type: MetricCard["iconType"]) => {
+    switch (type) {
+      case "train":
+        return <TrainFront size={16} className="text-teal-400" />;
+      case "station":
+        return <Building2 size={16} className="text-teal-400" />;
+      case "track":
+        return <GitCommit size={16} className="text-teal-400" />;
+      case "signal":
+        return <Radio size={16} className="text-teal-400" />;
+      case "shield":
+        return <ShieldCheck size={16} className="text-teal-400" />;
+      case "heart":
+        return <HeartPulse size={16} className="text-rose-400" />;
+      case "zap":
+        return <Zap size={16} className="text-amber-400" />;
+      case "ticket":
+        return <Ticket size={16} className="text-teal-400" />;
+      case "wrench":
+        return <Wrench size={16} className="text-teal-400" />;
+      case "check":
+      default:
+        return <CheckCircle2 size={16} className="text-emerald-400" />;
+    }
+  };
+
+  const getBadgeStyle = (color?: string) => {
+    switch (color) {
+      case "amber":
+        return "bg-amber-950/60 text-amber-300 border-amber-700/50";
+      case "rose":
+        return "bg-rose-950/60 text-rose-300 border-rose-700/50";
+      case "blue":
+        return "bg-blue-950/60 text-blue-300 border-blue-700/50";
+      case "emerald":
+        return "bg-emerald-950/60 text-emerald-300 border-emerald-700/50";
+      case "teal":
+      default:
+        return "bg-teal-950/60 text-teal-300 border-teal-700/50";
+    }
+  };
 
   // Sidebar navigation menu items
   const navItems: EmployeeNavItem[] = [
@@ -103,14 +156,14 @@ export default function EmployeeAssignment() {
     <div className="min-h-screen bg-[#031426] text-slate-100 flex flex-col font-sans selection:bg-[#F59E0B]/30 selection:text-white">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-[#0E7C86] text-white px-4 py-3 rounded-lg shadow-xl border border-cyan-400/30 animate-bounce">
-          <CheckCheck size={18} className="text-cyan-200" />
-          <span className="text-sm font-medium">{toastMessage}</span>
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-[#0E7C86] text-white px-4 py-2.5 rounded-lg shadow-xl border border-teal-400/40 text-xs font-medium">
+          <CheckCheck size={16} className="text-teal-200" />
+          <span>{toastMessage}</span>
         </div>
       )}
 
       {/* TOP HEADER */}
-      <header className="sticky top-0 z-40 flex h-[72px] shrink-0 items-center justify-between border-b border-[#16364A] bg-[#071A33]/95 backdrop-blur-md px-4 sm:px-6">
+      <header className="sticky top-0 z-40 flex h-[72px] shrink-0 items-center justify-between border-b border-[#16364A] bg-[#071A33] px-4 sm:px-6">
         {/* Left Branding & Mobile Toggle */}
         <div className="flex items-center gap-3">
           <button
@@ -123,7 +176,7 @@ export default function EmployeeAssignment() {
           </button>
 
           <div className="flex items-center gap-3">
-            <div className="h-11 w-11 shrink-0 overflow-hidden rounded-full border border-[#294665] bg-[#071A33] shadow-md">
+            <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full border border-[#294665] bg-[#071A33]">
               <img
                 src="/logos/raildrishti-dark.png"
                 alt="RailDrishti"
@@ -136,7 +189,7 @@ export default function EmployeeAssignment() {
                 <span className="text-xs font-bold uppercase tracking-[0.16em] text-white">
                   Rail<span className="text-[#F59E0B]">Drishti</span>
                 </span>
-                <span className="rounded bg-[#0E7C86]/30 px-1.5 py-0.5 text-[10px] font-semibold text-cyan-300 border border-[#0E7C86]/50">
+                <span className="rounded bg-[#0E7C86]/25 px-1.5 py-0.5 text-[10px] font-semibold text-teal-300 border border-[#0E7C86]/40">
                   Employee Portal
                 </span>
               </div>
@@ -147,8 +200,8 @@ export default function EmployeeAssignment() {
           </div>
         </div>
 
-        {/* Right Header Status, IST Clock, Profile & Logout */}
-        <div className="flex items-center gap-2 sm:gap-4">
+        {/* Right Header: IST Clock, Security & Logout */}
+        <div className="flex items-center gap-2 sm:gap-3">
           {/* Live IST Clock */}
           <div className="hidden sm:flex items-center gap-2 rounded-lg border border-[#16364A] bg-[#0A2036] px-3 py-1.5 text-xs text-slate-200">
             <Clock size={15} className="text-[#F59E0B]" />
@@ -165,16 +218,16 @@ export default function EmployeeAssignment() {
             </button>
           </div>
 
-          {/* Security */}
+          {/* Security & User Badge */}
           <div className="hidden items-center gap-2 border-l border-[#16364A] pl-3 sm:flex">
             <ShieldCheck size={18} className="text-[#0E7C86]" />
 
             <div className="hidden lg:block text-left">
-              <div className="text-xs font-semibold text-white">
-                Authorized Employee
+              <div className="text-xs font-semibold text-white truncate max-w-[130px]">
+                {assignmentData.employeeName}
               </div>
-              <div className="text-[10px] text-[#71899C]">
-                Secure Session
+              <div className="text-[10px] text-teal-400 truncate max-w-[130px]">
+                {assignmentData.roleTitle}
               </div>
             </div>
 
@@ -301,541 +354,302 @@ export default function EmployeeAssignment() {
               <div className="text-[11px] text-slate-400 space-y-1">
                 <div className="flex items-center gap-1.5 text-slate-300 font-medium">
                   <Building2 size={13} className="text-[#0E7C86]" />
-                  <span>KSR Bengaluru Corridor</span>
+                  <span className="truncate">{assignmentData.department}</span>
                 </div>
-                <div className="text-[10px] text-[#71899C]">South Western Railway (SWR)</div>
+                <div className="text-[10px] text-[#71899C] truncate">
+                  Role: {assignmentData.roleTitle}
+                </div>
                 <div className="pt-1 flex items-center justify-between text-[10px] text-slate-400 border-t border-[#16364A]/40">
-                  <span>Assignment View</span>
-                  <span className="text-cyan-300 font-semibold uppercase">{selectedRole.replace("_", " ")}</span>
+                  <span>Indian Railways</span>
+                  <span className="text-teal-400 font-medium">● Connected</span>
                 </div>
               </div>
             ) : (
-              <div className="flex justify-center text-cyan-300" title="Active Assignment">
+              <div className="flex justify-center text-teal-400" title="Connected">
                 <CircleDot size={14} />
               </div>
             )}
           </div>
         </aside>
 
-        {/* MAIN CONTENT */}
+        {/* ASSIGNMENT MAIN CONTENT */}
         <main className="flex-1 min-w-0 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6">
           {/* ============================================================ */}
-          {/* TOP BANNER & OPERATIONAL ROLE SWITCHER (DEVELOPMENT / DEMO) */}
+          {/* 1. CONFIGURATION WARNING (IF MISMATCH OR UNASSIGNED)         */}
           {/* ============================================================ */}
-          <section className="rounded-xl border border-[#16364A] bg-gradient-to-r from-[#071A33] via-[#0A223D] to-[#071A33] p-5 sm:p-6 shadow-lg">
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-cyan-950/80 text-cyan-300 border border-cyan-500/40 text-xs font-bold uppercase tracking-wider">
-                    <Radio size={12} className="text-cyan-400 animate-pulse" />
-                    Role-Based Operational View
+          <RoleDepartmentWarning
+            warningMessage={assignmentData.warningMessage}
+            isUnassigned={!assignmentData.isRoleValid}
+          />
+
+          {/* ============================================================ */}
+          {/* 2. DYNAMIC HERO / ASSIGNMENT SCOPE PASS                      */}
+          {/* ============================================================ */}
+          <section className="relative overflow-hidden rounded-2xl border border-[#16364A] bg-gradient-to-br from-[#0A223D] via-[#071A33] to-[#041224] p-5 sm:p-7 shadow-xl">
+            <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-[#0E7C86]/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute bottom-0 left-1/3 -mb-20 w-80 h-80 bg-[#F59E0B]/5 rounded-full blur-3xl pointer-events-none" />
+
+            <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+              {/* Left Details */}
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <span
+                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold tracking-wide uppercase shadow-sm border ${getBadgeStyle(
+                      assignmentData.statusBadgeColor
+                    )}`}
+                  >
+                    <Radio size={12} className="animate-pulse" />
+                    {assignmentData.assignmentBadge}
                   </span>
-                  <span className="rounded bg-[#16364A] px-2 py-0.5 text-[10px] font-semibold text-[#AFC0D4] border border-slate-700">
-                    Sample Operational Data
+                  <span className="text-xs font-mono font-medium text-slate-400 bg-[#061629] px-2.5 py-1 rounded-md border border-[#16364A]">
+                    ID #{assignmentData.employeeId}
+                  </span>
+                  <span className="text-xs font-medium text-teal-300 bg-[#0E7C86]/20 px-2.5 py-1 rounded-md border border-teal-500/30">
+                    {assignmentData.liveStatusLabel}
                   </span>
                 </div>
 
-                <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-                  <TrainFront size={26} className="text-[#F59E0B]" />
-                  {currentAssignment.title}
-                </h2>
-                <p className="text-xs sm:text-sm text-slate-300 mt-1">
-                  Viewing tailored telemetry and infrastructure intelligence for designated operational role.
-                </p>
+                <div>
+                  <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                    {assignmentData.pageTitle}
+                  </h2>
+                  <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-2xl leading-relaxed">
+                    {assignmentData.pageSubtitle}
+                  </p>
+                </div>
               </div>
 
-              {/* ROLE TOGGLE SELECTOR */}
-              <div className="bg-[#031426]/90 p-1.5 rounded-xl border border-[#16364A] flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedRole("train_manager");
-                    showToast("Switched to Train Manager operational view");
-                  }}
-                  className={`px-3 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
-                    selectedRole === "train_manager"
-                      ? "bg-gradient-to-r from-[#0E7C86] to-[#0A2036] text-white border border-cyan-400/50 shadow-md"
-                      : "text-slate-400 hover:text-white hover:bg-[#0A2036]"
-                  }`}
-                >
-                  <TrainFront size={14} className={selectedRole === "train_manager" ? "text-[#F59E0B]" : ""} />
-                  <span>Train Manager</span>
-                </button>
+              {/* Right Employee Identity Card */}
+              <div className="w-full lg:w-auto shrink-0 bg-[#061629]/90 backdrop-blur-md p-4 sm:p-5 rounded-xl border border-[#1E4260] shadow-md flex flex-col sm:flex-row items-center gap-4">
+                <div className="relative">
+                  <div className="h-16 w-16 rounded-xl bg-gradient-to-br from-[#0E7C86] to-[#0A2036] flex items-center justify-center text-white text-xl font-bold border-2 border-teal-400/50 shadow-inner">
+                    {assignmentData.employeeName.split(" ").map((n) => n[0]).join("")}
+                  </div>
+                  <div className="absolute -bottom-1 -right-1 h-5 w-5 bg-teal-500 rounded-full border-2 border-[#061629] flex items-center justify-center" title="Verified Staff">
+                    <ShieldCheck size={11} className="text-white" />
+                  </div>
+                </div>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedRole("track_maintainer");
-                    showToast("Switched to Track Maintainer operational view");
-                  }}
-                  className={`px-3 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
-                    selectedRole === "track_maintainer"
-                      ? "bg-gradient-to-r from-[#0E7C86] to-[#0A2036] text-white border border-cyan-400/50 shadow-md"
-                      : "text-slate-400 hover:text-white hover:bg-[#0A2036]"
-                  }`}
-                >
-                  <Compass size={14} className={selectedRole === "track_maintainer" ? "text-[#F59E0B]" : ""} />
-                  <span>Track Maintainer</span>
-                </button>
+                <div className="text-center sm:text-left space-y-1">
+                  <div className="flex items-center justify-center sm:justify-start gap-2">
+                    <span className="text-sm font-bold text-white tracking-wide">
+                      {assignmentData.employeeName}
+                    </span>
+                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-teal-950 text-teal-300 border border-teal-700/50 font-semibold">
+                      {assignmentData.employeeId}
+                    </span>
+                  </div>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedRole("signal_maintainer");
-                    showToast("Switched to Signal Maintainer operational view");
-                  }}
-                  className={`px-3 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
-                    selectedRole === "signal_maintainer"
-                      ? "bg-gradient-to-r from-[#0E7C86] to-[#0A2036] text-white border border-cyan-400/50 shadow-md"
-                      : "text-slate-400 hover:text-white hover:bg-[#0A2036]"
-                  }`}
-                >
-                  <Zap size={14} className={selectedRole === "signal_maintainer" ? "text-[#F59E0B]" : ""} />
-                  <span>Signal Maintainer</span>
-                </button>
+                  <div className="text-xs text-teal-400 font-semibold">
+                    {assignmentData.roleTitle}
+                  </div>
+
+                  <div className="text-[11px] text-slate-300">
+                    Scope: <span className="text-teal-300 font-medium">{assignmentData.roleConfig.assignmentType}</span>
+                  </div>
+
+                  <div className="text-[10px] text-slate-400 truncate max-w-[220px]">
+                    Dept: {assignmentData.department}
+                  </div>
+                </div>
               </div>
             </div>
           </section>
 
           {/* ============================================================ */}
-          {/* ROLE-DEPENDENT VIEW: 1. TRAIN MANAGER                       */}
+          {/* 3. ROLE KPI METRICS (4 DYNAMIC TILES)                        */}
           {/* ============================================================ */}
-          {selectedRole === "train_manager" && (
-            <div className="space-y-6">
-              {/* PRIMARY TRAIN ASSIGNMENT CARD */}
-              <section className="rounded-xl border-2 border-[#0E7C86]/80 bg-gradient-to-br from-[#071A33] via-[#0A2640] to-[#041527] p-6 shadow-xl relative overflow-hidden">
-                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 relative z-10">
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold uppercase tracking-widest text-[#F59E0B]">
-                        Assigned Rake Telemetry
-                      </span>
-                      <span className="h-1.5 w-1.5 rounded-full bg-[#F59E0B]"></span>
-                      <span className="text-xs text-slate-300 font-mono">MY ASSIGNED TRAIN</span>
-                    </div>
+          <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {assignmentData.metrics.map((metric, idx) => (
+              <div
+                key={idx}
+                className="rounded-xl border border-[#16364A] bg-[#071A33] p-4.5 shadow-sm transition hover:border-[#0E7C86]/50"
+              >
+                <div className="flex items-center justify-between text-slate-400 mb-2">
+                  <span className="text-xs font-medium text-slate-400 truncate pr-1">
+                    {metric.title}
+                  </span>
+                  {getMetricIcon(metric.iconType)}
+                </div>
 
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-lg sm:text-xl font-bold font-mono text-white truncate">
+                    {metric.value}
+                  </div>
+                  {metric.statusBadge && (
+                    <span
+                      className={`text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-wider shrink-0 ${getBadgeStyle(
+                        metric.statusBadge.color
+                      )}`}
+                    >
+                      {metric.statusBadge.text}
+                    </span>
+                  )}
+                </div>
+
+                <div className="text-xs text-slate-400 mt-1 truncate">
+                  {metric.subtitle}
+                </div>
+              </div>
+            ))}
+          </section>
+
+          {/* ============================================================ */}
+          {/* 4. CURRENT ASSIGNMENT DETAILS & OPERATIONAL DATA             */}
+          {/* ============================================================ */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* PRIMARY ASSIGNMENT (7 COLS) */}
+            <div className="lg:col-span-7 space-y-6">
+              <section className="rounded-2xl border border-[#16364A] bg-[#071A33] p-5 sm:p-6 shadow-sm">
+                <div className="flex items-center justify-between border-b border-[#16364A] pb-3 mb-5">
+                  <div className="flex items-center gap-2.5">
+                    <Layers size={18} className="text-teal-400" />
                     <div>
-                      <div className="text-3xl sm:text-4xl font-extrabold text-white font-mono tracking-tight flex items-center gap-3">
-                        <span>{demoAssignments.train_manager.trainNumber}</span>
-                        <span className="text-xl sm:text-2xl font-bold text-cyan-300 font-sans">
-                          {demoAssignments.train_manager.trainName}
+                      <h3 className="text-sm font-bold uppercase tracking-wider text-white">
+                        {assignmentData.assignmentTitle}
+                      </h3>
+                      <p className="text-[11px] text-slate-400">
+                        Primary target specifications & operational route
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-mono font-semibold px-2.5 py-1 rounded bg-[#0A2036] text-teal-300 border border-teal-500/30">
+                    {assignmentData.statusText}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  {assignmentData.primaryDetails.map((detail, idx) => (
+                    <div
+                      key={idx}
+                      className={`p-3.5 rounded-xl border ${
+                        detail.highlight
+                          ? "bg-gradient-to-br from-[#0A2036] to-[#06172A] border-teal-500/40 sm:col-span-2"
+                          : "bg-[#0A2036] border-[#16364A]"
+                      }`}
+                    >
+                      <div className="text-slate-400 text-[10px] uppercase tracking-wider">
+                        {detail.label}
+                      </div>
+                      <div
+                        className={`mt-1 ${
+                          detail.mono ? "font-mono" : ""
+                        } ${
+                          detail.highlight
+                            ? "text-base font-bold text-teal-300"
+                            : "font-semibold text-white"
+                        }`}
+                      >
+                        {detail.value}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Secondary details if present */}
+                {assignmentData.secondaryDetails.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-[#16364A]/60 grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                    {assignmentData.secondaryDetails.map((detail, idx) => (
+                      <div
+                        key={idx}
+                        className="bg-[#0A2036]/60 p-2.5 rounded-lg border border-[#16364A]/60 flex items-center justify-between"
+                      >
+                        <span className="text-slate-400 text-[11px]">{detail.label}</span>
+                        <span className="font-semibold text-white truncate max-w-[200px]">
+                          {detail.value}
                         </span>
                       </div>
-                      <div className="text-sm text-slate-300 mt-1 flex items-center gap-2">
-                        <MapPin size={15} className="text-[#0E7C86]" />
-                        <span>Current Location: <strong className="text-white">{demoAssignments.train_manager.currentLocation}</strong></span>
-                        <span className="text-slate-500">•</span>
-                        <span>Next Station: <strong className="text-cyan-300">{demoAssignments.train_manager.nextStation}</strong></span>
-                      </div>
-                    </div>
+                    ))}
                   </div>
-
-                  {/* Prominent Delay & Speed Box */}
-                  <div className="flex items-center gap-3">
-                    <div className="bg-[#031426]/90 border border-[#16364A] p-4 rounded-xl text-center min-w-[120px]">
-                      <div className="text-[10px] font-semibold text-[#AFC0D4] uppercase tracking-wider">
-                        Delay Status
-                      </div>
-                      <div className="text-xl font-extrabold text-amber-400 mt-1 font-mono">
-                        {demoAssignments.train_manager.delay}
-                      </div>
-                      <div className="text-[10px] text-slate-400 mt-0.5">Behind Schedule</div>
-                    </div>
-
-                    <div className="bg-[#031426]/90 border border-[#16364A] p-4 rounded-xl text-center min-w-[120px]">
-                      <div className="text-[10px] font-semibold text-[#AFC0D4] uppercase tracking-wider">
-                        Current Speed
-                      </div>
-                      <div className="text-xl font-extrabold text-emerald-400 mt-1 font-mono">
-                        {demoAssignments.train_manager.speed}
-                      </div>
-                      <div className="text-[10px] text-slate-400 mt-0.5">Section Speed</div>
-                    </div>
-                  </div>
-                </div>
-              </section>
-
-              {/* TRAIN MANAGER — OPERATIONAL SUMMARY GRID */}
-              <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                <div className="bg-[#071A33] border border-[#16364A] p-4 rounded-xl">
-                  <div className="flex items-center justify-between text-slate-400 mb-1.5">
-                    <span className="text-[10px] font-semibold uppercase text-[#AFC0D4]">Current Location</span>
-                    <MapPin size={16} className="text-[#0E7C86]" />
-                  </div>
-                  <div className="text-base font-bold text-white">{demoAssignments.train_manager.currentLocation}</div>
-                  <div className="text-[10px] text-slate-400 mt-0.5">KSR - MYS Section</div>
-                </div>
-
-                <div className="bg-[#071A33] border border-[#16364A] p-4 rounded-xl">
-                  <div className="flex items-center justify-between text-slate-400 mb-1.5">
-                    <span className="text-[10px] font-semibold uppercase text-[#AFC0D4]">Next Station</span>
-                    <Compass size={16} className="text-cyan-400" />
-                  </div>
-                  <div className="text-base font-bold text-white">{demoAssignments.train_manager.nextStation}</div>
-                  <div className="text-[10px] text-slate-400 mt-0.5">Approaching Loop Line</div>
-                </div>
-
-                <div className="bg-[#071A33] border border-[#16364A] p-4 rounded-xl">
-                  <div className="flex items-center justify-between text-slate-400 mb-1.5">
-                    <span className="text-[10px] font-semibold uppercase text-[#AFC0D4]">Current Speed</span>
-                    <Gauge size={16} className="text-emerald-400" />
-                  </div>
-                  <div className="text-base font-bold text-white font-mono">{demoAssignments.train_manager.speed}</div>
-                  <div className="text-[10px] text-slate-400 mt-0.5">Within Section Limit</div>
-                </div>
-
-                <div className="bg-[#071A33] border border-[#16364A] p-4 rounded-xl">
-                  <div className="flex items-center justify-between text-slate-400 mb-1.5">
-                    <span className="text-[10px] font-semibold uppercase text-[#AFC0D4]">Delay</span>
-                    <Clock size={16} className="text-amber-400" />
-                  </div>
-                  <div className="text-base font-bold text-amber-400 font-mono">{demoAssignments.train_manager.delay}</div>
-                  <div className="text-[10px] text-slate-400 mt-0.5">Catch-up Margin Available</div>
-                </div>
-
-                <div className="bg-[#071A33] border border-[#16364A] p-4 rounded-xl">
-                  <div className="flex items-center justify-between text-slate-400 mb-1.5">
-                    <span className="text-[10px] font-semibold uppercase text-[#AFC0D4]">Predicted Arrival</span>
-                    <Clock size={16} className="text-cyan-400" />
-                  </div>
-                  <div className="text-base font-bold text-white font-mono">{demoAssignments.train_manager.predictedArrival}</div>
-                  <div className="text-[10px] text-slate-400 mt-0.5">At Ramanagara Junction</div>
-                </div>
-
-                <div className="bg-[#071A33] border border-[#16364A] p-4 rounded-xl">
-                  <div className="flex items-center justify-between text-slate-400 mb-1.5">
-                    <span className="text-[10px] font-semibold uppercase text-[#AFC0D4]">Weather Impact</span>
-                    <CloudRain size={16} className="text-blue-400" />
-                  </div>
-                  <div className="text-base font-bold text-slate-200">{demoAssignments.train_manager.weatherImpact}</div>
-                  <div className="text-[10px] text-slate-400 mt-0.5">Light drizzle along route</div>
-                </div>
-
-                <div className="bg-[#071A33] border border-[#16364A] p-4 rounded-xl col-span-2">
-                  <div className="flex items-center justify-between text-slate-400 mb-1.5">
-                    <span className="text-[10px] font-semibold uppercase text-[#AFC0D4]">Operational Alerts</span>
-                    <AlertTriangle size={16} className="text-amber-400" />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-base font-bold text-white font-mono">
-                      {demoAssignments.train_manager.operationalAlerts} Active Alert
-                    </span>
-                    <span className="text-[10px] px-2 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-amber-500/50">
-                      Speed Caution at KM 48/12
-                    </span>
-                  </div>
-                </div>
+                )}
               </section>
             </div>
-          )}
 
-          {/* ============================================================ */}
-          {/* ROLE-DEPENDENT VIEW: 2. TRACK MAINTAINER                     */}
-          {/* ============================================================ */}
-          {selectedRole === "track_maintainer" && (
-            <div className="space-y-6">
-              {/* PRIMARY TRACK SECTION CARD */}
-              <section className="rounded-xl border-2 border-emerald-500/70 bg-gradient-to-br from-[#071A33] via-[#0A2640] to-[#041527] p-6 shadow-xl relative overflow-hidden">
-                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 relative z-10">
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold uppercase tracking-widest text-emerald-400">
-                        Permanent Way (P-Way) Territory
-                      </span>
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
-                      <span className="text-xs text-slate-300 font-mono">MY ASSIGNED SECTION</span>
-                    </div>
-
-                    <div>
-                      <div className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight flex items-center gap-3">
-                        <span>{demoAssignments.track_maintainer.section}</span>
-                      </div>
-                      <div className="text-sm text-slate-300 mt-1 flex items-center gap-2">
-                        <MapPin size={15} className="text-[#0E7C86]" />
-                        <span>KSR Bengaluru to Kengeri Quadruple Corridor</span>
-                        <span className="text-slate-500">•</span>
-                        <span>Track Route KM: 0/0 to 12/4</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Prominent Track Status Badge */}
-                  <div className="bg-[#031426]/90 border border-[#16364A] p-4 rounded-xl text-center min-w-[140px]">
-                    <div className="text-[10px] font-semibold text-[#AFC0D4] uppercase tracking-wider">
-                      Track Status
-                    </div>
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/90 text-emerald-300 border border-emerald-400 text-sm font-extrabold mt-1.5 shadow-sm">
-                      <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping"></span>
-                      <span>OPERATIONAL</span>
-                    </div>
-                    <div className="text-[10px] text-slate-400 mt-1">Safe for Traffic</div>
-                  </div>
-                </div>
-              </section>
-
-              {/* TRACK MAINTAINER — OPERATIONAL SUMMARY GRID */}
-              <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-                <div className="bg-[#071A33] border border-[#16364A] p-4 rounded-xl">
-                  <div className="flex items-center justify-between text-slate-400 mb-1.5">
-                    <span className="text-[10px] font-semibold uppercase text-[#AFC0D4]">Assigned Section</span>
-                    <Compass size={16} className="text-[#0E7C86]" />
-                  </div>
-                  <div className="text-base font-bold text-white">{demoAssignments.track_maintainer.section}</div>
-                  <div className="text-[10px] text-slate-400 mt-0.5">South Western Railway</div>
-                </div>
-
-                <div className="bg-[#071A33] border border-[#16364A] p-4 rounded-xl">
-                  <div className="flex items-center justify-between text-slate-400 mb-1.5">
-                    <span className="text-[10px] font-semibold uppercase text-[#AFC0D4]">Track Status</span>
-                    <CheckCircle2 size={16} className="text-emerald-400" />
-                  </div>
-                  <div className="text-base font-bold text-emerald-400">{demoAssignments.track_maintainer.trackStatus}</div>
-                  <div className="text-[10px] text-slate-400 mt-0.5">Ballast & Rail Integrity OK</div>
-                </div>
-
-                <div className="bg-[#071A33] border border-[#16364A] p-4 rounded-xl">
-                  <div className="flex items-center justify-between text-slate-400 mb-1.5">
-                    <span className="text-[10px] font-semibold uppercase text-[#AFC0D4]">Maintenance Tasks</span>
-                    <Wrench size={16} className="text-cyan-400" />
-                  </div>
-                  <div className="text-base font-bold text-white font-mono">{demoAssignments.track_maintainer.maintenanceTasks} Scheduled</div>
-                  <div className="text-[10px] text-slate-400 mt-0.5">Tamping & Bolt Tightening</div>
-                </div>
-
-                <div className="bg-[#071A33] border border-[#16364A] p-4 rounded-xl">
-                  <div className="flex items-center justify-between text-slate-400 mb-1.5">
-                    <span className="text-[10px] font-semibold uppercase text-[#AFC0D4]">Active Restrictions</span>
-                    <AlertTriangle size={16} className="text-amber-400" />
-                  </div>
-                  <div className="text-base font-bold text-amber-400 font-mono">{demoAssignments.track_maintainer.activeRestrictions} Caution Order</div>
-                  <div className="text-[10px] text-slate-400 mt-0.5">30 km/h at Bridge 14</div>
-                </div>
-
-                <div className="bg-[#071A33] border border-[#16364A] p-4 rounded-xl">
-                  <div className="flex items-center justify-between text-slate-400 mb-1.5">
-                    <span className="text-[10px] font-semibold uppercase text-[#AFC0D4]">Weather Risk</span>
-                    <CloudRain size={16} className="text-blue-400" />
-                  </div>
-                  <div className="text-base font-bold text-blue-300">{demoAssignments.track_maintainer.weatherRisk}</div>
-                  <div className="text-[10px] text-slate-400 mt-0.5">Drainage Patrol Deployed</div>
-                </div>
-              </section>
-
-              {/* REPORTED ISSUES SUMMARY CARD */}
-              <div className="rounded-xl border border-[#16364A] bg-[#071A33] p-5 shadow-sm">
-                <div className="flex items-center justify-between border-b border-[#16364A]/80 pb-3 mb-3">
+            {/* OPERATIONAL PROTOCOLS & SAFETY DIRECTIVES (5 COLS) */}
+            <div className="lg:col-span-5 space-y-6">
+              <section className="rounded-2xl border border-[#16364A] bg-[#071A33] p-5 sm:p-6 shadow-sm">
+                <div className="flex items-center justify-between border-b border-[#16364A] pb-3 mb-4">
                   <div className="flex items-center gap-2">
-                    <Activity size={18} className="text-cyan-400" />
-                    <h3 className="text-sm font-bold text-white">Reported Track Issues ({demoAssignments.track_maintainer.reportedIssues})</h3>
+                    <Activity size={18} className="text-[#F59E0B]" />
+                    <div>
+                      <h3 className="text-sm font-bold uppercase tracking-wider text-white">
+                        Operational Protocols
+                      </h3>
+                      <p className="text-[11px] text-slate-400">
+                        Directives for {assignmentData.roleTitle}
+                      </p>
+                    </div>
                   </div>
-                  <span className="text-xs px-2.5 py-0.5 rounded bg-[#0A2036] text-slate-300 border border-[#16364A]">
-                    Patrol Verified
+                  <span className="text-xs text-teal-400 font-semibold bg-teal-950/60 px-2.5 py-0.5 rounded-full border border-teal-700/50">
+                    Active SOP
                   </span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                  <div className="bg-[#0A2036] p-3 rounded-lg border border-[#16364A]">
-                    <div className="font-bold text-white">Joint expansion gap measurement needed</div>
-                    <div className="text-[10px] text-slate-400 mt-1">KM 8/4 Down Line • Due today</div>
-                  </div>
-                  <div className="bg-[#0A2036] p-3 rounded-lg border border-[#16364A]">
-                    <div className="font-bold text-white">Ballast shoulder cleaning post-rain</div>
-                    <div className="text-[10px] text-slate-400 mt-1">KM 11/2 Nayandahalli Approach • Scheduled</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
 
-          {/* ============================================================ */}
-          {/* ROLE-DEPENDENT VIEW: 3. SIGNAL MAINTAINER                   */}
-          {/* ============================================================ */}
-          {selectedRole === "signal_maintainer" && (
-            <div className="space-y-6">
-              {/* PRIMARY SIGNAL SECTION CARD */}
-              <section className="rounded-xl border-2 border-amber-500/70 bg-gradient-to-br from-[#071A33] via-[#0A2640] to-[#041527] p-6 shadow-xl relative overflow-hidden">
-                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 relative z-10">
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold uppercase tracking-widest text-[#F59E0B]">
-                        Signalling & Telecommunication (S&T)
+                <div className="space-y-2.5 text-xs">
+                  {assignmentData.operationalProtocols.map((protocol, idx) => (
+                    <div
+                      key={idx}
+                      className="p-3 rounded-lg bg-[#0A2036] border border-[#16364A] flex items-start gap-2.5 text-slate-300 leading-relaxed"
+                    >
+                      <span className="h-5 w-5 rounded-full bg-teal-500/10 border border-teal-500/30 text-teal-400 font-mono text-[10px] flex items-center justify-center shrink-0 mt-0.5">
+                        {idx + 1}
                       </span>
-                      <span className="h-1.5 w-1.5 rounded-full bg-[#F59E0B]"></span>
-                      <span className="text-xs text-slate-300 font-mono">MY SIGNAL SECTION</span>
+                      <span>{protocol}</span>
                     </div>
-
-                    <div>
-                      <div className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-                        {demoAssignments.signal_maintainer.sectionName}
-                      </div>
-                      <div className="text-sm text-slate-300 mt-1 flex items-center gap-2">
-                        <Zap size={15} className="text-cyan-400" />
-                        <span>Automatic Signalling & Electronic Interlocking (EI) Zone</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Prominent Critical Alert Box */}
-                  <div className="bg-red-950/80 border border-red-500/60 p-4 rounded-xl text-center min-w-[150px] shadow-lg">
-                    <div className="text-[10px] font-bold text-red-200 uppercase tracking-wider">
-                      Critical Alert
-                    </div>
-                    <div className="text-2xl font-extrabold text-white mt-1 font-mono flex items-center justify-center gap-1.5">
-                      <AlertOctagon size={20} className="text-red-400 animate-bounce" />
-                      <span>{demoAssignments.signal_maintainer.criticalAlerts} CRITICAL</span>
-                    </div>
-                    <div className="text-[10px] text-red-300 mt-1">Track Circuit TC-42 Drop</div>
-                  </div>
-                </div>
-              </section>
-
-              {/* SIGNAL MAINTAINER — OPERATIONAL SUMMARY GRID */}
-              <section className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div className="bg-[#071A33] border border-[#16364A] p-4 rounded-xl">
-                  <div className="flex items-center justify-between text-slate-400 mb-1.5">
-                    <span className="text-[10px] font-semibold uppercase text-[#AFC0D4]">Active Signal Issues</span>
-                    <AlertTriangle size={16} className="text-amber-400" />
-                  </div>
-                  <div className="text-2xl font-extrabold text-amber-400 font-mono">
-                    {demoAssignments.signal_maintainer.activeSignalIssues}
-                  </div>
-                  <div className="text-[10px] text-slate-400 mt-0.5">Requiring Relay Inspection</div>
+                  ))}
                 </div>
 
-                <div className="bg-[#071A33] border border-[#16364A] p-4 rounded-xl">
-                  <div className="flex items-center justify-between text-slate-400 mb-1.5">
-                    <span className="text-[10px] font-semibold uppercase text-[#AFC0D4]">Affected Blocks</span>
-                    <LayersIcon size={16} className="text-cyan-400" />
-                  </div>
-                  <div className="text-2xl font-extrabold text-white font-mono">
-                    {demoAssignments.signal_maintainer.affectedBlocks}
-                  </div>
-                  <div className="text-[10px] text-slate-400 mt-0.5">Auto-Signalling Blocks</div>
-                </div>
-
-                <div className="bg-[#071A33] border border-[#16364A] p-4 rounded-xl">
-                  <div className="flex items-center justify-between text-slate-400 mb-1.5">
-                    <span className="text-[10px] font-semibold uppercase text-[#AFC0D4]">Maintenance Tasks</span>
-                    <Wrench size={16} className="text-emerald-400" />
-                  </div>
-                  <div className="text-2xl font-extrabold text-white font-mono">
-                    {demoAssignments.signal_maintainer.maintenanceTasks}
-                  </div>
-                  <div className="text-[10px] text-slate-400 mt-0.5">Relay & Point Machine Calibration</div>
-                </div>
-
-                <div className="bg-[#071A33] border border-red-500/40 bg-red-950/20 p-4 rounded-xl">
-                  <div className="flex items-center justify-between text-slate-400 mb-1.5">
-                    <span className="text-[10px] font-semibold uppercase text-red-300">Critical Alerts</span>
-                    <AlertOctagon size={16} className="text-red-400" />
-                  </div>
-                  <div className="text-2xl font-extrabold text-red-400 font-mono">
-                    {demoAssignments.signal_maintainer.criticalAlerts}
-                  </div>
-                  <div className="text-[10px] text-red-300/80 mt-0.5">High Priority Response</div>
+                <div className="mt-4 pt-3 border-t border-[#16364A] flex items-center justify-between text-[11px] text-slate-400">
+                  <span>Authorized by Railway Board</span>
+                  <span className="text-teal-400 font-medium">Compliance Enforced</span>
                 </div>
               </section>
             </div>
-          )}
+          </div>
 
           {/* ============================================================ */}
-          {/* 10. SHARED RAILDRISHTI INTELLIGENCE CONCEPT SECTION          */}
+          {/* 5. ROLE-SPECIFIC QUICK ACTIONS                               */}
           {/* ============================================================ */}
-          <section className="rounded-xl border border-[#16364A] bg-[#071A33] p-5 sm:p-6 shadow-sm">
-            <div className="flex items-center justify-between border-b border-[#16364A]/80 pb-3 mb-4">
-              <div className="flex items-center gap-2">
-                <ShieldCheck size={18} className="text-[#0E7C86]" />
-                <h3 className="text-base font-bold text-white">RAILDRISHTI OPERATIONAL VIEW</h3>
+          <div className="rounded-xl border border-[#16364A] bg-[#071A33] p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-lg bg-teal-500/10 border border-teal-500/30 flex items-center justify-center text-teal-400">
+                <ShieldCheck size={18} />
               </div>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[#0A2036] text-cyan-300 border border-[#16364A]">
-                Unified Data Layer
-              </span>
-            </div>
-
-            <p className="text-xs text-slate-300 mb-4 leading-relaxed">
-              Operational information is presented according to the employee's assigned role and responsibility:
-            </p>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 text-xs">
-              <div
-                className={`p-3.5 rounded-lg border transition ${
-                  selectedRole === "train_manager"
-                    ? "bg-[#0A223D] border-[#0E7C86] shadow-sm"
-                    : "bg-[#0A2036] border-[#16364A]/60 opacity-80"
-                }`}
-              >
-                <div className="flex items-center justify-between font-bold text-white">
-                  <span>Train Manager</span>
-                  <TrainFront size={14} className="text-[#F59E0B]" />
+              <div>
+                <div className="text-xs font-bold text-white">
+                  Need to update or report issues regarding this assignment?
                 </div>
-                <div className="text-cyan-300 mt-1 font-medium">→ Train movement and journey status</div>
-                <p className="text-[11px] text-slate-400 mt-1">
-                  Speed, current block location, predicted arrival, and active route alerts.
-                </p>
-              </div>
-
-              <div
-                className={`p-3.5 rounded-lg border transition ${
-                  selectedRole === "track_maintainer"
-                    ? "bg-[#0A223D] border-[#0E7C86] shadow-sm"
-                    : "bg-[#0A2036] border-[#16364A]/60 opacity-80"
-                }`}
-              >
-                <div className="flex items-center justify-between font-bold text-white">
-                  <span>Track Maintainer</span>
-                  <Compass size={14} className="text-emerald-400" />
+                <div className="text-[11px] text-slate-400">
+                  Operational submissions are relayed directly to the Divisional Control Room.
                 </div>
-                <div className="text-emerald-300 mt-1 font-medium">→ Track section and maintenance status</div>
-                <p className="text-[11px] text-slate-400 mt-1">
-                  Track operational integrity, caution orders, weather risk, and patrol reports.
-                </p>
-              </div>
-
-              <div
-                className={`p-3.5 rounded-lg border transition ${
-                  selectedRole === "signal_maintainer"
-                    ? "bg-[#0A223D] border-[#0E7C86] shadow-sm"
-                    : "bg-[#0A2036] border-[#16364A]/60 opacity-80"
-                }`}
-              >
-                <div className="flex items-center justify-between font-bold text-white">
-                  <span>Signal Maintainer</span>
-                  <Zap size={14} className="text-amber-400" />
-                </div>
-                <div className="text-amber-300 mt-1 font-medium">→ Signal and block status</div>
-                <p className="text-[11px] text-slate-400 mt-1">
-                  Point machine health, track circuits, interlocking status, and critical alerts.
-                </p>
               </div>
             </div>
 
-            <div className="mt-4 pt-3 border-t border-[#16364A]/50 text-[10px] text-[#71899C] flex items-center justify-between">
-              <span>Data presentation layer — Real-time sensor, telemetry, and ST-GNN AI backend data will populate these metrics in future phases.</span>
-              <span className="text-cyan-400">Phase 4 (Frontend UI)</span>
+            <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+              {assignmentData.quickActions.map((action, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => navigate(action.route)}
+                  className="px-3.5 py-2 rounded-lg bg-[#0A2036] hover:bg-[#0E5961] text-xs font-semibold text-teal-300 border border-[#16364A] hover:border-teal-400/50 transition flex items-center justify-center gap-1.5"
+                >
+                  <Zap size={13} className="text-[#F59E0B]" />
+                  <span>{action.label}</span>
+                </button>
+              ))}
+
+              <button
+                type="button"
+                onClick={() => navigate("/employee/duty")}
+                className="px-4 py-2 rounded-lg bg-gradient-to-r from-[#0E7C86] to-[#0A545C] hover:from-[#11919C] hover:to-[#0D6B75] text-xs font-bold text-white shadow-md border border-teal-400/40 transition flex items-center justify-center gap-1.5"
+              >
+                <span>My Duty Roster</span>
+                <ArrowRight size={14} />
+              </button>
             </div>
-          </section>
+          </div>
         </main>
       </div>
     </div>
-  );
-}
-
-function LayersIcon({ size, className }: { size?: number; className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width={size || 24}
-      height={size || 24}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <polygon points="12 2 2 7 12 12 22 7 12 2" />
-      <polyline points="2 17 12 22 22 17" />
-      <polyline points="2 12 12 17 22 12" />
-    </svg>
   );
 }
