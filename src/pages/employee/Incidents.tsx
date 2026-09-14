@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -31,8 +31,15 @@ import {
   HelpCircle,
   ShieldCheck,
   UserCircle,
+  Sparkles,
 } from "lucide-react";
-import { logout } from "../../services/auth";
+import { getCurrentUser, logout } from "../../services/auth";
+import {
+  getRoleConfig,
+  DEFAULT_OPERATIONAL_ROLE,
+  type OperationalRoleId,
+} from "../../config/employeeRoles";
+import { logEmployeeActivity } from "../../services/employeeHistoryService";
 import {
   demoRecentIncidents,
   type IncidentType,
@@ -44,6 +51,10 @@ import {
 
 export default function EmployeeIncidents() {
   const navigate = useNavigate();
+  const currentUser = getCurrentUser();
+
+  const rawRole = (currentUser?.operationalRole as OperationalRoleId) || DEFAULT_OPERATIONAL_ROLE;
+  const roleConfig = getRoleConfig(rawRole) || getRoleConfig(DEFAULT_OPERATIONAL_ROLE);
 
   // State Setup
   const [is24Hour, setIs24Hour] = useState(false);
@@ -57,6 +68,11 @@ export default function EmployeeIncidents() {
   const [location, setLocation] = useState<string>("KSR Bengaluru – Platform 3");
   const [customLocation, setCustomLocation] = useState<string>("");
   const [severity, setSeverity] = useState<IncidentSeverity>("CRITICAL"); // Default CRITICAL for emergency
+  const [incidentDateTime, setIncidentDateTime] = useState<string>(() => {
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  });
   const [description, setDescription] = useState<string>("");
   const [currentStatus, setCurrentStatus] = useState<IncidentOperationalStatus>("BLOCKED");
 
@@ -215,11 +231,26 @@ export default function EmployeeIncidents() {
         description: description.trim(),
         currentStatus: currentStatus as IncidentOperationalStatus,
         status: "SUBMITTED",
-        assignedTo: "Section Controller",
+        assignedTo: "Section Controller & Emergency Triage Cell",
         imageUrl: imagePreviewUrl || undefined,
         imageFileName: attachedImage?.name,
         createdAt: "Just now",
       };
+
+      // Persist to centralized employee activity history
+      logEmployeeActivity(
+        {
+          date: new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short" }),
+          time: formatIST(new Date(), is24Hour),
+          action: `Reported ${incidentType} (${severity})`,
+          category: "INCIDENT",
+          status: "Reported",
+          details: description.trim(),
+          location: effectiveLocation,
+          referenceId: generatedId,
+        },
+        currentUser?.employeeId
+      );
 
       setSubmittedIncident(newIncident);
       setRecentIncidents((prev) => [newIncident, ...prev]);
@@ -240,6 +271,68 @@ export default function EmployeeIncidents() {
     handleRemoveImage();
     setValidationErrors({});
     setShowConfirmModal(false);
+  };
+
+  // Role-Specific Emergency Incident Suggestions
+  const roleIncidentSuggestions = useMemo(() => {
+    switch (rawRole) {
+      case "loco_pilot":
+      case "assistant_loco_pilot":
+        return [
+          { label: "Track Obstruction / Boulder", type: "Track Obstruction" as IncidentType, severity: "CRITICAL" as IncidentSeverity, status: "BLOCKED" as IncidentOperationalStatus, desc: "Large boulder fallen across Up track at cutting. Immediate section block required.", loc: "Section Approach Cutting Km 48/20" },
+          { label: "Automatic Signal Blackout", type: "Signal Failure" as IncidentType, severity: "CRITICAL" as IncidentSeverity, status: "BLOCKED" as IncidentOperationalStatus, desc: "Complete aspect signal blackout across consecutive automatic signals.", loc: "Section S-42 Dadri Approach" },
+          { label: "Traction Transformer Fire", type: "Fire" as IncidentType, severity: "CRITICAL" as IncidentSeverity, status: "BLOCKED" as IncidentOperationalStatus, desc: "Dense smoke and burning smell detected from machine room main transformer.", loc: "Loco Cab / Machine Room" },
+        ];
+      case "track_maintainer":
+      case "section_engineer":
+      case "bridge_structure_inspector":
+        return [
+          { label: "Rail Fracture Under Traffic", type: "Track Obstruction" as IncidentType, severity: "CRITICAL" as IncidentSeverity, status: "BLOCKED" as IncidentOperationalStatus, desc: "Rail web completely severed through 60mm transverse crack. Track impassable.", loc: "Down Main Line Km 48/12" },
+          { label: "Track Landslide / Soil Slip", type: "Track Obstruction" as IncidentType, severity: "CRITICAL" as IncidentSeverity, status: "BLOCKED" as IncidentOperationalStatus, desc: "Heavy rain triggered 15-meter embankment soil slip under sleepers.", loc: "Cuttings Approach Km 45/10" },
+          { label: "Bridge Pier Scour Displacement", type: "Equipment Failure" as IncidentType, severity: "HIGH" as IncidentSeverity, status: "RESTRICTED" as IncidentOperationalStatus, desc: "High water current displaced 3.2m masonry pier base protection stones.", loc: "Yamuna Bridge Pier #4" },
+        ];
+      case "signal_maintainer":
+      case "telecom_technician":
+        return [
+          { label: "Electronic Interlocking Relay Crash", type: "Signal Failure" as IncidentType, severity: "CRITICAL" as IncidentSeverity, status: "BLOCKED" as IncidentOperationalStatus, desc: "Interlocking CPU standby failover aborted; all yard routes locked red.", loc: "West Yard Central Interlocking Cabin" },
+          { label: "OHE Wire Dropped on Point Machine", type: "Equipment Failure" as IncidentType, severity: "CRITICAL" as IncidentSeverity, status: "BLOCKED" as IncidentOperationalStatus, desc: "Live wire dropped across turnout tie rod. Severe sparking observed.", loc: "Turnout Point 104" },
+        ];
+      case "rpf_escort_constable":
+      case "station_security_officer":
+        return [
+          { label: "Suspicious Package / IED Threat", type: "Security Incident" as IncidentType, severity: "CRITICAL" as IncidentSeverity, status: "BLOCKED" as IncidentOperationalStatus, desc: "Unattended ticking metallic cylinder located under Concourse Pillar 7. BDDS cordon required.", loc: "Main Concourse Pillar 7" },
+          { label: "Armed Conflict / Violence on Board", type: "Security Incident" as IncidentType, severity: "CRITICAL" as IncidentSeverity, status: "RESTRICTED" as IncidentOperationalStatus, desc: "Armed altercation reported between passengers in Coach S3. Immediate escort reinforcements needed.", loc: "Train 12424 Coach S3" },
+          { label: "Passenger Platform Fire Alarm", type: "Fire" as IncidentType, severity: "HIGH" as IncidentSeverity, status: "RESTRICTED" as IncidentOperationalStatus, desc: "Electrical conduit burning behind refreshment stall on Platform 2.", loc: "Platform 2 Concourse" },
+        ];
+      case "railway_medical_officer":
+      case "emergency_medical_responder":
+        return [
+          { label: "Passenger Cardiac Arrest on Platform", type: "Medical Emergency" as IncidentType, severity: "CRITICAL" as IncidentSeverity, status: "OPERATIONAL" as IncidentOperationalStatus, desc: "Unresponsive adult passenger collapsed on Platform 3. CPR and AED active.", loc: "Platform 3 Bay" },
+          { label: "Passenger Fall from Moving Train", type: "Accident" as IncidentType, severity: "CRITICAL" as IncidentSeverity, status: "RESTRICTED" as IncidentOperationalStatus, desc: "Passenger slipped between coach and platform apron at train start. Trauma evacuation underway.", loc: "Platform 1 Departure Apron" },
+        ];
+      case "station_master":
+      case "station_superintendent":
+      case "train_manager":
+      default:
+        return [
+          { label: "Collision Threat / Overshoot", type: "Accident" as IncidentType, severity: "CRITICAL" as IncidentSeverity, status: "BLOCKED" as IncidentOperationalStatus, desc: "Train overshot starter signal aspect; approaching fouling mark of line 2.", loc: "Platform 2 Starter Signal" },
+          { label: "Coach Vestibule Fire Alarm", type: "Fire" as IncidentType, severity: "CRITICAL" as IncidentSeverity, status: "BLOCKED" as IncidentOperationalStatus, desc: "Smoke detector activated in pantry car / AC coach vestibule. Fire extinguishers deployed.", loc: "Pantry Car Rake" },
+          { label: "Onboard Severe Medical Crisis", type: "Medical Emergency" as IncidentType, severity: "HIGH" as IncidentSeverity, status: "OPERATIONAL" as IncidentOperationalStatus, desc: "Emergency doctor requested for critical passenger at approaching station halt.", loc: "Coach B1 Seat 8" },
+        ];
+    }
+  }, [rawRole]);
+
+  const handleApplyIncidentSuggestion = (sug: { label: string; type: IncidentType; severity: IncidentSeverity; status: IncidentOperationalStatus; desc: string; loc?: string }) => {
+    setIncidentType(sug.type);
+    setSeverity(sug.severity);
+    setCurrentStatus(sug.status);
+    setDescription(sug.desc);
+    if (sug.loc) {
+      setLocation("Other");
+      setCustomLocation(sug.loc);
+    }
+    setValidationErrors({});
+    showToast(`Loaded incident template: ${sug.label}`);
   };
 
   // Sidebar navigation menu items
@@ -418,10 +511,10 @@ export default function EmployeeIncidents() {
 
             <div className="hidden lg:block text-left">
               <div className="text-xs font-semibold text-white">
-                Authorized Employee
+                {currentUser?.name || "Authorized Employee"}
               </div>
               <div className="text-[10px] text-[#71899C]">
-                Secure Session
+                {roleConfig.displayName}
               </div>
             </div>
 
@@ -728,8 +821,42 @@ export default function EmployeeIncidents() {
                   /* INCIDENT REPORT FORM */
                   <div className="rounded-2xl border border-red-500/30 bg-[#071A33] p-5 sm:p-7 shadow-xl relative">
                     <form onSubmit={handleInitiateSubmit} className="space-y-6">
-                      {/* Section 1: Incident Type & Location */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                      {/* Role-Specific Emergency Quick Suggestions */}
+                      {roleIncidentSuggestions.length > 0 && (
+                        <div className="rounded-xl border border-red-500/40 bg-red-950/40 p-4 space-y-2.5">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-xs font-bold text-red-300">
+                              <Sparkles size={15} className="text-amber-400" />
+                              <span>Role Emergency Presets:</span>
+                              <span className="rounded bg-red-500/20 border border-red-500/50 px-2 py-0.5 text-[10px] text-red-200 font-mono">
+                                {roleConfig.displayName}
+                              </span>
+                            </div>
+                            <span className="text-[10px] text-slate-400 hidden sm:inline">
+                              Click preset to load emergency parameters
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {roleIncidentSuggestions.map((sug: any, idx: number) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => handleApplyIncidentSuggestion(sug)}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/30 bg-[#071A33] px-3 py-1.5 text-xs text-slate-200 transition hover:border-red-500 hover:bg-red-500/20 hover:text-white group"
+                              >
+                                <span className="h-1.5 w-1.5 rounded-full bg-red-500 group-hover:scale-125 transition-transform" />
+                                <span className="font-semibold">{sug.label}</span>
+                                <span className="rounded bg-red-500/20 px-1 py-0.2 text-[9px] text-red-300 font-mono">
+                                  {sug.type}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Section 1: Incident Type, Location, & Date/Time */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                         {/* Incident Type */}
                         <div>
                           <label
@@ -817,6 +944,26 @@ export default function EmployeeIncidents() {
                           {validationErrors.location && (
                             <p className="mt-1 text-xs text-red-400">{validationErrors.location}</p>
                           )}
+                        </div>
+
+                        {/* Date & Time of Incident */}
+                        <div>
+                          <label
+                            htmlFor="incidentDateTime"
+                            className="block text-xs font-bold uppercase tracking-wider text-slate-200 mb-1.5"
+                          >
+                            3. Incident Date / Time <span className="text-red-400">*</span>
+                          </label>
+                          <input
+                            type="datetime-local"
+                            id="incidentDateTime"
+                            value={incidentDateTime}
+                            onChange={(e) => setIncidentDateTime(e.target.value)}
+                            className="w-full rounded-xl border border-[#16364A] bg-[#0A2036] px-3.5 py-2.5 text-sm text-white focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/30 font-mono"
+                          />
+                          <p className="mt-1 text-[11px] text-slate-400">
+                            Recorded in Indian Standard Time (IST)
+                          </p>
                         </div>
                       </div>
 
