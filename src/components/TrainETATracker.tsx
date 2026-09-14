@@ -586,14 +586,14 @@ export default function TrainETATracker() {
             {/* HEADER */}
             <header style={{ height: '64px', padding: '0 24px', background: '#0f172a', borderBottom: '1px solid #1e293b', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 9999 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'linear-gradient(135deg, #2563eb, #38bdf8)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', boxShadow: '0 0 12px rgba(37,99,235,0.4)' }}>
-                        🚄
+                    <div style={{ width: '40px', height: '40px', borderRadius: '10px', overflow: 'hidden', border: '1px solid #294665', background: '#071A33', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.3)', flexShrink: 0 }}>
+                        <img src="/logos/raildrishti-dark.png" alt="RailDrishti" style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '2px' }} />
                     </div>
                     <div>
-                        <h1 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#f8fafc' }}>
-                            RAILDRISHTI <span style={{ fontSize: '11px', background: 'rgba(37,99,235,0.2)', color: '#60a5fa', padding: '2px 8px', borderRadius: '12px', border: '1px solid rgba(37,99,235,0.3)', marginLeft: '6px' }}>SIH26028</span>
+                        <h1 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', letterSpacing: '-0.02em' }}>
+                            Rail<span style={{ color: '#F59E0B' }}>Drishti</span> <span style={{ fontSize: '10px', fontWeight: 700, background: 'rgba(245, 158, 11, 0.15)', color: '#F59E0B', padding: '2px 8px', borderRadius: '12px', border: '1px solid rgba(245, 158, 11, 0.35)', marginLeft: '8px' }}>SIH26028</span>
                         </h1>
-                        <div style={{ fontSize: '11px', color: '#64748b' }}>Click any station to zoom into actual railway tracks & platforms</div>
+                        <div style={{ fontSize: '11px', color: '#94a3b8' }}>Click any station to zoom into actual railway tracks & platforms</div>
                     </div>
                 </div>
 
