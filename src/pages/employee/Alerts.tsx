@@ -29,20 +29,18 @@ import {
   AlertOctagon,
   Info,
   ShieldAlert,
-  Compass,
   UserCircle,
 } from "lucide-react";
-import { logout } from "../../services/auth";
+import { logout, getCurrentUser } from "../../services/auth";
 import {
-  employeeOperationalAlerts,
-  roleAlertScopes,
-  type EmployeeAlertRole,
-  type EmployeeOperationalAlert,
-  type EmployeeNavItem,
-} from "../../services/employee";
+  getRoleAlertsViewData,
+  type RoleAlertItem,
+} from "../../services/employeeAlertService";
+import type { EmployeeNavItem } from "../../services/employee";
 
 export default function EmployeeAlerts() {
   const navigate = useNavigate();
+  const currentUser = getCurrentUser();
 
   // State Setup
   const [is24Hour, setIs24Hour] = useState(false);
@@ -51,21 +49,26 @@ export default function EmployeeAlerts() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Role-Based Filtering State (Default: station_master)
-  const [selectedRole, setSelectedRole] = useState<EmployeeAlertRole>("station_master");
+  // Load dynamic role-specific alerts data
+  const roleViewData = useMemo(() => getRoleAlertsViewData(currentUser), [currentUser]);
 
-  // Local Alerts State (enables acknowledge action)
-  const [alertsState, setAlertsState] = useState<Record<EmployeeAlertRole, EmployeeOperationalAlert[]>>(
-    employeeOperationalAlerts
-  );
+  // Local Alerts State (enables acknowledge & read actions)
+  const [alertsList, setAlertsList] = useState<RoleAlertItem[]>(roleViewData.alerts);
+
+  // Detail Modal State
+  const [selectedAlert, setSelectedAlert] = useState<RoleAlertItem | null>(null);
 
   // Filter & Search States
   const [priorityFilter, setPriorityFilter] = useState<string>("ALL");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState<string>("");
 
+  // Sync if user changes
+  useEffect(() => {
+    setAlertsList(roleViewData.alerts);
+  }, [roleViewData]);
 
-  // Live IST Clock (Frontend display only)
+  // Live IST Clock
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
@@ -93,30 +96,37 @@ export default function EmployeeAlerts() {
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  const currentScope = roleAlertScopes[selectedRole];
-
-  // Acknowledge alert toggle
-  const handleToggleAcknowledge = (alertId: string) => {
-    setAlertsState((prev) => {
-      const updatedList = prev[selectedRole].map((item) => {
+  // Toggle acknowledge alert
+  const handleToggleAcknowledge = (alertId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setAlertsList((prev) =>
+      prev.map((item) => {
         if (item.id === alertId) {
           const nextStatus = item.status === "ACTIVE" ? "ACKNOWLEDGED" : "ACTIVE";
           showToast(`Alert "${item.title}" marked as ${nextStatus.toLowerCase()}`);
-          return { ...item, status: nextStatus as "ACTIVE" | "ACKNOWLEDGED" };
+          return { ...item, status: nextStatus, read: true };
         }
         return item;
-      });
-      return { ...prev, [selectedRole]: updatedList };
-    });
+      })
+    );
+    if (selectedAlert?.id === alertId) {
+      setSelectedAlert((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: prev.status === "ACTIVE" ? "ACKNOWLEDGED" : "ACTIVE",
+              read: true,
+            }
+          : null
+      );
+    }
   };
 
-  // Filtered alerts for current role
-  const roleAlerts = alertsState[selectedRole] || [];
-
+  // Filtered alerts
   const filteredAlerts = useMemo(() => {
-    return roleAlerts.filter((alert) => {
-      // Priority filter
-      if (priorityFilter !== "ALL" && alert.priority !== priorityFilter) {
+    return alertsList.filter((alert) => {
+      // Priority filter (case insensitive)
+      if (priorityFilter !== "ALL" && alert.priority.toUpperCase() !== priorityFilter.toUpperCase()) {
         return false;
       }
       // Status filter
@@ -128,21 +138,38 @@ export default function EmployeeAlerts() {
         const query = searchQuery.toLowerCase();
         const matchesTitle = alert.title.toLowerCase().includes(query);
         const matchesCategory = alert.category.toLowerCase().includes(query);
-        const matchesLocation = alert.location.toLowerCase().includes(query);
-        const matchesDesc = alert.description.toLowerCase().includes(query);
-        const matchesSection = alert.section?.toLowerCase().includes(query);
-        const matchesTrain = alert.train?.toLowerCase().includes(query);
-        return matchesTitle || matchesCategory || matchesLocation || matchesDesc || matchesSection || matchesTrain;
+        const matchesLocation = alert.location?.toLowerCase().includes(query) || false;
+        const matchesMessage = alert.message.toLowerCase().includes(query);
+        const matchesAssignment = alert.assignment.toLowerCase().includes(query);
+        const matchesSection = alert.section?.toLowerCase().includes(query) || false;
+        const matchesTrain = alert.train?.toLowerCase().includes(query) || false;
+        return (
+          matchesTitle ||
+          matchesCategory ||
+          matchesLocation ||
+          matchesMessage ||
+          matchesAssignment ||
+          matchesSection ||
+          matchesTrain
+        );
       }
       return true;
     });
-  }, [roleAlerts, priorityFilter, statusFilter, searchQuery]);
+  }, [alertsList, priorityFilter, statusFilter, searchQuery]);
 
-  // Dynamic Summary Metrics (calculated from role alerts)
-  const activeAlertsCount = roleAlerts.filter((a) => a.status === "ACTIVE").length;
-  const criticalCount = roleAlerts.filter((a) => a.priority === "CRITICAL" && a.status === "ACTIVE").length;
-  const highPriorityCount = roleAlerts.filter((a) => a.priority === "HIGH" && a.status === "ACTIVE").length;
-  const mediumCount = roleAlerts.filter((a) => a.priority === "MEDIUM" && a.status === "ACTIVE").length;
+  // Dynamic Summary Metrics
+  const activeAlertsCount = alertsList.filter((a) => a.status === "ACTIVE").length;
+  const criticalCount = alertsList.filter(
+    (a) => a.priority.toUpperCase() === "CRITICAL" && a.status === "ACTIVE"
+  ).length;
+  const highPriorityCount = alertsList.filter(
+    (a) => a.priority.toUpperCase() === "HIGH" && a.status === "ACTIVE"
+  ).length;
+  const mediumCount = alertsList.filter(
+    (a) =>
+      (a.priority.toUpperCase() === "MEDIUM" || a.priority.toUpperCase() === "INFORMATIONAL" || a.priority.toUpperCase() === "LOW") &&
+      a.status === "ACTIVE"
+  ).length;
 
   // Sidebar navigation menu items
   const navItems: EmployeeNavItem[] = [
@@ -230,10 +257,10 @@ export default function EmployeeAlerts() {
 
             <div className="hidden lg:block text-left">
               <div className="text-xs font-semibold text-white">
-                Authorized Employee
+                {roleViewData.employeeName}
               </div>
               <div className="text-[10px] text-[#71899C]">
-                Secure Session
+                {roleViewData.roleTitle}
               </div>
             </div>
 
@@ -365,12 +392,12 @@ export default function EmployeeAlerts() {
               <div className="text-[11px] text-slate-400 space-y-1">
                 <div className="flex items-center gap-1.5 text-slate-300 font-medium">
                   <Building2 size={13} className="text-[#0E7C86]" />
-                  <span>{currentScope.scopeLocation}</span>
+                  <span>{roleViewData.scopeLocation}</span>
                 </div>
-                <div className="text-[10px] text-[#71899C]">Responsibility-Filtered Alerts</div>
+                <div className="text-[10px] text-[#71899C]">Role-Filtered Alerts</div>
                 <div className="pt-1 flex items-center justify-between text-[10px] text-slate-400 border-t border-[#16364A]/40">
-                  <span>Scope Mode</span>
-                  <span className="text-amber-400 font-semibold uppercase">{currentScope.label}</span>
+                  <span>Logged-in Role</span>
+                  <span className="text-amber-400 font-semibold uppercase">{roleViewData.roleTitle}</span>
                 </div>
               </div>
             ) : (
@@ -383,19 +410,25 @@ export default function EmployeeAlerts() {
 
         {/* MAIN ALERTS CONTENT */}
         <main className="flex-1 min-w-0 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6">
-          {/* ============================================================ */}
-          {/* 3. PAGE HEADER & ROLE FILTER CONTROLS                        */}
-          {/* ============================================================ */}
+          {/* WARNING BANNER IF APPLICABLE */}
+          {roleViewData.warningMessage && (
+            <div className="p-3.5 rounded-xl border border-amber-500/40 bg-amber-950/30 text-amber-300 text-xs flex items-center gap-2.5 shadow-md">
+              <AlertTriangle size={18} className="shrink-0 text-amber-400" />
+              <span>{roleViewData.warningMessage}</span>
+            </div>
+          )}
+
+          {/* PAGE HEADER & ROLE INFO BANNER */}
           <section className="rounded-xl border border-[#16364A] bg-gradient-to-r from-[#071A33] via-[#0A223D] to-[#071A33] p-5 sm:p-6 shadow-lg">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-950/80 text-amber-300 border border-amber-500/40 text-xs font-bold uppercase tracking-wider">
                     <Radio size={12} className="text-amber-400 animate-pulse" />
-                    Responsibility-Filtered
+                    Role-Specific Operational Alerts
                   </span>
                   <span className="rounded bg-[#16364A] px-2 py-0.5 text-[10px] font-semibold text-[#AFC0D4] border border-slate-700">
-                    Demo Operational Data
+                    {roleViewData.isLiveApiData ? "Live Operational Feed" : "Static Operational Roster"}
                   </span>
                 </div>
 
@@ -404,82 +437,24 @@ export default function EmployeeAlerts() {
                   OPERATIONAL ALERTS
                 </h2>
                 <p className="text-xs sm:text-sm text-slate-300 mt-1">
-                  Alerts relevant to your current operational responsibility.
+                  Active alerts filtered strictly for <span className="font-semibold text-cyan-300">{roleViewData.roleTitle}</span> in <span className="font-semibold text-slate-200">{roleViewData.department}</span>.
                 </p>
               </div>
 
-              {/* ROLE TOGGLE SELECTOR (DEVELOPMENT & DEMO) */}
-              <div className="bg-[#031426]/90 p-1.5 rounded-xl border border-[#16364A] flex items-center gap-1.5 flex-wrap sm:flex-nowrap">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedRole("station_master");
-                    showToast("Switched to Station Master alerts");
-                  }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
-                    selectedRole === "station_master"
-                      ? "bg-gradient-to-r from-[#0E7C86] to-[#0A2036] text-white border border-cyan-400/50 shadow-md"
-                      : "text-slate-400 hover:text-white hover:bg-[#0A2036]"
-                  }`}
-                >
-                  <Building2 size={13} className={selectedRole === "station_master" ? "text-[#F59E0B]" : ""} />
-                  <span>Station Master</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedRole("loco_pilot");
-                    showToast("Switched to Loco Pilot alerts");
-                  }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
-                    selectedRole === "loco_pilot"
-                      ? "bg-gradient-to-r from-[#0E7C86] to-[#0A2036] text-white border border-cyan-400/50 shadow-md"
-                      : "text-slate-400 hover:text-white hover:bg-[#0A2036]"
-                  }`}
-                >
-                  <TrainFront size={13} className={selectedRole === "loco_pilot" ? "text-[#F59E0B]" : ""} />
-                  <span>Loco Pilot</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedRole("track_maintainer");
-                    showToast("Switched to Track Maintainer alerts");
-                  }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
-                    selectedRole === "track_maintainer"
-                      ? "bg-gradient-to-r from-[#0E7C86] to-[#0A2036] text-white border border-cyan-400/50 shadow-md"
-                      : "text-slate-400 hover:text-white hover:bg-[#0A2036]"
-                  }`}
-                >
-                  <Compass size={13} className={selectedRole === "track_maintainer" ? "text-[#F59E0B]" : ""} />
-                  <span>Track Maintainer</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedRole("rpf");
-                    showToast("Switched to RPF Security alerts");
-                  }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
-                    selectedRole === "rpf"
-                      ? "bg-gradient-to-r from-[#0E7C86] to-[#0A2036] text-white border border-cyan-400/50 shadow-md"
-                      : "text-slate-400 hover:text-white hover:bg-[#0A2036]"
-                  }`}
-                >
-                  <ShieldAlert size={13} className={selectedRole === "rpf" ? "text-[#F59E0B]" : ""} />
-                  <span>RPF</span>
-                </button>
+              {/* CURRENT EMPLOYEE BADGE */}
+              <div className="bg-[#031426]/90 p-3 rounded-xl border border-[#16364A] flex items-center gap-3">
+                <div className="h-9 w-9 rounded-lg bg-[#0E7C86]/20 border border-[#0E7C86]/40 flex items-center justify-center text-cyan-300">
+                  <ShieldAlert size={18} />
+                </div>
+                <div>
+                  <div className="text-[10px] text-slate-400 uppercase font-mono">Assigned Post</div>
+                  <div className="text-xs font-bold text-white">{roleViewData.scopeLocation}</div>
+                </div>
               </div>
             </div>
           </section>
 
-          {/* ============================================================ */}
-          {/* 13. DYNAMIC ALERT SUMMARY CARDS                             */}
-          {/* ============================================================ */}
+          {/* DYNAMIC ALERT SUMMARY METRIC CARDS */}
           <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="rounded-xl border border-[#16364A] bg-[#071A33] p-4.5 hover:border-[#0E7C86] transition shadow-sm">
               <div className="flex items-center justify-between text-slate-400 mb-2">
@@ -529,7 +504,7 @@ export default function EmployeeAlerts() {
             <div className="rounded-xl border border-[#16364A] bg-[#071A33] p-4.5 hover:border-[#0E7C86] transition shadow-sm">
               <div className="flex items-center justify-between text-slate-400 mb-2">
                 <span className="text-xs font-semibold uppercase tracking-wider text-[#AFC0D4]">
-                  Information / Medium
+                  Medium / Info
                 </span>
                 <Info size={18} className="text-cyan-400" />
               </div>
@@ -542,9 +517,7 @@ export default function EmployeeAlerts() {
             </div>
           </section>
 
-          {/* ============================================================ */}
-          {/* 15. RESPONSIBILITY SCOPE BANNER                             */}
-          {/* ============================================================ */}
+          {/* RESPONSIBILITY SCOPE BANNER */}
           <section className="rounded-xl border border-[#0E7C86]/60 bg-gradient-to-r from-[#071A33] via-[#0A223D] to-[#041527] p-4.5 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-lg bg-[#0E7C86]/20 border border-[#0E7C86]/50 flex items-center justify-center text-cyan-300 shrink-0">
@@ -555,10 +528,10 @@ export default function EmployeeAlerts() {
                   YOUR OPERATIONAL SCOPE
                 </div>
                 <div className="text-sm font-bold text-white flex items-center gap-2">
-                  <span>{currentScope.scopeTitle}</span>
-                  <span className="text-slate-400 font-normal">• {currentScope.scopeLocation}</span>
+                  <span>{roleViewData.roleTitle}</span>
+                  <span className="text-slate-400 font-normal">• {roleViewData.scopeLocation}</span>
                 </div>
-                <p className="text-[11px] text-slate-300 mt-0.5">{currentScope.scopeDescription}</p>
+                <p className="text-[11px] text-slate-300 mt-0.5">{roleViewData.scopeDescription}</p>
               </div>
             </div>
 
@@ -568,13 +541,11 @@ export default function EmployeeAlerts() {
             </div>
           </section>
 
-          {/* ============================================================ */}
-          {/* 11. FILTERS & 12. SEARCH BAR                                 */}
-          {/* ============================================================ */}
+          {/* FILTERS & SEARCH BAR */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#071A33] p-3.5 rounded-xl border border-[#16364A]">
             {/* Priority Filter Tabs */}
             <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-1 sm:pb-0">
-              {["ALL", "CRITICAL", "HIGH", "MEDIUM", "LOW"].map((p) => (
+              {["ALL", "CRITICAL", "HIGH", "MEDIUM", "LOW", "INFORMATIONAL"].map((p) => (
                 <button
                   key={p}
                   type="button"
@@ -624,18 +595,16 @@ export default function EmployeeAlerts() {
             </div>
           </div>
 
-          {/* ============================================================ */}
-          {/* 9. ALERT CARDS (2-COLUMN RESPONSIVE GRID) & 14. EMPTY STATE  */}
-          {/* ============================================================ */}
+          {/* ALERT CARDS & EMPTY STATE */}
           {filteredAlerts.length === 0 ? (
-            /* 14. ROLE-SPECIFIC EMPTY STATE */
+            /* ROLE-SPECIFIC EMPTY STATE (STEP 12) */
             <div className="rounded-xl border border-[#16364A] bg-[#071A33] p-12 text-center shadow-sm">
               <div className="h-14 w-14 rounded-full bg-emerald-950/60 border border-emerald-500/40 flex items-center justify-center text-emerald-400 mx-auto mb-3">
                 <CheckCircle2 size={32} />
               </div>
-              <h3 className="text-lg font-bold text-white">NO ACTIVE OPERATIONAL ALERTS</h3>
+              <h3 className="text-lg font-bold text-white">No alerts for your current role or assignment.</h3>
               <p className="text-xs text-slate-300 mt-1 max-w-md mx-auto">
-                No alerts currently require your attention for this filter criteria in your assigned scope.
+                No active operational alerts require your attention at this moment for your role ({roleViewData.roleTitle}).
               </p>
               {(priorityFilter !== "ALL" || statusFilter !== "ALL" || searchQuery) && (
                 <button
@@ -657,29 +626,131 @@ export default function EmployeeAlerts() {
                 <EmployeeAlertCard
                   key={alert.id}
                   alert={alert}
-                  onToggleAcknowledge={handleToggleAcknowledge}
+                  onToggleAcknowledge={(id) => handleToggleAcknowledge(id)}
+                  onClick={() => setSelectedAlert(alert)}
                 />
               ))}
             </div>
           )}
         </main>
       </div>
+
+      {/* ALERT DETAIL MODAL */}
+      {selectedAlert && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+          <div className="w-full max-w-lg rounded-2xl border border-[#16364A] bg-[#071A33] p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between border-b border-[#16364A] pb-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#0A2036] border border-[#294665]">
+                  <AlertTriangle size={20} className="text-[#F59E0B]" />
+                </div>
+                <div>
+                  <span className="text-xs font-mono uppercase text-[#0E7C86] tracking-wider block mb-0.5">
+                    OPERATIONAL ALERT DETAILS
+                  </span>
+                  <h3 className="text-base font-bold text-white">
+                    {selectedAlert.title}
+                  </h3>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedAlert(null)}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-[#0A2036] hover:text-white"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Quick Meta Details */}
+            <div className="rounded-xl bg-[#0A2036] p-3.5 border border-[#16364A] grid grid-cols-2 gap-3 text-xs">
+              <div>
+                <span className="text-slate-400 block">Priority:</span>
+                <span className="font-bold text-amber-400 uppercase">{selectedAlert.priority}</span>
+              </div>
+              <div>
+                <span className="text-slate-400 block">Category:</span>
+                <span className="text-cyan-300 font-semibold">{selectedAlert.category}</span>
+              </div>
+              <div>
+                <span className="text-slate-400 block">Assignment:</span>
+                <span className="text-slate-200 font-medium">{selectedAlert.assignment}</span>
+              </div>
+              <div>
+                <span className="text-slate-400 block">Source:</span>
+                <span className="text-slate-200 font-medium">{selectedAlert.source}</span>
+              </div>
+              <div>
+                <span className="text-slate-400 block">Status:</span>
+                <span
+                  className={`inline-block px-2 py-0.5 text-[10px] font-bold rounded mt-0.5 ${
+                    selectedAlert.status === "ACTIVE"
+                      ? "bg-emerald-950 text-emerald-300 border border-emerald-700"
+                      : "bg-slate-800 text-slate-400 border border-slate-700"
+                  }`}
+                >
+                  {selectedAlert.status}
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-400 block">Timestamp:</span>
+                <span className="font-mono text-slate-300">{selectedAlert.timestamp}</span>
+              </div>
+            </div>
+
+            {/* Message Body */}
+            <div>
+              <span className="text-xs font-mono uppercase text-slate-400 block mb-1.5">
+                Detailed Advisory / Instruction:
+              </span>
+              <p className="text-sm text-slate-200 bg-[#0A2036] p-4 rounded-xl border border-[#16364A] leading-relaxed">
+                {selectedAlert.message}
+              </p>
+            </div>
+
+            {/* Action Footer */}
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => handleToggleAcknowledge(selectedAlert.id)}
+                className={`w-full sm:w-auto rounded-xl px-4 py-2.5 text-xs font-semibold transition ${
+                  selectedAlert.status === "ACTIVE"
+                    ? "bg-[#0E7C86] text-white hover:bg-cyan-600 shadow-md"
+                    : "bg-[#0A2036] border border-slate-700 text-slate-300 hover:text-white"
+                }`}
+              >
+                {selectedAlert.status === "ACTIVE" ? "Acknowledge Alert" : "Mark as Active"}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSelectedAlert(null)}
+                className="w-full sm:w-auto rounded-xl bg-[#0A2036] border border-[#294665] px-4 py-2.5 text-xs font-semibold text-slate-300 hover:bg-[#16364A] transition"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 /**
- * 9. Reusable EmployeeAlertCard Component
+ * Reusable EmployeeAlertCard Component
  */
 interface EmployeeAlertCardProps {
-  alert: EmployeeOperationalAlert;
+  alert: RoleAlertItem;
   onToggleAcknowledge: (id: string) => void;
+  onClick: () => void;
 }
 
-function EmployeeAlertCard({ alert, onToggleAcknowledge }: EmployeeAlertCardProps) {
-  const isCritical = alert.priority === "CRITICAL";
-  const isHigh = alert.priority === "HIGH";
-  const isMedium = alert.priority === "MEDIUM";
+function EmployeeAlertCard({ alert, onToggleAcknowledge, onClick }: EmployeeAlertCardProps) {
+  const isCritical = alert.priority.toUpperCase() === "CRITICAL";
+  const isHigh = alert.priority.toUpperCase() === "HIGH";
+  const isMedium = alert.priority.toUpperCase() === "MEDIUM";
   const isAcknowledged = alert.status === "ACKNOWLEDGED";
 
   const priorityConfig = isCritical
@@ -718,7 +789,8 @@ function EmployeeAlertCard({ alert, onToggleAcknowledge }: EmployeeAlertCardProp
 
   return (
     <div
-      className={`rounded-xl border bg-[#071A33] p-5 transition shadow-sm flex flex-col justify-between ${
+      onClick={onClick}
+      className={`rounded-xl border bg-[#071A33] p-5 transition shadow-sm flex flex-col justify-between cursor-pointer hover:shadow-md ${
         priorityConfig.border
       } ${isAcknowledged ? "opacity-75 bg-[#051424]" : ""}`}
     >
@@ -751,7 +823,7 @@ function EmployeeAlertCard({ alert, onToggleAcknowledge }: EmployeeAlertCardProp
           {alert.title}
         </h3>
 
-        {/* Category & Location Badges */}
+        {/* Category & Assignment Badges */}
         <div className="flex items-center gap-2 mt-2 flex-wrap text-xs">
           <span className="px-2 py-0.5 rounded bg-[#0A2036] text-cyan-300 border border-[#16364A] text-[11px] font-medium">
             {alert.category}
@@ -759,7 +831,7 @@ function EmployeeAlertCard({ alert, onToggleAcknowledge }: EmployeeAlertCardProp
 
           <span className="text-slate-300 text-[11px] flex items-center gap-1">
             <MapPin size={12} className="text-[#0E7C86]" />
-            <span>{alert.location}</span>
+            <span>{alert.assignment || alert.location}</span>
           </span>
 
           {alert.section && (
@@ -781,26 +853,31 @@ function EmployeeAlertCard({ alert, onToggleAcknowledge }: EmployeeAlertCardProp
           )}
         </div>
 
-        {/* Description */}
-        <p className="text-xs text-slate-300 mt-2.5 leading-relaxed">
-          {alert.description}
+        {/* Description / Message */}
+        <p className="text-xs text-slate-300 mt-2.5 leading-relaxed line-clamp-2">
+          {alert.message}
         </p>
       </div>
 
       {/* Card Action Footer */}
       <div className="mt-4 pt-3 border-t border-[#16364A]/50 flex items-center justify-between">
         <span className="text-[10px] text-[#71899C] font-mono">ID: {alert.id}</span>
-        <button
-          type="button"
-          onClick={() => onToggleAcknowledge(alert.id)}
-          className={`text-xs font-semibold px-3 py-1.5 rounded-lg border transition ${
-            isAcknowledged
-              ? "bg-[#0A2036] text-slate-300 border-slate-700 hover:text-white"
-              : "bg-[#0E7C86] text-white border-cyan-400/50 hover:bg-cyan-600 shadow-sm"
-          }`}
-        >
-          {isAcknowledged ? "Reactivate Alert" : "Acknowledge"}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleAcknowledge(alert.id);
+            }}
+            className={`text-xs font-semibold px-3 py-1.5 rounded-lg border transition ${
+              isAcknowledged
+                ? "bg-[#0A2036] text-slate-300 border-slate-700 hover:text-white"
+                : "bg-[#0E7C86] text-white border-cyan-400/50 hover:bg-cyan-600 shadow-sm"
+            }`}
+          >
+            {isAcknowledged ? "Acknowledged" : "Acknowledge"}
+          </button>
+        </div>
       </div>
     </div>
   );
