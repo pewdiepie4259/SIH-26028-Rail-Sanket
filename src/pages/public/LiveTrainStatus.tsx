@@ -350,10 +350,11 @@ export const LiveTrainStatus = () => {
       {selectedWhatsAppTrain ? (
         <WhatsAppChatModal
           initialTrainNumber={selectedWhatsAppTrain}
+          defaultOpen={true}
           onClose={() => setSelectedWhatsAppTrain(null)}
         />
       ) : (
-        isWhatsAppOpen && <WhatsAppChatModal onClose={() => setIsWhatsAppOpen(false)} />
+        isWhatsAppOpen && <WhatsAppChatModal defaultOpen={true} onClose={() => setIsWhatsAppOpen(false)} />
       )}
     </div>
   );
