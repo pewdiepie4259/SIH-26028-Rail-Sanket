@@ -13,7 +13,6 @@ import {
   User,
   LogOut,
   Clock,
-  MapPin,
   ShieldCheck,
   ChevronLeft,
   ChevronRight,
@@ -23,50 +22,74 @@ import {
   Building2,
   CircleDot,
   CheckCheck,
-  Lock,
   Search,
   PlayCircle,
   Eye,
-  Layers,
   UserCircle,
+  Layers,
+  Filter,
 } from "lucide-react";
-import { logout } from "../../services/auth";
+import { getCurrentUser, logout } from "../../services/auth";
 import {
-  demoEmployeeTasks,
-  type EmployeeTaskItem,
-  type EmployeeTaskStatus,
-  type EmployeeNavItem,
-} from "../../services/employee";
+  getRoleTasksViewData,
+  type RoleTaskItem,
+  type TaskPriority,
+  type TaskStatus,
+} from "../../services/employeeTaskService";
+import RoleDepartmentWarning from "../../components/employee/RoleDepartmentWarning";
+import type { EmployeeNavItem } from "../../services/employee";
 
 export default function EmployeeTasks() {
   const navigate = useNavigate();
 
-  // State Setup
+  // Authentication & System State
+  const [currentUser, setCurrentUser] = useState(getCurrentUser());
   const [is24Hour, setIs24Hour] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Local Tasks React State
-  const [tasks, setTasks] = useState<EmployeeTaskItem[]>(demoEmployeeTasks);
+  // Sync auth state & safeguard controller redirection
+  useEffect(() => {
+    const user = getCurrentUser();
+    if (user) {
+      if (user.role === "controller") {
+        navigate("/controller/dashboard", { replace: true });
+        return;
+      }
+      setCurrentUser(user);
+    }
+  }, [navigate]);
 
-  // Filter & Search States
-  const [statusFilter, setStatusFilter] = useState<string>("ALL");
-  const [priorityFilter, setPriorityFilter] = useState<string>("ALL");
-  const [searchQuery, setSearchQuery] = useState<string>("");
-
-  // Modal State for viewing task details
-  const [selectedTask, setSelectedTask] = useState<EmployeeTaskItem | null>(null);
-
-
-  // Live IST Clock (Frontend display only)
+  // Live IST Clock
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // Compute dynamic role task data
+  const roleTaskData = getRoleTasksViewData(currentUser);
+
+  // Interactive Tasks React State
+  const [tasks, setTasks] = useState<RoleTaskItem[]>(roleTaskData.tasks);
+
+  // Update tasks when current user/role changes
+  useEffect(() => {
+    const nextData = getRoleTasksViewData(currentUser);
+    setTasks(nextData.tasks);
+  }, [currentUser]);
+
+  // Filter & Search States
+  const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [priorityFilter, setPriorityFilter] = useState<string>("ALL");
+  const [categoryFilter, setCategoryFilter] = useState<string>("ALL");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+
+  // Modal State for viewing task details
+  const [selectedTask, setSelectedTask] = useState<RoleTaskItem | null>(null);
 
   const formatIST = (date: Date, use24: boolean) => {
     return date.toLocaleTimeString("en-IN", {
@@ -80,7 +103,7 @@ export default function EmployeeTasks() {
 
   const handleLogout = () => {
     logout();
-    navigate("/employee/login", { replace: true });
+    navigate("/login", { replace: true });
   };
 
   const showToast = (msg: string) => {
@@ -88,19 +111,19 @@ export default function EmployeeTasks() {
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  // Unidirectional Status Progression Handler: PENDING -> IN_PROGRESS -> COMPLETED
+  // Status Progression Handler: Pending -> In Progress -> Completed
   const handleAdvanceStatus = (taskId: string) => {
     setTasks((prev) =>
       prev.map((t) => {
         if (t.id === taskId) {
-          if (t.status === "PENDING") {
-            showToast(`Task "${t.title}" moved to In Progress`);
-            const updated = { ...t, status: "IN_PROGRESS" as EmployeeTaskStatus };
+          if (t.status === "Pending") {
+            showToast(`Task "${t.title.slice(0, 30)}..." moved to In Progress`);
+            const updated = { ...t, status: "In Progress" as TaskStatus };
             if (selectedTask?.id === taskId) setSelectedTask(updated);
             return updated;
-          } else if (t.status === "IN_PROGRESS") {
-            showToast(`Task "${t.title}" marked as Completed`);
-            const updated = { ...t, status: "COMPLETED" as EmployeeTaskStatus };
+          } else if (t.status === "In Progress") {
+            showToast(`Task "${t.title.slice(0, 30)}..." marked as Completed`);
+            const updated = { ...t, status: "Completed" as TaskStatus };
             if (selectedTask?.id === taskId) setSelectedTask(updated);
             return updated;
           }
@@ -110,11 +133,11 @@ export default function EmployeeTasks() {
     );
   };
 
-  // Dynamic Summary Counters (calculated from state)
+  // Dynamic Summary Counters
   const totalCount = tasks.length;
-  const pendingCount = tasks.filter((t) => t.status === "PENDING").length;
-  const inProgressCount = tasks.filter((t) => t.status === "IN_PROGRESS").length;
-  const completedCount = tasks.filter((t) => t.status === "COMPLETED").length;
+  const pendingCount = tasks.filter((t) => t.status === "Pending").length;
+  const inProgressCount = tasks.filter((t) => t.status === "In Progress").length;
+  const completedCount = tasks.filter((t) => t.status === "Completed").length;
 
   // Filtered Task List
   const filteredTasks = useMemo(() => {
@@ -127,18 +150,49 @@ export default function EmployeeTasks() {
       if (priorityFilter !== "ALL" && t.priority !== priorityFilter) {
         return false;
       }
+      // Category filter
+      if (categoryFilter !== "ALL" && t.category !== categoryFilter) {
+        return false;
+      }
       // Search query
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
         const matchesTitle = t.title.toLowerCase().includes(query);
-        const matchesLocation = t.location.toLowerCase().includes(query);
         const matchesCategory = t.category.toLowerCase().includes(query);
         const matchesDesc = t.description.toLowerCase().includes(query);
-        return matchesTitle || matchesLocation || matchesCategory || matchesDesc;
+        const matchesAssign = t.assignment.toLowerCase().includes(query);
+        const matchesSource = t.source.toLowerCase().includes(query);
+        return matchesTitle || matchesCategory || matchesDesc || matchesAssign || matchesSource;
       }
       return true;
     });
-  }, [tasks, statusFilter, priorityFilter, searchQuery]);
+  }, [tasks, statusFilter, priorityFilter, categoryFilter, searchQuery]);
+
+  const getPriorityBadge = (priority: TaskPriority) => {
+    switch (priority) {
+      case "Critical":
+        return "bg-red-950/80 text-red-300 border-red-700/60";
+      case "High":
+        return "bg-amber-950/80 text-amber-300 border-amber-700/60";
+      case "Medium":
+        return "bg-blue-950/80 text-blue-300 border-blue-700/60";
+      case "Low":
+      default:
+        return "bg-slate-800 text-slate-300 border-slate-700";
+    }
+  };
+
+  const getStatusBadge = (status: TaskStatus) => {
+    switch (status) {
+      case "Completed":
+        return "bg-emerald-950/80 text-emerald-300 border-emerald-700/60";
+      case "In Progress":
+        return "bg-[#0E3558] text-teal-300 border-teal-500/60";
+      case "Pending":
+      default:
+        return "bg-slate-800 text-slate-300 border-slate-700";
+    }
+  };
 
   // Sidebar navigation menu items
   const navItems: EmployeeNavItem[] = [
@@ -158,14 +212,14 @@ export default function EmployeeTasks() {
     <div className="min-h-screen bg-[#031426] text-slate-100 flex flex-col font-sans selection:bg-[#F59E0B]/30 selection:text-white">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-[#0E7C86] text-white px-4 py-3 rounded-lg shadow-xl border border-cyan-400/30 animate-bounce">
-          <CheckCheck size={18} className="text-cyan-200" />
-          <span className="text-sm font-medium">{toastMessage}</span>
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-[#0E7C86] text-white px-4 py-2.5 rounded-lg shadow-xl border border-teal-400/40 text-xs font-medium">
+          <CheckCheck size={16} className="text-teal-200" />
+          <span>{toastMessage}</span>
         </div>
       )}
 
       {/* TOP HEADER */}
-      <header className="sticky top-0 z-40 flex h-[72px] shrink-0 items-center justify-between border-b border-[#16364A] bg-[#071A33]/95 backdrop-blur-md px-4 sm:px-6">
+      <header className="sticky top-0 z-40 flex h-[72px] shrink-0 items-center justify-between border-b border-[#16364A] bg-[#071A33] px-4 sm:px-6">
         {/* Left Branding & Mobile Toggle */}
         <div className="flex items-center gap-3">
           <button
@@ -178,7 +232,7 @@ export default function EmployeeTasks() {
           </button>
 
           <div className="flex items-center gap-3">
-            <div className="h-11 w-11 shrink-0 overflow-hidden rounded-full border border-[#294665] bg-[#071A33] shadow-md">
+            <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full border border-[#294665] bg-[#071A33]">
               <img
                 src="/logos/raildrishti-dark.png"
                 alt="RailDrishti"
@@ -191,7 +245,7 @@ export default function EmployeeTasks() {
                 <span className="text-xs font-bold uppercase tracking-[0.16em] text-white">
                   Rail<span className="text-[#F59E0B]">Drishti</span>
                 </span>
-                <span className="rounded bg-[#0E7C86]/30 px-1.5 py-0.5 text-[10px] font-semibold text-cyan-300 border border-[#0E7C86]/50">
+                <span className="rounded bg-[#0E7C86]/25 px-1.5 py-0.5 text-[10px] font-semibold text-teal-300 border border-[#0E7C86]/40">
                   Employee Portal
                 </span>
               </div>
@@ -202,8 +256,8 @@ export default function EmployeeTasks() {
           </div>
         </div>
 
-        {/* Right Header Status, IST Clock, Profile & Logout */}
-        <div className="flex items-center gap-2 sm:gap-4">
+        {/* Right Header: IST Clock, Security & Logout */}
+        <div className="flex items-center gap-2 sm:gap-3">
           {/* Live IST Clock */}
           <div className="hidden sm:flex items-center gap-2 rounded-lg border border-[#16364A] bg-[#0A2036] px-3 py-1.5 text-xs text-slate-200">
             <Clock size={15} className="text-[#F59E0B]" />
@@ -220,16 +274,16 @@ export default function EmployeeTasks() {
             </button>
           </div>
 
-          {/* Security */}
+          {/* Security & User Badge */}
           <div className="hidden items-center gap-2 border-l border-[#16364A] pl-3 sm:flex">
             <ShieldCheck size={18} className="text-[#0E7C86]" />
 
             <div className="hidden lg:block text-left">
-              <div className="text-xs font-semibold text-white">
-                Authorized Employee
+              <div className="text-xs font-semibold text-white truncate max-w-[130px]">
+                {roleTaskData.employeeName}
               </div>
-              <div className="text-[10px] text-[#71899C]">
-                Secure Session
+              <div className="text-[10px] text-teal-400 truncate max-w-[130px]">
+                {roleTaskData.roleTitle}
               </div>
             </div>
 
@@ -331,14 +385,8 @@ export default function EmployeeTasks() {
                       <div className="flex-1 flex items-center justify-between min-w-0">
                         <span className="truncate">{item.label}</span>
                         {item.badge !== undefined && item.badge > 0 && (
-                          <span className="ml-2 px-1.5 py-0.5 rounded-full bg-[#0E7C86] text-[10px] font-bold text-white">
+                          <span className="ml-2 px-1.5 py-0.5 rounded-full bg-[#EF4444] text-[10px] font-bold text-white">
                             {item.badge}
-                          </span>
-                        )}
-                        {!item.active && item.phase && (
-                          <span className="ml-1.5 text-[9px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700 flex items-center gap-1 font-mono">
-                            <Lock size={9} />
-                            {item.phase}
                           </span>
                         )}
                       </div>
@@ -347,7 +395,7 @@ export default function EmployeeTasks() {
 
                   {sidebarCollapsed && (
                     <div className="hidden lg:group-hover:block absolute left-full ml-2 top-1/2 -translate-y-1/2 px-2.5 py-1 bg-[#031426] border border-[#16364A] text-white text-xs rounded shadow-lg whitespace-nowrap z-50">
-                      {item.label} {!item.active && `(${item.phase})`}
+                      {item.label}
                     </div>
                   )}
                 </div>
@@ -361,68 +409,92 @@ export default function EmployeeTasks() {
               <div className="text-[11px] text-slate-400 space-y-1">
                 <div className="flex items-center gap-1.5 text-slate-300 font-medium">
                   <Building2 size={13} className="text-[#0E7C86]" />
-                  <span>KSR Bengaluru Junction</span>
+                  <span className="truncate">{roleTaskData.department}</span>
                 </div>
-                <div className="text-[10px] text-[#71899C]">Assigned Shift Tasks</div>
+                <div className="text-[10px] text-[#71899C] truncate">
+                  Role: {roleTaskData.roleTitle}
+                </div>
                 <div className="pt-1 flex items-center justify-between text-[10px] text-slate-400 border-t border-[#16364A]/40">
-                  <span>Shift Progress</span>
-                  <span className="text-emerald-400 font-semibold font-mono">
-                    {completedCount}/{totalCount} Completed
-                  </span>
+                  <span>Indian Railways</span>
+                  <span className="text-teal-400 font-medium">● Connected</span>
                 </div>
               </div>
             ) : (
-              <div className="flex justify-center text-emerald-400" title="Shift Tasks">
+              <div className="flex justify-center text-teal-400" title="Connected">
                 <CircleDot size={14} />
               </div>
             )}
           </div>
         </aside>
 
-        {/* MAIN TASKS CONTENT */}
+        {/* TASKS MAIN CONTENT */}
         <main className="flex-1 min-w-0 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6">
           {/* ============================================================ */}
-          {/* 2. PAGE HEADER                                              */}
+          {/* 1. CONFIGURATION WARNING (IF MISMATCH OR UNASSIGNED)         */}
           {/* ============================================================ */}
-          <section className="rounded-xl border border-[#16364A] bg-gradient-to-r from-[#071A33] via-[#0A223D] to-[#071A33] p-5 sm:p-6 shadow-lg">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2 mb-1.5">
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-cyan-950/80 text-cyan-300 border border-cyan-500/40 text-xs font-bold uppercase tracking-wider">
-                    <CheckSquare size={12} className="text-cyan-400" />
-                    Shift Task Queue
+          <RoleDepartmentWarning
+            warningMessage={roleTaskData.warningMessage}
+            isUnassigned={!roleTaskData.isRoleValid}
+          />
+
+          {/* ============================================================ */}
+          {/* 2. DYNAMIC HERO / ROLE TASK HEADER                           */}
+          {/* ============================================================ */}
+          <section className="relative overflow-hidden rounded-2xl border border-[#16364A] bg-gradient-to-br from-[#0A223D] via-[#071A33] to-[#041224] p-5 sm:p-7 shadow-xl">
+            <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-[#0E7C86]/10 rounded-full blur-3xl pointer-events-none" />
+
+            <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+              {/* Left Details */}
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/40 text-xs font-bold tracking-wide uppercase shadow-sm">
+                    <CheckSquare size={13} className="text-teal-400" />
+                    {roleTaskData.roleTitle} Tasks
                   </span>
-                  <span className="rounded bg-[#16364A] px-2 py-0.5 text-[10px] font-semibold text-[#AFC0D4] border border-slate-700">
-                    Sample Operational Data
+                  <span className="text-xs font-mono font-medium text-slate-400 bg-[#061629] px-2.5 py-1 rounded-md border border-[#16364A]">
+                    ID #{roleTaskData.employeeId}
+                  </span>
+                  <span className="text-xs font-medium text-slate-300 bg-[#0A2036] px-2.5 py-1 rounded-md border border-[#16364A]">
+                    Dept: {roleTaskData.department}
                   </span>
                 </div>
 
-                <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-                  <CheckSquare size={26} className="text-[#F59E0B]" />
-                  MY TASKS
-                </h2>
-                <p className="text-xs sm:text-sm text-slate-300 mt-1">
-                  View and manage your assigned operational tasks.
-                </p>
-              </div>
-
-              {/* Progress Summary Pill */}
-              <div className="bg-[#031426]/90 p-3.5 rounded-xl border border-[#16364A] flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-[#0E7C86]/20 border border-[#0E7C86]/50 flex items-center justify-center text-cyan-300 shrink-0">
-                  <Layers size={20} />
-                </div>
                 <div>
-                  <div className="text-[10px] font-semibold text-[#AFC0D4] uppercase tracking-wider">
-                    Completion Status
+                  <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                    SHIFT OPERATIONAL TASKS
+                  </h2>
+                  <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-2xl leading-relaxed">
+                    Mandatory operational, safety, and inspection task checklist assigned specifically to{" "}
+                    <span className="text-teal-300 font-semibold">{roleTaskData.roleTitle}</span>.
+                  </p>
+                </div>
+              </div>
+
+              {/* Right Summary Badge */}
+              <div className="w-full lg:w-auto shrink-0 bg-[#061629]/90 backdrop-blur-md p-4 sm:p-5 rounded-xl border border-[#1E4260] shadow-md flex items-center justify-between sm:justify-start gap-6">
+                <div>
+                  <div className="text-[11px] text-slate-400 uppercase tracking-wider font-semibold">
+                    Shift Workload
                   </div>
-                  <div className="text-xs font-bold text-white mt-0.5">
-                    {completedCount} of {totalCount} Done
+                  <div className="text-2xl font-bold font-mono text-white mt-0.5">
+                    {completedCount} / {totalCount}
                   </div>
-                  <div className="w-28 bg-[#16364A] h-1.5 rounded-full overflow-hidden mt-1">
-                    <div
-                      className="bg-emerald-400 h-full rounded-full transition-all duration-500"
-                      style={{ width: `${totalCount > 0 ? (completedCount / totalCount) * 100 : 0}%` }}
-                    />
+                  <div className="text-[11px] text-teal-400 font-medium">
+                    {pendingCount + inProgressCount} Pending Attention
+                  </div>
+                </div>
+
+                <div className="h-10 w-px bg-[#16364A]" />
+
+                <div>
+                  <div className="text-[11px] text-slate-400 uppercase tracking-wider font-semibold">
+                    Completion
+                  </div>
+                  <div className="text-2xl font-bold font-mono text-teal-300 mt-0.5">
+                    {totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0}%
+                  </div>
+                  <div className="text-[11px] text-slate-400">
+                    Logged to Station File
                   </div>
                 </div>
               </div>
@@ -430,483 +502,373 @@ export default function EmployeeTasks() {
           </section>
 
           {/* ============================================================ */}
-          {/* 9. DYNAMIC TASK SUMMARY COUNTERS (TOP ROW)                  */}
+          {/* 3. TASK KPI COUNTERS (4 TILES)                               */}
           {/* ============================================================ */}
-          <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="rounded-xl border border-[#16364A] bg-[#071A33] p-4.5 hover:border-[#0E7C86] transition shadow-sm">
-              <div className="flex items-center justify-between text-slate-400 mb-2">
-                <span className="text-xs font-semibold uppercase tracking-wider text-[#AFC0D4]">
-                  Total Tasks
-                </span>
-                <Layers size={18} className="text-slate-300" />
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <button
+              type="button"
+              onClick={() => setStatusFilter("ALL")}
+              className={`rounded-xl border p-4 text-left transition ${
+                statusFilter === "ALL"
+                  ? "bg-[#0A2036] border-teal-500/80 shadow-md ring-1 ring-teal-500/40"
+                  : "bg-[#071A33] border-[#16364A] hover:border-teal-500/40"
+              }`}
+            >
+              <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
+                <span className="font-semibold text-slate-300">All Tasks</span>
+                <Layers size={16} className="text-teal-400" />
               </div>
-              <div className="text-2xl font-extrabold text-white font-mono">
-                {totalCount}
-              </div>
-              <div className="text-[11px] text-slate-400 mt-1">
-                Assigned for current duty
-              </div>
-            </div>
+              <div className="text-xl font-bold font-mono text-white">{totalCount}</div>
+              <div className="text-[11px] text-slate-400 mt-0.5">Total assigned shift tasks</div>
+            </button>
 
-            <div className="rounded-xl border border-amber-500/40 bg-amber-950/20 p-4.5 hover:border-amber-500/70 transition shadow-sm">
-              <div className="flex items-center justify-between text-amber-300 mb-2">
-                <span className="text-xs font-semibold uppercase tracking-wider">
-                  Pending
-                </span>
-                <Clock size={18} className="text-amber-400" />
+            <button
+              type="button"
+              onClick={() => setStatusFilter("Pending")}
+              className={`rounded-xl border p-4 text-left transition ${
+                statusFilter === "Pending"
+                  ? "bg-[#0A2036] border-amber-500/80 shadow-md ring-1 ring-amber-500/40"
+                  : "bg-[#071A33] border-[#16364A] hover:border-amber-500/40"
+              }`}
+            >
+              <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
+                <span className="font-semibold text-slate-300">Pending</span>
+                <Clock size={16} className="text-amber-400" />
               </div>
-              <div className="text-2xl font-extrabold text-amber-400 font-mono">
-                {pendingCount}
-              </div>
-              <div className="text-[11px] text-amber-300/80 mt-1">
-                Awaiting operational action
-              </div>
-            </div>
+              <div className="text-xl font-bold font-mono text-amber-300">{pendingCount}</div>
+              <div className="text-[11px] text-slate-400 mt-0.5">Awaiting action</div>
+            </button>
 
-            <div className="rounded-xl border border-cyan-500/40 bg-cyan-950/20 p-4.5 hover:border-cyan-500/70 transition shadow-sm">
-              <div className="flex items-center justify-between text-cyan-300 mb-2">
-                <span className="text-xs font-semibold uppercase tracking-wider">
-                  In Progress
-                </span>
-                <PlayCircle size={18} className="text-cyan-400 animate-pulse" />
+            <button
+              type="button"
+              onClick={() => setStatusFilter("In Progress")}
+              className={`rounded-xl border p-4 text-left transition ${
+                statusFilter === "In Progress"
+                  ? "bg-[#0A2036] border-cyan-500/80 shadow-md ring-1 ring-cyan-500/40"
+                  : "bg-[#071A33] border-[#16364A] hover:border-cyan-500/40"
+              }`}
+            >
+              <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
+                <span className="font-semibold text-slate-300">In Progress</span>
+                <PlayCircle size={16} className="text-cyan-400" />
               </div>
-              <div className="text-2xl font-extrabold text-cyan-300 font-mono">
-                {inProgressCount}
-              </div>
-              <div className="text-[11px] text-cyan-200/80 mt-1">
-                Currently being worked on
-              </div>
-            </div>
+              <div className="text-xl font-bold font-mono text-cyan-300">{inProgressCount}</div>
+              <div className="text-[11px] text-slate-400 mt-0.5">Currently active</div>
+            </button>
 
-            <div className="rounded-xl border border-emerald-500/40 bg-emerald-950/20 p-4.5 hover:border-emerald-500/70 transition shadow-sm">
-              <div className="flex items-center justify-between text-emerald-300 mb-2">
-                <span className="text-xs font-semibold uppercase tracking-wider">
-                  Completed
-                </span>
-                <CheckCircle2 size={18} className="text-emerald-400" />
+            <button
+              type="button"
+              onClick={() => setStatusFilter("Completed")}
+              className={`rounded-xl border p-4 text-left transition ${
+                statusFilter === "Completed"
+                  ? "bg-[#0A2036] border-emerald-500/80 shadow-md ring-1 ring-emerald-500/40"
+                  : "bg-[#071A33] border-[#16364A] hover:border-emerald-500/40"
+              }`}
+            >
+              <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
+                <span className="font-semibold text-slate-300">Completed</span>
+                <CheckCircle2 size={16} className="text-emerald-400" />
               </div>
-              <div className="text-2xl font-extrabold text-emerald-400 font-mono">
-                {completedCount}
-              </div>
-              <div className="text-[11px] text-emerald-300/80 mt-1">
-                Verified & logged
-              </div>
-            </div>
-          </section>
+              <div className="text-xl font-bold font-mono text-emerald-300">{completedCount}</div>
+              <div className="text-[11px] text-slate-400 mt-0.5">Verified & signed-off</div>
+            </button>
+          </div>
 
           {/* ============================================================ */}
-          {/* 10. STATUS & 11. PRIORITY FILTERS & 12. SEARCH BAR          */}
+          {/* 4. SEARCH & FILTER CONTROLS                                  */}
           {/* ============================================================ */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#071A33] p-3.5 rounded-xl border border-[#16364A]">
-            {/* Status Filter Tabs */}
-            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-1 sm:pb-0">
-              {[
-                { id: "ALL", label: "All Tasks" },
-                { id: "PENDING", label: `Pending (${pendingCount})` },
-                { id: "IN_PROGRESS", label: `In Progress (${inProgressCount})` },
-                { id: "COMPLETED", label: `Completed (${completedCount})` },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setStatusFilter(tab.id)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition shrink-0 ${
-                    statusFilter === tab.id
-                      ? "bg-[#0E7C86] text-white shadow-sm font-bold"
-                      : "bg-[#0A2036] text-slate-300 hover:text-white hover:bg-[#16364A]"
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
+          <div className="rounded-xl border border-[#16364A] bg-[#071A33] p-4 flex flex-col md:flex-row items-center gap-3">
+            {/* Search Input */}
+            <div className="relative flex-1 w-full">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={`Search ${roleTaskData.roleTitle} tasks by title, category, location, or protocol...`}
+                className="w-full pl-9 pr-4 py-2 bg-[#0A2036] border border-[#16364A] rounded-lg text-xs text-white placeholder-slate-400 focus:outline-none focus:border-teal-400 transition"
+              />
             </div>
 
-            {/* Priority Filter & Search Bar */}
-            <div className="flex items-center gap-2">
+            {/* Category Filter Dropdown */}
+            <div className="flex items-center gap-2 w-full md:w-auto">
+              <Filter size={15} className="text-slate-400 shrink-0 hidden sm:block" />
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                className="w-full sm:w-auto px-3 py-2 bg-[#0A2036] border border-[#16364A] rounded-lg text-xs text-slate-200 focus:outline-none focus:border-teal-400 transition cursor-pointer"
+              >
+                <option value="ALL">All Categories ({roleTaskData.categories.length})</option>
+                {roleTaskData.categories.map((cat, idx) => (
+                  <option key={idx} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
+
+              {/* Priority Filter Dropdown */}
               <select
                 value={priorityFilter}
                 onChange={(e) => setPriorityFilter(e.target.value)}
-                className="bg-[#0A2036] border border-[#16364A] text-xs text-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-cyan-400"
+                className="w-full sm:w-auto px-3 py-2 bg-[#0A2036] border border-[#16364A] rounded-lg text-xs text-slate-200 focus:outline-none focus:border-teal-400 transition cursor-pointer"
               >
                 <option value="ALL">All Priorities</option>
-                <option value="HIGH">High Priority</option>
-                <option value="MEDIUM">Medium Priority</option>
-                <option value="LOW">Low Priority</option>
+                <option value="Critical">Critical</option>
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
               </select>
-
-              <div className="relative flex-1 sm:w-60">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Search tasks..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-[#0A2036] border border-[#16364A] rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400"
-                />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setSearchQuery("")}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs"
-                  >
-                    ×
-                  </button>
-                )}
-              </div>
             </div>
           </div>
 
           {/* ============================================================ */}
-          {/* 4. TASK CARDS (2-COLUMN RESPONSIVE GRID)                     */}
+          {/* 5. ROLE-SPECIFIC TASK LIST                                   */}
           {/* ============================================================ */}
-          {filteredTasks.length === 0 ? (
-            <div className="rounded-xl border border-[#16364A] bg-[#071A33] p-12 text-center shadow-sm">
-              <div className="h-14 w-14 rounded-full bg-emerald-950/60 border border-emerald-500/40 flex items-center justify-center text-emerald-400 mx-auto mb-3">
-                <CheckCircle2 size={32} />
+          <div className="space-y-3">
+            {filteredTasks.length === 0 ? (
+              <div className="rounded-xl border border-[#16364A] bg-[#071A33] p-10 text-center space-y-2">
+                <CheckSquare size={32} className="mx-auto text-slate-500 mb-2" />
+                <div className="text-sm font-bold text-white">No tasks assigned for your current role.</div>
+                <p className="text-xs text-slate-400 max-w-md mx-auto">
+                  {searchQuery || statusFilter !== "ALL" || priorityFilter !== "ALL" || categoryFilter !== "ALL"
+                    ? "No tasks matched your active filter criteria. Try resetting search or status filters."
+                    : `No operational tasks are currently pending for ${roleTaskData.roleTitle}.`}
+                </p>
+                {(searchQuery || statusFilter !== "ALL" || priorityFilter !== "ALL" || categoryFilter !== "ALL") && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStatusFilter("ALL");
+                      setPriorityFilter("ALL");
+                      setCategoryFilter("ALL");
+                      setSearchQuery("");
+                    }}
+                    className="mt-3 text-xs font-semibold text-teal-400 hover:text-teal-300 hover:underline"
+                  >
+                    Reset all filters
+                  </button>
+                )}
               </div>
-              <h3 className="text-lg font-bold text-white">NO TASKS FOUND</h3>
-              <p className="text-xs text-slate-300 mt-1 max-w-md mx-auto">
-                No assigned operational tasks match your active filter or search criteria.
-              </p>
-              {(statusFilter !== "ALL" || priorityFilter !== "ALL" || searchQuery) && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setStatusFilter("ALL");
-                    setPriorityFilter("ALL");
-                    setSearchQuery("");
-                  }}
-                  className="mt-4 px-3.5 py-1.5 rounded-lg bg-[#0E7C86] text-white text-xs font-semibold hover:bg-cyan-600 transition"
-                >
-                  Reset Filters
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {filteredTasks.map((task) => (
-                <EmployeeTaskCard
-                  key={task.id}
-                  task={task}
-                  onAdvanceStatus={handleAdvanceStatus}
-                  onViewDetails={(t) => setSelectedTask(t)}
-                />
-              ))}
+            ) : (
+              filteredTasks.map((task) => {
+                const isCompleted = task.status === "Completed";
+                const isInProgress = task.status === "In Progress";
+
+                return (
+                  <div
+                    key={task.id}
+                    className={`rounded-xl border p-4 sm:p-5 transition flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+                      isCompleted
+                        ? "bg-[#0A2036]/50 border-teal-900/30 opacity-75"
+                        : isInProgress
+                        ? "bg-[#071F38] border-teal-500/50 shadow-md ring-1 ring-teal-500/20"
+                        : "bg-[#071A33] border-[#16364A] hover:border-teal-500/40"
+                    }`}
+                  >
+                    {/* Left: Task Content */}
+                    <div className="flex-1 min-w-0 space-y-1.5">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span
+                          className={`text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-wider font-mono ${getPriorityBadge(
+                            task.priority
+                          )}`}
+                        >
+                          {task.priority}
+                        </span>
+                        <span
+                          className={`text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-wider ${getStatusBadge(
+                            task.status
+                          )}`}
+                        >
+                          {task.status}
+                        </span>
+                        <span className="text-[11px] font-medium text-teal-300/90 bg-[#0A2036] px-2 py-0.5 rounded border border-[#16364A]">
+                          {task.category}
+                        </span>
+                        <span className="text-[10px] font-mono text-slate-400 flex items-center gap-1">
+                          <Clock size={11} className="text-slate-400" />
+                          Due: {task.dueTime}
+                        </span>
+                      </div>
+
+                      <h3
+                        className={`text-sm font-bold tracking-tight ${
+                          isCompleted ? "line-through text-slate-400" : "text-white"
+                        }`}
+                      >
+                        {task.title}
+                      </h3>
+
+                      <p className="text-xs text-slate-300 leading-relaxed line-clamp-2">
+                        {task.description}
+                      </p>
+
+                      <div className="pt-1 flex flex-wrap items-center gap-3 text-[11px] text-slate-400">
+                        <span>
+                          Target: <span className="text-slate-200 font-medium">{task.assignment}</span>
+                        </span>
+                        <span>•</span>
+                        <span>
+                          Source: <span className="text-teal-300 font-mono text-[10px]">{task.source}</span>
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Right: Action Buttons */}
+                    <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedTask(task)}
+                        className="px-3 py-1.5 rounded-lg border border-[#16364A] bg-[#0A2036] text-xs font-medium text-slate-300 hover:text-white hover:border-teal-400 transition flex items-center gap-1"
+                        title="View Task Details"
+                      >
+                        <Eye size={13} />
+                        <span>Details</span>
+                      </button>
+
+                      {task.status === "Pending" && (
+                        <button
+                          type="button"
+                          onClick={() => handleAdvanceStatus(task.id)}
+                          className="px-3.5 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-xs font-bold text-white shadow-sm border border-teal-400/40 transition flex items-center gap-1"
+                        >
+                          <PlayCircle size={13} />
+                          <span>Start Task</span>
+                        </button>
+                      )}
+
+                      {task.status === "In Progress" && (
+                        <button
+                          type="button"
+                          onClick={() => handleAdvanceStatus(task.id)}
+                          className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white shadow-sm border border-emerald-400/40 transition flex items-center gap-1"
+                        >
+                          <CheckCircle2 size={13} />
+                          <span>Mark Done</span>
+                        </button>
+                      )}
+
+                      {task.status === "Completed" && (
+                        <span className="px-3 py-1.5 rounded-lg bg-emerald-950/60 text-emerald-300 border border-emerald-700/50 text-xs font-semibold flex items-center gap-1">
+                          <CheckCircle2 size={13} />
+                          <span>Signed Off</span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* ============================================================ */}
+          {/* 6. TASK DETAILS MODAL                                        */}
+          {/* ============================================================ */}
+          {selectedTask && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
+              <div className="relative w-full max-w-lg rounded-2xl border border-[#16364A] bg-[#071A33] p-6 shadow-2xl space-y-4">
+                <div className="flex items-center justify-between border-b border-[#16364A] pb-3">
+                  <div className="flex items-center gap-2">
+                    <CheckSquare size={18} className="text-teal-400" />
+                    <span className="text-xs font-bold uppercase tracking-wider text-white">
+                      Task Specifications
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedTask(null)}
+                    className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-[#0A2036]"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <div className="space-y-3 text-xs">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span
+                      className={`text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-wider font-mono ${getPriorityBadge(
+                        selectedTask.priority
+                      )}`}
+                    >
+                      {selectedTask.priority} Priority
+                    </span>
+                    <span
+                      className={`text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-wider ${getStatusBadge(
+                        selectedTask.status
+                      )}`}
+                    >
+                      Status: {selectedTask.status}
+                    </span>
+                    <span className="text-[10px] font-mono text-slate-400 bg-[#0A2036] px-2 py-0.5 rounded border border-[#16364A]">
+                      Due: {selectedTask.dueTime}
+                    </span>
+                  </div>
+
+                  <h3 className="text-base font-bold text-white leading-snug">
+                    {selectedTask.title}
+                  </h3>
+
+                  <p className="text-xs text-slate-300 leading-relaxed bg-[#0A2036] p-3.5 rounded-lg border border-[#16364A]">
+                    {selectedTask.description}
+                  </p>
+
+                  <div className="grid grid-cols-2 gap-2.5 pt-1">
+                    <div className="p-2.5 bg-[#0A2036] rounded-lg border border-[#16364A]">
+                      <div className="text-slate-400 text-[10px] uppercase">Category</div>
+                      <div className="font-semibold text-white mt-0.5">{selectedTask.category}</div>
+                    </div>
+                    <div className="p-2.5 bg-[#0A2036] rounded-lg border border-[#16364A]">
+                      <div className="text-slate-400 text-[10px] uppercase">Assignment Target</div>
+                      <div className="font-semibold text-teal-300 mt-0.5">{selectedTask.assignment}</div>
+                    </div>
+                    <div className="p-2.5 bg-[#0A2036] rounded-lg border border-[#16364A]">
+                      <div className="text-slate-400 text-[10px] uppercase">Assigned Staff</div>
+                      <div className="font-semibold text-white mt-0.5">{selectedTask.assignedTo}</div>
+                    </div>
+                    <div className="p-2.5 bg-[#0A2036] rounded-lg border border-[#16364A]">
+                      <div className="text-slate-400 text-[10px] uppercase">Authority / SOP</div>
+                      <div className="font-semibold text-slate-200 text-[11px] mt-0.5 truncate">
+                        {selectedTask.source}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#16364A]">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedTask(null)}
+                    className="px-4 py-2 rounded-lg border border-[#16364A] text-xs font-semibold text-slate-300 hover:text-white"
+                  >
+                    Close
+                  </button>
+
+                  {selectedTask.status === "Pending" && (
+                    <button
+                      type="button"
+                      onClick={() => handleAdvanceStatus(selectedTask.id)}
+                      className="px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-500 text-xs font-bold text-white shadow-md border border-teal-400/40 transition flex items-center gap-1.5"
+                    >
+                      <PlayCircle size={14} />
+                      <span>Start Task</span>
+                    </button>
+                  )}
+
+                  {selectedTask.status === "In Progress" && (
+                    <button
+                      type="button"
+                      onClick={() => handleAdvanceStatus(selectedTask.id)}
+                      className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white shadow-md border border-emerald-400/40 transition flex items-center gap-1.5"
+                    >
+                      <CheckCircle2 size={14} />
+                      <span>Mark as Completed</span>
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
           )}
         </main>
-      </div>
-
-      {/* ============================================================ */}
-      {/* 8. TASK DETAILS MODAL (VIEW ACTION)                          */}
-      {/* ============================================================ */}
-      {selectedTask && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-lg rounded-xl border border-[#0E7C86]/60 bg-[#071A33] p-6 shadow-2xl space-y-4">
-            {/* Modal Header */}
-            <div className="flex items-start justify-between border-b border-[#16364A] pb-3">
-              <div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[#0A2036] text-cyan-300 border border-[#16364A] uppercase">
-                  {selectedTask.category}
-                </span>
-                <h3 className="text-lg font-bold text-white mt-1.5">
-                  {selectedTask.title}
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedTask(null)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-[#0A2036]"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="space-y-3.5 text-xs">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-[#0A2036] p-3 rounded-lg border border-[#16364A]">
-                  <div className="text-[#AFC0D4] text-[10px] font-semibold uppercase">Priority Level</div>
-                  <div className="font-bold text-white mt-0.5 flex items-center gap-1.5">
-                    <span
-                      className={`h-2 w-2 rounded-full ${
-                        selectedTask.priority === "HIGH"
-                          ? "bg-red-400"
-                          : selectedTask.priority === "MEDIUM"
-                          ? "bg-amber-400"
-                          : "bg-blue-400"
-                      }`}
-                    />
-                    <span>{selectedTask.priority} PRIORITY</span>
-                  </div>
-                </div>
-
-                <div className="bg-[#0A2036] p-3 rounded-lg border border-[#16364A]">
-                  <div className="text-[#AFC0D4] text-[10px] font-semibold uppercase">Due Time</div>
-                  <div className="font-mono font-bold text-[#F59E0B] text-sm mt-0.5">
-                    {selectedTask.dueTime} IST
-                  </div>
-                </div>
-
-                <div className="bg-[#0A2036] p-3 rounded-lg border border-[#16364A] col-span-2">
-                  <div className="text-[#AFC0D4] text-[10px] font-semibold uppercase">Location</div>
-                  <div className="font-semibold text-white mt-0.5 flex items-center gap-1.5">
-                    <MapPin size={14} className="text-[#0E7C86]" />
-                    <span>{selectedTask.location}</span>
-                  </div>
-                </div>
-
-                <div className="bg-[#0A2036] p-3 rounded-lg border border-[#16364A] col-span-2">
-                  <div className="text-[#AFC0D4] text-[10px] font-semibold uppercase">Assigned Authority</div>
-                  <div className="font-semibold text-slate-200 mt-0.5">
-                    {selectedTask.assignedBy || "Operating Department"}
-                  </div>
-                </div>
-              </div>
-
-              {/* Description */}
-              <div className="bg-[#0A2036] p-3.5 rounded-lg border border-[#16364A]">
-                <div className="text-[#AFC0D4] text-[10px] font-semibold uppercase mb-1">
-                  Operational Description
-                </div>
-                <p className="text-slate-200 leading-relaxed">{selectedTask.description}</p>
-                {selectedTask.instructions && (
-                  <p className="text-cyan-300/90 text-[11px] mt-2 pt-2 border-t border-[#16364A]/50">
-                    <strong className="text-white">Instructions:</strong> {selectedTask.instructions}
-                  </p>
-                )}
-              </div>
-
-              {/* Status Progression Bar */}
-              <div className="bg-[#0A2036] p-3 rounded-lg border border-[#16364A]">
-                <div className="text-[#AFC0D4] text-[10px] font-semibold uppercase mb-2">
-                  Task Progression Stage
-                </div>
-                <div className="flex items-center justify-between text-[10px]">
-                  <span
-                    className={`font-bold ${
-                      selectedTask.status === "PENDING" ? "text-amber-400" : "text-emerald-400"
-                    }`}
-                  >
-                    ● 1. Pending
-                  </span>
-                  <span className="text-slate-500">→</span>
-                  <span
-                    className={`font-bold ${
-                      selectedTask.status === "IN_PROGRESS"
-                        ? "text-cyan-400 animate-pulse"
-                        : selectedTask.status === "COMPLETED"
-                        ? "text-emerald-400"
-                        : "text-slate-500"
-                    }`}
-                  >
-                    ● 2. In Progress
-                  </span>
-                  <span className="text-slate-500">→</span>
-                  <span
-                    className={`font-bold ${
-                      selectedTask.status === "COMPLETED" ? "text-emerald-400" : "text-slate-500"
-                    }`}
-                  >
-                    ● 3. Completed
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Modal Footer Actions */}
-            <div className="border-t border-[#16364A] pt-3 flex items-center justify-between">
-              <span className="text-[10px] text-[#71899C] font-mono">Task ID: {selectedTask.id}</span>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setSelectedTask(null)}
-                  className="px-3 py-1.5 rounded-lg border border-[#16364A] bg-[#0A2036] text-xs font-semibold text-slate-300 hover:text-white"
-                >
-                  Close
-                </button>
-
-                {selectedTask.status === "PENDING" && (
-                  <button
-                    type="button"
-                    onClick={() => handleAdvanceStatus(selectedTask.id)}
-                    className="px-4 py-1.5 rounded-lg bg-[#0E7C86] text-white text-xs font-bold hover:bg-cyan-600 transition shadow-sm flex items-center gap-1.5"
-                  >
-                    <PlayCircle size={14} />
-                    <span>Mark In Progress</span>
-                  </button>
-                )}
-
-                {selectedTask.status === "IN_PROGRESS" && (
-                  <button
-                    type="button"
-                    onClick={() => handleAdvanceStatus(selectedTask.id)}
-                    className="px-4 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-500 transition shadow-sm flex items-center gap-1.5"
-                  >
-                    <CheckCircle2 size={14} />
-                    <span>Mark Completed</span>
-                  </button>
-                )}
-
-                {selectedTask.status === "COMPLETED" && (
-                  <span className="px-3 py-1.5 rounded-lg bg-emerald-950 text-emerald-300 border border-emerald-600 text-xs font-bold flex items-center gap-1">
-                    <CheckCircle2 size={14} />
-                    <span>Completed</span>
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/**
- * 4. Reusable EmployeeTaskCard Component
- */
-interface EmployeeTaskCardProps {
-  task: EmployeeTaskItem;
-  onAdvanceStatus: (id: string) => void;
-  onViewDetails: (task: EmployeeTaskItem) => void;
-}
-
-function EmployeeTaskCard({ task, onAdvanceStatus, onViewDetails }: EmployeeTaskCardProps) {
-  const isPending = task.status === "PENDING";
-  const isInProgress = task.status === "IN_PROGRESS";
-  const isCompleted = task.status === "COMPLETED";
-
-  const isHigh = task.priority === "HIGH";
-  const isMedium = task.priority === "MEDIUM";
-
-  const priorityStyle = isHigh
-    ? "bg-red-950/80 text-red-300 border-red-500/50"
-    : isMedium
-    ? "bg-amber-950/80 text-amber-300 border-amber-500/50"
-    : "bg-blue-950/80 text-blue-300 border-blue-500/50";
-
-  const cardBorder = isCompleted
-    ? "border-emerald-900/40 bg-[#051424] opacity-80"
-    : isInProgress
-    ? "border-cyan-500/50 bg-[#071A33] shadow-md ring-1 ring-cyan-500/20"
-    : "border-[#16364A] bg-[#071A33] hover:border-slate-600";
-
-  return (
-    <div
-      className={`rounded-xl border p-5 transition shadow-sm flex flex-col justify-between ${cardBorder}`}
-    >
-      <div>
-        {/* Top Header: Category, Priority, and Status */}
-        <div className="flex items-center justify-between gap-2 mb-2.5">
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[#0A2036] text-cyan-300 border border-[#16364A] uppercase tracking-wider">
-            {task.category}
-          </span>
-
-          <div className="flex items-center gap-2">
-            <span
-              className={`text-[9px] font-extrabold px-2 py-0.5 rounded border uppercase tracking-wider ${priorityStyle}`}
-            >
-              {task.priority} PRIORITY
-            </span>
-
-            <span
-              className={`text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${
-                isCompleted
-                  ? "bg-emerald-950 text-emerald-300 border border-emerald-600"
-                  : isInProgress
-                  ? "bg-cyan-950 text-cyan-300 border border-cyan-600 animate-pulse"
-                  : "bg-[#0A2036] text-amber-400 border border-amber-500/40"
-              }`}
-            >
-              {task.status.replace("_", " ")}
-            </span>
-          </div>
-        </div>
-
-        {/* Task Title */}
-        <h3
-          className={`text-base font-bold leading-snug tracking-tight ${
-            isCompleted ? "line-through text-slate-400" : "text-white"
-          }`}
-        >
-          {task.title}
-        </h3>
-
-        {/* Location & Due Time */}
-        <div className="grid grid-cols-2 gap-2 mt-2.5 text-xs">
-          <div className="bg-[#0A2036] p-2 rounded-lg border border-[#16364A]/60 flex items-center gap-1.5 truncate">
-            <MapPin size={13} className="text-[#0E7C86] shrink-0" />
-            <span className="text-slate-200 truncate">{task.location}</span>
-          </div>
-
-          <div className="bg-[#0A2036] p-2 rounded-lg border border-[#16364A]/60 flex items-center gap-1.5">
-            <Clock size={13} className="text-[#F59E0B] shrink-0" />
-            <span className="text-slate-200 font-mono font-semibold">Due: {task.dueTime}</span>
-          </div>
-        </div>
-
-        {/* Short Description */}
-        <p className="text-xs text-slate-300 mt-2.5 leading-relaxed line-clamp-2">
-          {task.description}
-        </p>
-
-        {/* 15. Status Progress Workflow Indicator */}
-        <div className="mt-3 pt-2.5 border-t border-[#16364A]/40 flex items-center justify-between text-[10px] text-slate-400 font-medium">
-          <span className={isPending ? "text-amber-400 font-bold" : "text-emerald-400"}>
-            {isPending ? "●" : "✓"} Pending
-          </span>
-          <span className="text-slate-600">→</span>
-          <span className={isInProgress ? "text-cyan-300 font-bold" : isCompleted ? "text-emerald-400" : ""}>
-            {isInProgress ? "●" : isCompleted ? "✓" : "○"} In Progress
-          </span>
-          <span className="text-slate-600">→</span>
-          <span className={isCompleted ? "text-emerald-400 font-bold" : ""}>
-            {isCompleted ? "✓" : "○"} Completed
-          </span>
-        </div>
-      </div>
-
-      {/* 6. Card Action Footer */}
-      <div className="mt-4 pt-3 border-t border-[#16364A]/50 flex items-center justify-between gap-2">
-        <button
-          type="button"
-          onClick={() => onViewDetails(task)}
-          className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#16364A] bg-[#0A2036] text-slate-200 hover:text-white hover:border-[#0E7C86] transition flex items-center gap-1"
-        >
-          <Eye size={13} />
-          <span>View</span>
-        </button>
-
-        {/* Action Button depending on workflow stage */}
-        {isPending && (
-          <button
-            type="button"
-            onClick={() => onAdvanceStatus(task.id)}
-            className="text-xs font-bold px-3 py-1.5 rounded-lg bg-[#0E7C86] text-white hover:bg-cyan-600 transition shadow-sm flex items-center gap-1"
-          >
-            <PlayCircle size={13} />
-            <span>Mark In Progress</span>
-          </button>
-        )}
-
-        {isInProgress && (
-          <button
-            type="button"
-            onClick={() => onAdvanceStatus(task.id)}
-            className="text-xs font-bold px-3 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-500 transition shadow-sm flex items-center gap-1"
-          >
-            <CheckCircle2 size={13} />
-            <span>Mark Completed</span>
-          </button>
-        )}
-
-        {isCompleted && (
-          <span className="text-xs font-semibold text-emerald-400 flex items-center gap-1 py-1">
-            <CheckCircle2 size={14} />
-            <span>Finished</span>
-          </span>
-        )}
       </div>
     </div>
   );
