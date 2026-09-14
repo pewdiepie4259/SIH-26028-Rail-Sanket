@@ -18,50 +18,39 @@ import {
   Menu,
   X,
   Search,
-  ExternalLink,
   ShieldCheck,
-  CheckCircle2,
-  AlertOctagon,
   Info,
   Calendar,
   UserCircle,
+  MapPin,
 } from "lucide-react";
 import { getCurrentUser, logout } from "../../services/auth";
 import {
-  demoEmployee,
-  demoEmployeeActivities,
-  type EmployeeActivityItem,
-  type EmployeeActivityCategory,
-  type EmployeeNavItem,
-} from "../../services/employee";
+  getRoleActivitiesViewData,
+  type RoleActivityItem,
+  type ActivityCategory,
+} from "../../services/employeeHistoryService";
+import type { EmployeeNavItem } from "../../services/employee";
 
 export default function EmployeeHistory() {
   const navigate = useNavigate();
+  const currentUser = getCurrentUser();
 
   // Authentication & System State
-  const [currentUser, setCurrentUser] = useState(getCurrentUser());
   const [is24Hour, setIs24Hour] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-  // Activities React Local State (Read-only)
-  const [activities] = useState<EmployeeActivityItem[]>(demoEmployeeActivities);
+  // Dynamic role-specific activities data
+  const historyViewData = useMemo(() => getRoleActivitiesViewData(currentUser), [currentUser]);
 
   // Filters & Search State
   const [categoryFilter, setCategoryFilter] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState<string>("");
 
   // Detail Modal State
-  const [selectedActivity, setSelectedActivity] = useState<EmployeeActivityItem | null>(null);
-
-  // Auth state setup
-  useEffect(() => {
-    const user = getCurrentUser();
-    if (user) {
-      setCurrentUser(user);
-    }
-  }, []);
+  const [selectedActivity, setSelectedActivity] = useState<RoleActivityItem | null>(null);
 
   // Live IST Clock
   useEffect(() => {
@@ -86,49 +75,38 @@ export default function EmployeeHistory() {
     navigate("/employee/login", { replace: true });
   };
 
-  const employeeName = currentUser?.name || demoEmployee.name;
-  const employeeId = currentUser?.employeeId || demoEmployee.employeeId;
+  const activities = historyViewData.activities;
 
-  // Summary Metrics (Calculated dynamically from demo data)
+  // Summary Metrics
   const totalCount = activities.length;
-  const todayCount = activities.filter((a) => a.date === "13 Sep").length;
-  const issuesReportedCount = activities.filter(
-    (a) => a.category === "ISSUE" && a.title.toLowerCase().includes("reported")
-  ).length;
-  const issuesResolvedCount = activities.filter(
-    (a) => a.category === "ISSUE" && a.title.toLowerCase().includes("resolved")
-  ).length;
+  const issuesReportedCount = activities.filter((a) => a.category === "ISSUE").length;
+  const tasksCompletedCount = activities.filter((a) => a.category === "TASK").length;
+  const dutyActionsCount = activities.filter((a) => a.category === "DUTY" || a.category === "ASSIGNMENT").length;
 
-  // Filtered Activities List
+  // Filtered Activities
   const filteredActivities = useMemo(() => {
-    return activities.filter((item) => {
-      // Category filter
-      if (categoryFilter !== "ALL" && item.category !== categoryFilter) {
-        return false;
-      }
-
-      // Search query filter
+    return activities.filter((act) => {
+      if (categoryFilter !== "ALL" && act.category !== categoryFilter) return false;
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        const matchesTitle = item.title.toLowerCase().includes(q);
-        const matchesDesc = item.description.toLowerCase().includes(q);
-        const matchesCat = item.categoryLabel.toLowerCase().includes(q);
-        const matchesEntity = item.relatedEntity ? item.relatedEntity.toLowerCase().includes(q) : false;
-        return matchesTitle || matchesDesc || matchesCat || matchesEntity;
+        const matchesAction = act.action.toLowerCase().includes(q);
+        const matchesDetails = act.details.toLowerCase().includes(q);
+        const matchesLoc = act.location?.toLowerCase().includes(q) || false;
+        const matchesRef = act.referenceId?.toLowerCase().includes(q) || false;
+        return matchesAction || matchesDetails || matchesLoc || matchesRef;
       }
-
       return true;
     });
   }, [activities, categoryFilter, searchQuery]);
 
-  // Date Grouping (newest activities first)
+  // Group filtered activities by Date
   const groupedActivities = useMemo(() => {
-    const groups: Record<string, EmployeeActivityItem[]> = {};
-    filteredActivities.forEach((act) => {
-      if (!groups[act.date]) {
-        groups[act.date] = [];
+    const groups: Record<string, RoleActivityItem[]> = {};
+    filteredActivities.forEach((item) => {
+      if (!groups[item.date]) {
+        groups[item.date] = [];
       }
-      groups[act.date].push(act);
+      groups[item.date].push(item);
     });
     return groups;
   }, [filteredActivities]);
@@ -147,49 +125,47 @@ export default function EmployeeHistory() {
     { id: "profile", label: "Profile", icon: User, path: "/employee/profile", active: true },
   ];
 
-  // Render category icons
-  const renderCategoryIcon = (category: EmployeeActivityCategory) => {
+  const renderCategoryIcon = (category: ActivityCategory) => {
     switch (category) {
+      case "ASSIGNMENT":
+        return <TrainFront size={16} className="text-cyan-400" />;
       case "DUTY":
         return <CalendarCheck size={16} className="text-emerald-400" />;
-      case "TRAIN":
-        return <TrainFront size={16} className="text-cyan-400" />;
       case "TASK":
         return <CheckSquare size={16} className="text-blue-400" />;
-      case "ISSUE":
-        return <FileWarning size={16} className="text-amber-400" />;
-      case "INCIDENT":
-        return <AlertOctagon size={16} className="text-red-400" />;
       case "ALERT":
-        return <AlertTriangle size={16} className="text-orange-400" />;
+        return <AlertTriangle size={16} className="text-amber-400" />;
+      case "ISSUE":
+        return <FileWarning size={16} className="text-orange-400" />;
+      case "INCIDENT":
+        return <Flame size={16} className="text-rose-400" />;
+      case "LOGIN":
+        return <ShieldCheck size={16} className="text-teal-400" />;
       case "NOTIFICATION":
-        return <Bell size={16} className="text-purple-400" />;
-      case "SYSTEM":
       default:
-        return <Info size={16} className="text-slate-400" />;
+        return <Info size={16} className="text-purple-400" />;
     }
   };
 
-  // Category badge styles
-  const getCategoryBadgeClass = (category: EmployeeActivityCategory) => {
+  const getCategoryBadgeClass = (category: ActivityCategory) => {
     switch (category) {
+      case "ASSIGNMENT":
+        return "bg-cyan-500/15 text-cyan-300 border-cyan-500/30";
       case "DUTY":
         return "bg-emerald-500/15 text-emerald-300 border-emerald-500/30";
-      case "TRAIN":
-        return "bg-cyan-500/15 text-cyan-300 border-cyan-500/30";
       case "TASK":
         return "bg-blue-500/15 text-blue-300 border-blue-500/30";
-      case "ISSUE":
-        return "bg-amber-500/15 text-amber-300 border-amber-500/30";
-      case "INCIDENT":
-        return "bg-red-500/15 text-red-300 border-red-500/30";
       case "ALERT":
+        return "bg-amber-500/15 text-amber-300 border-amber-500/30";
+      case "ISSUE":
         return "bg-orange-500/15 text-orange-300 border-orange-500/30";
+      case "INCIDENT":
+        return "bg-rose-500/15 text-rose-300 border-rose-500/30";
+      case "LOGIN":
+        return "bg-teal-500/15 text-teal-300 border-teal-500/30";
       case "NOTIFICATION":
-        return "bg-purple-500/15 text-purple-300 border-purple-500/30";
-      case "SYSTEM":
       default:
-        return "bg-slate-500/15 text-slate-300 border-slate-500/30";
+        return "bg-purple-500/15 text-purple-300 border-purple-500/30";
     }
   };
 
@@ -197,7 +173,6 @@ export default function EmployeeHistory() {
     <div className="min-h-screen bg-[#031426] text-slate-100 flex flex-col font-sans selection:bg-[#0E7C86]/30 selection:text-white">
       {/* TOP HEADER */}
       <header className="sticky top-0 z-40 flex h-[72px] shrink-0 items-center justify-between border-b border-[#16364A] bg-[#071A33]/95 backdrop-blur-md px-4 sm:px-6">
-        {/* Left Branding & Mobile Toggle */}
         <div className="flex items-center gap-3">
           <button
             type="button"
@@ -233,9 +208,7 @@ export default function EmployeeHistory() {
           </div>
         </div>
 
-        {/* Right Controls */}
         <div className="flex items-center gap-3 sm:gap-4">
-          {/* IST Clock */}
           <div className="hidden items-center gap-2 rounded-lg border border-[#16364A] bg-[#0A2036] px-3 py-1.5 md:flex">
             <Clock size={16} className="text-[#0E7C86]" />
             <span className="font-mono text-sm font-medium text-slate-200">
@@ -245,29 +218,20 @@ export default function EmployeeHistory() {
               type="button"
               onClick={() => setIs24Hour(!is24Hour)}
               className="ml-1 rounded border border-[#294665] bg-[#071A33] px-1.5 py-0.5 text-[10px] font-medium text-slate-300 transition hover:bg-[#16364A]"
-              title="Toggle 12h/24h format"
             >
               {is24Hour ? "24H" : "12H"}
             </button>
           </div>
 
-          {/* Security */}
           <div className="hidden items-center gap-2 border-l border-[#16364A] pl-3 sm:flex">
             <ShieldCheck size={18} className="text-[#0E7C86]" />
-
             <div className="hidden lg:block text-left">
-              <div className="text-xs font-semibold text-white">
-                Authorized Employee
-              </div>
-              <div className="text-[10px] text-[#71899C]">
-                Secure Session
-              </div>
+              <div className="text-xs font-semibold text-white">{historyViewData.employeeName}</div>
+              <div className="text-[10px] text-[#71899C]">{historyViewData.roleTitle}</div>
             </div>
-
             <UserCircle size={24} className="text-[#AFC0D4]" />
           </div>
 
-          {/* Logout Button */}
           <button
             type="button"
             onClick={handleLogout}
@@ -279,9 +243,8 @@ export default function EmployeeHistory() {
         </div>
       </header>
 
-      {/* BODY WITH SIDEBAR & CONTENT */}
+      {/* BODY CONTAINER */}
       <div className="flex flex-1 overflow-hidden">
-        {/* MOBILE SIDEBAR BACKDROP */}
         {sidebarOpen && (
           <div
             className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
@@ -289,13 +252,11 @@ export default function EmployeeHistory() {
           />
         )}
 
-        {/* SIDEBAR */}
         <aside
           className={`fixed inset-y-0 left-0 z-50 flex flex-col border-r border-[#16364A] bg-[#071A33] transition-all duration-300 ease-in-out lg:static ${
             sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
           } ${sidebarCollapsed ? "lg:w-20" : "lg:w-64"} w-64`}
         >
-          {/* Mobile Close Button */}
           <div className="flex h-[72px] items-center justify-between border-b border-[#16364A] px-4 lg:hidden">
             <span className="font-semibold text-white text-sm">Navigation Menu</span>
             <button
@@ -307,7 +268,6 @@ export default function EmployeeHistory() {
             </button>
           </div>
 
-          {/* Nav Links */}
           <div className="flex-1 overflow-y-auto p-3 space-y-1">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -317,7 +277,6 @@ export default function EmployeeHistory() {
                 <button
                   key={item.id}
                   type="button"
-                  disabled={!item.active}
                   onClick={() => {
                     if (item.path) {
                       navigate(item.path);
@@ -327,32 +286,19 @@ export default function EmployeeHistory() {
                   className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium transition-all ${
                     isCurrent
                       ? "border border-[#0E7C86] bg-[#0E7C86] text-white shadow-lg shadow-[#0E7C86]/20 font-semibold"
-                      : item.active
-                      ? "text-slate-300 hover:bg-[#0A2036] hover:text-white border border-transparent"
-                      : "text-slate-500 cursor-not-allowed border border-transparent opacity-60"
+                      : "text-slate-300 hover:bg-[#0A2036] hover:text-white border border-transparent"
                   }`}
-                  title={item.phase ? `${item.label} (${item.phase})` : item.label}
                 >
                   <Icon
                     size={18}
-                    className={`shrink-0 ${
-                      isCurrent ? "text-cyan-200" : item.active ? "text-[#0E7C86]" : "text-slate-500"
-                    }`}
+                    className={`shrink-0 ${isCurrent ? "text-cyan-200" : "text-[#0E7C86]"}`}
                   />
-                  {!sidebarCollapsed && (
-                    <span className="flex-1 text-left truncate">{item.label}</span>
-                  )}
-                  {!sidebarCollapsed && item.phase && (
-                    <span className="rounded bg-[#16364A] px-1.5 py-0.5 text-[9px] font-mono text-slate-400">
-                      {item.phase}
-                    </span>
-                  )}
+                  {!sidebarCollapsed && <span className="flex-1 text-left truncate">{item.label}</span>}
                 </button>
               );
             })}
           </div>
 
-          {/* Sidebar Collapse Toggle (Desktop only) */}
           <div className="hidden border-t border-[#16364A] p-3 lg:block">
             <button
               type="button"
@@ -365,7 +311,6 @@ export default function EmployeeHistory() {
           </div>
         </aside>
 
-        {/* MAIN PAGE CONTENT */}
         <main className="flex-1 overflow-y-auto bg-[#031426] p-4 sm:p-6 lg:p-8">
           <div className="mx-auto max-w-6xl space-y-6">
             {/* Header Banner */}
@@ -373,103 +318,70 @@ export default function EmployeeHistory() {
               <div>
                 <div className="flex items-center gap-2 text-xs text-[#0E7C86] font-mono uppercase tracking-wider mb-1">
                   <History size={15} />
-                  <span>Employee Auditability Trail</span>
+                  <span>Role-Specific Audit Trail</span>
                 </div>
                 <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
-                  ACTIVITY HISTORY
+                  OPERATIONAL ACTIVITY HISTORY
                 </h1>
                 <p className="text-sm text-slate-300 mt-1">
-                  Review your recent operational activity and actions.
+                  Chronological duty actions, assignments, tasks, and reports for{" "}
+                  <span className="font-semibold text-cyan-300">{historyViewData.roleTitle}</span> ({historyViewData.department}).
                 </p>
               </div>
 
-              {/* Demo Badge */}
-              <div className="flex items-center gap-2 rounded-xl border border-[#16364A] bg-[#071A33] px-3.5 py-2 text-xs text-slate-400">
-                <ShieldCheck size={16} className="text-[#0E7C86]" />
-                <span>Status: <span className="text-cyan-300 font-semibold">Demo Activity History (Read-Only)</span></span>
+              <div className="rounded-xl border border-[#16364A] bg-[#071A33] px-3.5 py-2 text-xs font-mono text-slate-300 flex items-center gap-2">
+                <Calendar size={14} className="text-teal-400" />
+                <span>Today's Shift: 14 Sep 2026</span>
               </div>
             </div>
 
-            {/* SUMMARY CARDS */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* Total Activities */}
-              <div className="rounded-2xl border border-[#16364A] bg-[#071A33] p-4 sm:p-5 shadow-lg flex items-center justify-between">
-                <div>
-                  <span className="text-xs font-mono uppercase tracking-wider text-slate-400">
-                    Total Activities
-                  </span>
-                  <div className="text-2xl font-bold text-white mt-1 font-mono">{totalCount}</div>
-                  <span className="text-[11px] text-slate-400">Logged actions</span>
-                </div>
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#0A2036] border border-[#294665] text-[#0E7C86]">
-                  <History size={20} />
-                </div>
+            {/* SUMMARY STATS */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="rounded-2xl border border-[#16364A] bg-[#071A33] p-4 shadow-lg">
+                <span className="text-xs font-mono uppercase text-slate-400">Total Logged</span>
+                <div className="text-2xl font-bold text-white mt-1 font-mono">{totalCount}</div>
+                <span className="text-[11px] text-slate-400">Operational events</span>
               </div>
 
-              {/* Today */}
-              <div className="rounded-2xl border border-cyan-500/30 bg-[#071A33] p-4 sm:p-5 shadow-lg flex items-center justify-between">
-                <div>
-                  <span className="text-xs font-mono uppercase tracking-wider text-cyan-300">
-                    Today
-                  </span>
-                  <div className="text-2xl font-bold text-cyan-300 mt-1 font-mono">{todayCount}</div>
-                  <span className="text-[11px] text-slate-400">Current shift records</span>
-                </div>
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-300">
-                  <Calendar size={20} />
-                </div>
+              <div className="rounded-2xl border border-emerald-500/30 bg-[#071A33] p-4 shadow-lg">
+                <span className="text-xs font-mono uppercase text-emerald-300">Tasks Completed</span>
+                <div className="text-2xl font-bold text-emerald-400 mt-1 font-mono">{tasksCompletedCount}</div>
+                <span className="text-[11px] text-slate-400">Verified shift actions</span>
               </div>
 
-              {/* Issues Reported */}
-              <div className="rounded-2xl border border-[#16364A] bg-[#071A33] p-4 sm:p-5 shadow-lg flex items-center justify-between">
-                <div>
-                  <span className="text-xs font-mono uppercase tracking-wider text-amber-400">
-                    Issues Reported
-                  </span>
-                  <div className="text-2xl font-bold text-amber-400 mt-1 font-mono">{issuesReportedCount}</div>
-                  <span className="text-[11px] text-slate-400">Submitted by you</span>
-                </div>
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400">
-                  <FileWarning size={20} />
-                </div>
+              <div className="rounded-2xl border border-cyan-500/30 bg-[#071A33] p-4 shadow-lg">
+                <span className="text-xs font-mono uppercase text-cyan-300">Duty / Moves</span>
+                <div className="text-2xl font-bold text-cyan-300 mt-1 font-mono">{dutyActionsCount}</div>
+                <span className="text-[11px] text-slate-400">Assignments & rosters</span>
               </div>
 
-              {/* Issues Resolved */}
-              <div className="rounded-2xl border border-[#16364A] bg-[#071A33] p-4 sm:p-5 shadow-lg flex items-center justify-between">
-                <div>
-                  <span className="text-xs font-mono uppercase tracking-wider text-emerald-400">
-                    Issues Resolved
-                  </span>
-                  <div className="text-2xl font-bold text-emerald-400 mt-1 font-mono">{issuesResolvedCount}</div>
-                  <span className="text-[11px] text-slate-400">Completed lifecycle</span>
-                </div>
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
-                  <CheckCircle2 size={20} />
-                </div>
+              <div className="rounded-2xl border border-orange-500/30 bg-[#071A33] p-4 shadow-lg">
+                <span className="text-xs font-mono uppercase text-orange-300">Issues Reported</span>
+                <div className="text-2xl font-bold text-orange-400 mt-1 font-mono">{issuesReportedCount}</div>
+                <span className="text-[11px] text-slate-400">Operational defects logged</span>
               </div>
             </div>
 
             {/* FILTER & SEARCH BAR */}
-            <div className="rounded-2xl border border-[#16364A] bg-[#071A33] p-4 shadow-xl space-y-3">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-                {/* Category Filter Buttons */}
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
+            <div className="rounded-2xl border border-[#16364A] bg-[#071A33] p-4 shadow-xl space-y-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
                   {[
-                    { id: "ALL", label: "All" },
-                    { id: "DUTY", label: "Duty" },
-                    { id: "TRAIN", label: "Train" },
-                    { id: "TASK", label: "Task" },
-                    { id: "ISSUE", label: "Issue" },
-                    { id: "INCIDENT", label: "Incident" },
+                    { id: "ALL", label: "All Activities" },
+                    { id: "TASK", label: "Tasks" },
+                    { id: "DUTY", label: "Duty & Movement" },
+                    { id: "ALERT", label: "Alerts" },
+                    { id: "ISSUE", label: "Issues Logged" },
+                    { id: "LOGIN", label: "Sign-On" },
                   ].map((cat) => (
                     <button
                       key={cat.id}
                       type="button"
                       onClick={() => setCategoryFilter(cat.id)}
-                      className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold shrink-0 transition ${
+                      className={`rounded-lg px-3 py-1.5 text-xs font-medium shrink-0 transition ${
                         categoryFilter === cat.id
-                          ? "bg-[#0E7C86] text-white shadow"
-                          : "bg-[#0A2036] text-slate-400 hover:text-white border border-[#16364A]"
+                          ? "bg-[#0E7C86] text-white font-semibold shadow-sm"
+                          : "bg-[#0A2036] text-slate-400 hover:text-white"
                       }`}
                     >
                       {cat.label}
@@ -477,28 +389,15 @@ export default function EmployeeHistory() {
                   ))}
                 </div>
 
-                {/* Search Input */}
-                <div className="relative flex-1 max-w-md">
-                  <Search
-                    size={16}
-                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
-                  />
+                <div className="relative flex-1 max-w-xs">
+                  <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="text"
-                    placeholder="Search activity, train number, issue..."
+                    placeholder="Search history..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full rounded-xl border border-[#16364A] bg-[#0A2036] py-2 pl-10 pr-4 text-xs text-white placeholder-slate-500 focus:border-[#0E7C86] focus:outline-none focus:ring-1 focus:ring-[#0E7C86]"
+                    className="w-full rounded-xl border border-[#16364A] bg-[#0A2036] py-2 pl-9 pr-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-teal-400"
                   />
-                  {searchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => setSearchQuery("")}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
-                    >
-                      <X size={14} />
-                    </button>
-                  )}
                 </div>
               </div>
             </div>
@@ -506,7 +405,6 @@ export default function EmployeeHistory() {
             {/* TIMELINE ACTIVITIES */}
             <div className="space-y-6">
               {Object.keys(groupedActivities).length === 0 ? (
-                /* Empty State */
                 <div className="rounded-2xl border border-[#16364A] bg-[#071A33] p-12 text-center shadow-xl">
                   <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#0A2036] border border-[#294665] text-slate-400 mb-3">
                     <History size={28} />
@@ -517,31 +415,17 @@ export default function EmployeeHistory() {
                   <p className="text-xs text-slate-400 mt-1">
                     No activity entries match your current search or filter criteria.
                   </p>
-                  {(categoryFilter !== "ALL" || searchQuery) && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCategoryFilter("ALL");
-                        setSearchQuery("");
-                      }}
-                      className="mt-4 rounded-xl border border-[#294665] bg-[#0A2036] px-4 py-2 text-xs font-medium text-cyan-300 hover:bg-[#16364A] transition"
-                    >
-                      Clear Filters
-                    </button>
-                  )}
                 </div>
               ) : (
                 Object.entries(groupedActivities).map(([date, dateActivities]) => (
                   <div key={date} className="space-y-4">
-                    {/* Date Header Header */}
                     <div className="flex items-center gap-3">
                       <span className="rounded-xl border border-[#294665] bg-[#0A2036] px-3 py-1 text-xs font-mono font-bold text-cyan-300 shadow-sm">
-                        {date} (Today)
+                        {date}
                       </span>
                       <div className="h-px flex-1 bg-[#16364A]" />
                     </div>
 
-                    {/* Timeline List */}
                     <div className="relative pl-6 sm:pl-8 space-y-4 before:absolute before:left-2.5 sm:before:left-3.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-[#16364A]">
                       {dateActivities.map((act) => (
                         <div
@@ -549,11 +433,9 @@ export default function EmployeeHistory() {
                           onClick={() => setSelectedActivity(act)}
                           className="group relative rounded-2xl border border-[#16364A] bg-[#071A33] p-4 sm:p-5 transition-all hover:bg-[#0A2036] hover:border-[#294665] shadow-lg cursor-pointer"
                         >
-                          {/* Timeline Dot on the connector line */}
                           <span className="absolute -left-6 sm:-left-8 top-6 h-3 w-3 -translate-x-1/2 rounded-full border-2 border-[#031426] bg-[#0E7C86] group-hover:scale-125 group-hover:bg-cyan-400 transition-transform" />
 
                           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                            {/* Left Content */}
                             <div className="flex items-start gap-3 flex-1 min-w-0">
                               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#0A2036] border border-[#16364A]">
                                 {renderCategoryIcon(act.category)}
@@ -570,48 +452,32 @@ export default function EmployeeHistory() {
                                       act.category
                                     )}`}
                                   >
-                                    {act.categoryLabel}
+                                    {act.category}
                                   </span>
-                                  {act.statusBadge && (
-                                    <span className="rounded bg-[#16364A] text-[9px] font-mono px-1.5 py-0.5 text-slate-300 font-semibold">
-                                      {act.statusBadge}
+                                  <span className="rounded bg-[#16364A] text-[9px] font-mono px-1.5 py-0.5 text-emerald-300 font-semibold">
+                                    {act.status}
+                                  </span>
+                                  {act.referenceId && (
+                                    <span className="font-mono text-[10px] text-slate-500">
+                                      Ref: {act.referenceId}
                                     </span>
                                   )}
                                 </div>
 
-                                <h3 className="text-sm font-bold text-white group-hover:text-cyan-300 transition-colors">
-                                  {act.title}
+                                <h3 className="text-sm font-bold text-white tracking-tight">
+                                  {act.action}
                                 </h3>
 
                                 <p className="text-xs text-slate-300 mt-1 leading-relaxed">
-                                  {act.description}
+                                  {act.details}
                                 </p>
-
-                                {act.relatedEntity && (
-                                  <div className="mt-2 text-[11px] text-slate-400 flex items-center gap-1.5">
-                                    <span className="text-slate-500">Related:</span>
-                                    <span className="rounded bg-[#0A2036] px-2 py-0.5 font-mono text-slate-300 border border-[#16364A]">
-                                      {act.relatedEntity}
-                                    </span>
-                                  </div>
-                                )}
                               </div>
                             </div>
 
-                            {/* Right Action */}
-                            {act.actionRoute && (
-                              <div className="shrink-0 flex items-center sm:self-center">
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (act.actionRoute) navigate(act.actionRoute);
-                                  }}
-                                  className="inline-flex items-center gap-1.5 rounded-lg border border-[#294665] bg-[#0A2036] px-3 py-1.5 text-xs font-semibold text-[#0E7C86] hover:bg-[#16364A] hover:text-cyan-300 transition"
-                                >
-                                  <span>{act.actionLabel || "View Details"}</span>
-                                  <ExternalLink size={12} />
-                                </button>
+                            {act.location && (
+                              <div className="flex items-center gap-1.5 text-xs text-slate-400 shrink-0 pt-2 sm:pt-0">
+                                <MapPin size={13} className="text-[#0E7C86]" />
+                                <span>{act.location}</span>
                               </div>
                             )}
                           </div>
@@ -626,11 +492,10 @@ export default function EmployeeHistory() {
         </main>
       </div>
 
-      {/* ACTIVITY DETAIL MODAL */}
+      {/* DETAIL MODAL */}
       {selectedActivity && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
           <div className="w-full max-w-lg rounded-2xl border border-[#16364A] bg-[#071A33] p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200">
-            {/* Modal Header */}
             <div className="flex items-start justify-between border-b border-[#16364A] pb-4">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#0A2036] border border-[#294665]">
@@ -638,11 +503,9 @@ export default function EmployeeHistory() {
                 </div>
                 <div>
                   <span className="text-xs font-mono uppercase text-[#0E7C86] tracking-wider block mb-0.5">
-                    ACTIVITY DETAILS
+                    AUDIT LOG DETAILS
                   </span>
-                  <h3 className="text-base font-bold text-white">
-                    {selectedActivity.title}
-                  </h3>
+                  <h3 className="text-base font-bold text-white">{selectedActivity.action}</h3>
                 </div>
               </div>
               <button
@@ -654,71 +517,45 @@ export default function EmployeeHistory() {
               </button>
             </div>
 
-            {/* Quick Metadata */}
             <div className="rounded-xl bg-[#0A2036] p-3.5 border border-[#16364A] grid grid-cols-2 gap-3 text-xs">
               <div>
                 <span className="text-slate-400 block">Date & Time:</span>
-                <span className="font-mono font-bold text-white">{selectedActivity.date} — {selectedActivity.time} IST</span>
-              </div>
-              <div>
-                <span className="text-slate-400 block">Category:</span>
-                <span
-                  className={`inline-block px-2 py-0.5 text-[10px] font-bold rounded border mt-0.5 ${getCategoryBadgeClass(
-                    selectedActivity.category
-                  )}`}
-                >
-                  {selectedActivity.categoryLabel}
+                <span className="font-mono font-bold text-white">
+                  {selectedActivity.date} • {selectedActivity.time} IST
                 </span>
               </div>
               <div>
-                <span className="text-slate-400 block">Related Entity:</span>
-                <span className="font-mono font-semibold text-slate-200">{selectedActivity.relatedEntity || "N/A"}</span>
+                <span className="text-slate-400 block">Category:</span>
+                <span className={`inline-block px-2 py-0.5 text-[10px] font-bold rounded border mt-0.5 ${getCategoryBadgeClass(selectedActivity.category)}`}>
+                  {selectedActivity.category}
+                </span>
               </div>
               <div>
-                <span className="text-slate-400 block">Logged By:</span>
-                <span className="font-semibold text-slate-200">{employeeName} ({employeeId})</span>
+                <span className="text-slate-400 block">Status:</span>
+                <span className="text-emerald-400 font-semibold">{selectedActivity.status}</span>
+              </div>
+              <div>
+                <span className="text-slate-400 block">Location:</span>
+                <span className="text-slate-200 font-medium">{selectedActivity.location || "Section Area"}</span>
               </div>
             </div>
 
-            {/* Description */}
             <div>
-              <span className="text-xs font-mono uppercase text-slate-400 block mb-1.5">
-                Activity Summary:
-              </span>
+              <span className="text-xs font-mono uppercase text-slate-400 block mb-1.5">Action Details:</span>
               <p className="text-sm text-slate-200 bg-[#0A2036] p-4 rounded-xl border border-[#16364A] leading-relaxed">
-                {selectedActivity.description}
+                {selectedActivity.details}
               </p>
             </div>
 
-            {/* Audit notice */}
-            <div className="rounded-lg bg-[#0A2036]/60 p-3 border border-[#16364A] text-[11px] text-slate-400 flex items-center gap-2">
-              <ShieldCheck size={14} className="text-[#0E7C86] shrink-0" />
-              <span>Immutable audit record generated during employee operational session.</span>
-            </div>
-
-            {/* Actions */}
-            <div className="pt-2 flex items-center justify-end gap-3">
+            <div className="pt-2 flex items-center justify-between text-xs">
+              <span className="font-mono text-slate-500">ID: {selectedActivity.id}</span>
               <button
                 type="button"
                 onClick={() => setSelectedActivity(null)}
-                className="rounded-xl bg-[#0A2036] border border-[#294665] px-4 py-2.5 text-xs font-semibold text-slate-300 hover:bg-[#16364A] transition"
+                className="rounded-xl bg-[#0A2036] border border-[#294665] px-4 py-2 text-xs font-semibold text-slate-300 hover:bg-[#16364A] transition"
               >
                 Close
               </button>
-              {selectedActivity.actionRoute && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    const route = selectedActivity.actionRoute;
-                    setSelectedActivity(null);
-                    if (route) navigate(route);
-                  }}
-                  className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#0E7C86] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#0E5961] shadow-lg transition"
-                >
-                  <span>{selectedActivity.actionLabel || "View Related Module"}</span>
-                  <ExternalLink size={13} />
-                </button>
-              )}
             </div>
           </div>
         </div>
