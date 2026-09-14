@@ -916,7 +916,11 @@ export type IssueType =
   | "Track"
   | "Platform"
   | "Train"
+  | "Electrical"
+  | "Telecom"
   | "Safety"
+  | "Security"
+  | "Medical"
   | "Other";
 
 export type IssueSeverity = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";

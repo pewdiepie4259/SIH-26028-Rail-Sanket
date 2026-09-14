@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -32,8 +32,15 @@ import {
   ExternalLink,
   ShieldCheck,
   UserCircle,
+  Sparkles,
 } from "lucide-react";
-import { logout } from "../../services/auth";
+import { getCurrentUser, logout } from "../../services/auth";
+import {
+  getRoleConfig,
+  DEFAULT_OPERATIONAL_ROLE,
+  type OperationalRoleId,
+} from "../../config/employeeRoles";
+import { logEmployeeActivity } from "../../services/employeeHistoryService";
 import {
   demoRecentReports,
   type IssueType,
@@ -45,6 +52,10 @@ import {
 
 export default function EmployeeReport() {
   const navigate = useNavigate();
+  const currentUser = getCurrentUser();
+
+  const rawRole = (currentUser?.operationalRole as OperationalRoleId) || DEFAULT_OPERATIONAL_ROLE;
+  const roleConfig = getRoleConfig(rawRole) || getRoleConfig(DEFAULT_OPERATIONAL_ROLE);
 
   // State Setup
   const [is24Hour, setIs24Hour] = useState(false);
@@ -202,6 +213,34 @@ export default function EmployeeReport() {
 
       const effectiveLocation = location === "Other" ? customLocation.trim() : location.trim();
 
+      const getAssignedTeam = (type: IssueType) => {
+        switch (type) {
+          case "Signal":
+            return "S&T Signal Maintenance Desk";
+          case "Track":
+            return "P-Way Engineering Gang";
+          case "Platform":
+            return "Station Operations & Commercial";
+          case "Train":
+            return "Rolling Stock & TXR Depot";
+          case "Electrical":
+            return "Traction (OHE) Control";
+          case "Telecom":
+            return "Telecom Operations Cell";
+          case "Safety":
+            return "Divisional Safety Directorate";
+          case "Security":
+            return "RPF Security Post";
+          case "Medical":
+            return "Railway Medical Unit";
+          case "Other":
+          default:
+            return "Section Controller";
+        }
+      };
+
+      const assignedTo = getAssignedTeam(issueType as IssueType);
+
       const newReport: IssueReportItem = {
         id: generatedId,
         issueType: issueType as IssueType,
@@ -210,11 +249,26 @@ export default function EmployeeReport() {
         description: description.trim(),
         currentStatus: currentStatus as OperationalImpactStatus,
         status: "SUBMITTED",
-        assignedTo: "Section Controller",
+        assignedTo,
         imageUrl: imagePreviewUrl || undefined,
         imageFileName: attachedImage?.name,
         createdAt: "Just now",
       };
+
+      // Persist to centralized employee activity history
+      logEmployeeActivity(
+        {
+          date: new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short" }),
+          time: formatIST(new Date(), is24Hour),
+          action: `Reported ${issueType} Issue`,
+          category: "ISSUE",
+          status: "Reported",
+          details: description.trim(),
+          location: effectiveLocation,
+          referenceId: generatedId,
+        },
+        currentUser?.employeeId
+      );
 
       setSubmittedReport(newReport);
       setRecentReports((prev) => [newReport, ...prev]);
@@ -226,7 +280,7 @@ export default function EmployeeReport() {
   // Reset Form for another submission
   const handleResetForm = () => {
     setSubmittedReport(null);
-    setIssueType("");
+    setIssueType(roleSuggestions.primaryType || "");
     setLocation("KSR Bengaluru Junction");
     setCustomLocation("");
     setSeverity("");
@@ -250,13 +304,157 @@ export default function EmployeeReport() {
     { id: "profile", label: "Profile", icon: User, path: "/employee/profile", active: true },
   ];
 
-  // Issue Type Options
+  // Role-Specific Issue Suggestions Mapping
+  const roleSuggestions = useMemo(() => {
+    switch (rawRole) {
+      case "track_maintainer":
+      case "section_engineer":
+      case "bridge_structure_inspector":
+        return {
+          primaryType: "Track" as IssueType,
+          suggestions: [
+            { label: "Rail Weld Micro-Defect", type: "Track" as IssueType, text: "USFD flaw detected on rail joint. Emergency clamp and fishplate reinforcement required.", loc: "Section A Down Line Km 48/12" },
+            { label: "Ballast Cushion Deficiency", type: "Track" as IssueType, text: "Ballast shoulder cushion measured below 250mm standard on turnout crossover.", loc: "Crossover #21 Km 51/20" },
+            { label: "Loose Fishplate Bolts", type: "Track" as IssueType, text: "Fishplate bolts loosened on bridge approach sleepers. Standard torque wrench tightening needed.", loc: "Bridge Approach Km 46/00" },
+            { label: "High Rail Temperature (58°C)", type: "Track" as IssueType, text: "Rail temperature reading 58°C (above TD+20). Immediate hot weather patrolling underway.", loc: "CWR Stretch Km 44–50" },
+          ],
+        };
+      case "signal_maintainer":
+        return {
+          primaryType: "Signal" as IssueType,
+          suggestions: [
+            { label: "Point Machine 104 Stall", type: "Signal" as IssueType, text: "Point machine operating current spiked to 4.8A during reverse stroke. Point lock slide requires adjustment.", loc: "West Yard Points 104A" },
+            { label: "Track Circuit TC-44 False Drop", type: "Signal" as IssueType, text: "High voltage impulse track circuit TC-44 showing intermittent false drop indications.", loc: "Signal Post S-14 / TC-44" },
+            { label: "Signal S-14 Lamp Glitch", type: "Signal" as IssueType, text: "Red aspect main filament burned out on Home Signal; auxiliary filament active.", loc: "Home Signal Post S-14" },
+            { label: "Station IPS Battery Discharge", type: "Signal" as IssueType, text: "110V DC station integrated power supply battery bank discharge test anomaly.", loc: "Relay Room IPS Bank" },
+          ],
+        };
+      case "telecom_technician":
+        return {
+          primaryType: "Telecom" as IssueType,
+          suggestions: [
+            { label: "VHF Repeater RF Drop", type: "Telecom" as IssueType, text: "2W Simplex VHF driver-guard radio repeater dropped RF carrier power at tower.", loc: "Repeater Hut Km 52" },
+            { label: "Station PIS Audio Codec Loss", type: "Telecom" as IssueType, text: "Platform 4 & 5 passenger audio announcement encoder buffer underrun.", loc: "PIS Server Room" },
+            { label: "OFC Trunk Cable Trough Damage", type: "Telecom" as IssueType, text: "24-core OFC trunk line cable trough uncovered near bridge culvert.", loc: "OFC Trough Km 52" },
+          ],
+        };
+      case "loco_pilot":
+      case "assistant_loco_pilot":
+        return {
+          primaryType: "Train" as IssueType,
+          suggestions: [
+            { label: "Auxiliary Headlight Dimness", type: "Train" as IssueType, text: "Auxiliary headlamp lux output below visibility standard on front nose of locomotive.", loc: "Loco WAP-7 #30455 Cab 1" },
+            { label: "VCD Audio Cycle Discrepancy", type: "Train" as IssueType, text: "Vigilance Control Device warning buzzer response interval irregular under cab noise.", loc: "Loco Cab 1" },
+            { label: "Wiper Motor Intermittent", type: "Train" as IssueType, text: "Assistant pilot front windshield wiper motor stalling under rain load.", loc: "Cab 1 Windshield" },
+            { label: "Brake Pipe Pressure Continuity Drop", type: "Train" as IssueType, text: "Feed pipe pressure slow to build up to 5.0 kg/cm² during stationary test.", loc: "WAP-7 #30455" },
+          ],
+        };
+      case "train_manager":
+        return {
+          primaryType: "Train" as IssueType,
+          suggestions: [
+            { label: "Brake Pipe Pressure Fluctuation", type: "Train" as IssueType, text: "Rear guard van air brake pressure gauge fluctuating between 4.4 and 4.8 kg/cm².", loc: "Guard Van BVZC-901" },
+            { label: "Vestibule Door Latch Jammed", type: "Train" as IssueType, text: "Inter-coach vestibule sliding door latch stuck between coaches C5 and C6.", loc: "Coach C5-C6 Vestibule" },
+            { label: "Tail Lamp Flasher Battery Weak", type: "Train" as IssueType, text: "Portable LED flashing tail lamp battery indicator blinking yellow.", loc: "Rear Guard Van" },
+          ],
+        };
+      case "tte":
+        return {
+          primaryType: "Train" as IssueType,
+          suggestions: [
+            { label: "Coach AC Duct Cooling Discomfort", type: "Train" as IssueType, text: "Coach B4 ambient temperature elevated (27°C). Passengers complaining of inadequate cooling.", loc: "Coach B4 Bay" },
+            { label: "Berth Mobile Charging Socket Dead", type: "Train" as IssueType, text: "Mobile charging points inactive across berths 17 to 24 in Coach B2.", loc: "Coach B2 Berths 17-24" },
+            { label: "Bio-Toilet Flush Valve Failure", type: "Train" as IssueType, text: "Lavatory flush solenoid valve not responding in Coach B3 west end.", loc: "Coach B3 Lavatory 2" },
+          ],
+        };
+      case "station_master":
+      case "station_superintendent":
+        return {
+          primaryType: "Platform" as IssueType,
+          suggestions: [
+            { label: "Platform LED Display Glitch", type: "Platform" as IssueType, text: "Platform 4 electronic train indicator LED matrix board not updating train schedule.", loc: "Platform 4 Main FOB" },
+            { label: "Coach Watering Hydrant Leak", type: "Platform" as IssueType, text: "Hydrant pipe pressure drop at washing siding impacting outbound train watering.", loc: "Washing Siding Line 4" },
+            { label: "FOB Escalator Safety Stoppage", type: "Platform" as IssueType, text: "Platform 2-3 Foot Overbridge escalator tripped on safety emergency stop.", loc: "Platform 2-3 FOB" },
+            { label: "Platform Edge Tactile Paving Damaged", type: "Platform" as IssueType, text: "Tactile warning tiles chipped near coach position S4 causing passenger tripping hazard.", loc: "Platform 2 Bay" },
+          ],
+        };
+      case "electrical_traction_technician":
+        return {
+          primaryType: "Electrical" as IssueType,
+          suggestions: [
+            { label: "OHE Contact Wire Tension Drop", type: "Electrical" as IssueType, text: "Auto-tensioning device weights resting on ground stop at Mast 42/18.", loc: "Mast 42/18 Down Line" },
+            { label: "Section Insulator Thermal Hotspot", type: "Electrical" as IssueType, text: "12°C temperature elevation measured at 25kV crossover insulator assembly.", loc: "OHE Sector 1 Crossover" },
+            { label: "Track Structure Bonding Cable Snapped", type: "Electrical" as IssueType, text: "Structure bonding continuity wire snapped near track crossing.", loc: "Mast 44/02 Up Line" },
+          ],
+        };
+      case "rpf_escort_constable":
+      case "station_security_officer":
+        return {
+          primaryType: "Security" as IssueType,
+          suggestions: [
+            { label: "Unauthorized Hawkers on Coach S3", type: "Security" as IssueType, text: "Unauthorized vendors boarding unreserved coaches without railway vendor badges.", loc: "Platform 4 Coach S3" },
+            { label: "Unattended Luggage Package", type: "Security" as IssueType, text: "Unattended small parcel spotted on luggage rack in Coach S2; no owner identified.", loc: "Coach S2 Luggage Rack" },
+            { label: "Emergency Exit Fire Door Obstructed", type: "Security" as IssueType, text: "Fire exit door near booking hall found obstructed by parcel packages.", loc: "West Booking Concourse" },
+          ],
+        };
+      case "railway_medical_officer":
+      case "emergency_medical_responder":
+        return {
+          primaryType: "Medical" as IssueType,
+          suggestions: [
+            { label: "Station First Aid Kit Refill Due", type: "Medical" as IssueType, text: "Trauma kit bag #2 missing sterile gauge bandages and burn dressings.", loc: "Station First Aid Room" },
+            { label: "Station AED Battery Inspection Due", type: "Medical" as IssueType, text: "Automated External Defibrillator unit at Platform 2 indicates battery servicing.", loc: "Platform 2 Emergency Post" },
+            { label: "Ambulance Stretcher Wheel Jammed", type: "Medical" as IssueType, text: "Emergency rapid ambulance transport stretcher wheel jammed on ramp.", loc: "Ambulance Bay" },
+          ],
+        };
+      default:
+        return {
+          primaryType: "Other" as IssueType,
+          suggestions: [
+            { label: "Station Lighting Fixture Defect", type: "Electrical" as IssueType, text: "High-mast tower light quadrant 2 flickering near west parcel siding.", loc: "West Parcel Siding" },
+            { label: "Water Cooler Filter Replacement", type: "Platform" as IssueType, text: "Drinking water fountain water purifier cartridge filter replacement required.", loc: "Platform 1 Concourse" },
+            { label: "Operational Communication Line Stalled", type: "Telecom" as IssueType, text: "Control phone connection to station yard master cabin crackling.", loc: "Yard Master Cabin" },
+          ],
+        };
+    }
+  }, [rawRole]);
+
+  // Pre-populate suggested primary type on mount if unselected
+  useEffect(() => {
+    if (!issueType && roleSuggestions.primaryType) {
+      setIssueType(roleSuggestions.primaryType);
+    }
+  }, [roleSuggestions]);
+
+  // Quick suggestion click handler
+  const handleApplySuggestion = (sug: { label: string; type: IssueType; text: string; loc?: string }) => {
+    setIssueType(sug.type);
+    setDescription(sug.text);
+    if (sug.loc) {
+      setLocation("Other");
+      setCustomLocation(sug.loc);
+    }
+    if (!severity) {
+      setSeverity("MEDIUM");
+    }
+    if (!currentStatus) {
+      setCurrentStatus("OPERATIONAL");
+    }
+    setValidationErrors({});
+    showToast(`Applied: ${sug.label}`);
+  };
+
+  // Complete 10 Issue Type Options
   const issueTypes: { value: IssueType; label: string }[] = [
     { value: "Signal", label: "Signal" },
     { value: "Track", label: "Track" },
     { value: "Platform", label: "Platform" },
     { value: "Train", label: "Train" },
+    { value: "Electrical", label: "Electrical" },
+    { value: "Telecom", label: "Telecom" },
     { value: "Safety", label: "Safety" },
+    { value: "Security", label: "Security" },
+    { value: "Medical", label: "Medical" },
     { value: "Other", label: "Other" },
   ];
 
@@ -406,10 +604,10 @@ export default function EmployeeReport() {
 
             <div className="hidden lg:block text-left">
               <div className="text-xs font-semibold text-white">
-                Authorized Employee
+                {currentUser?.name || "Authorized Employee"}
               </div>
               <div className="text-[10px] text-[#71899C]">
-                Secure Session
+                {roleConfig.displayName}
               </div>
             </div>
 
@@ -675,6 +873,40 @@ export default function EmployeeReport() {
                   /* REPORT FORM CARD */
                   <div className="rounded-2xl border border-[#16364A] bg-[#071A33] p-5 sm:p-7 shadow-xl">
                     <form onSubmit={handleSubmit} className="space-y-6">
+                      {/* Role-Specific Quick Suggestions */}
+                      {roleSuggestions.suggestions.length > 0 && (
+                        <div className="rounded-xl border border-[#0E7C86]/30 bg-[#0A2036]/90 p-4 space-y-2.5">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-xs font-semibold text-cyan-300">
+                              <Sparkles size={15} className="text-amber-400" />
+                              <span>Role-Specific Issue Suggestions:</span>
+                              <span className="rounded bg-[#0E7C86]/20 border border-[#0E7C86]/40 px-2 py-0.5 text-[10px] text-cyan-200 font-mono">
+                                {roleConfig.displayName}
+                              </span>
+                            </div>
+                            <span className="text-[10px] text-slate-400 hidden sm:inline">
+                              Click any item to auto-populate
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {roleSuggestions.suggestions.map((sug, idx) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => handleApplySuggestion(sug)}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-[#294665] bg-[#071A33] px-3 py-1.5 text-xs text-slate-200 transition hover:border-[#0E7C86] hover:bg-[#0E7C86]/20 hover:text-white group"
+                              >
+                                <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 group-hover:scale-125 transition-transform" />
+                                <span className="font-medium">{sug.label}</span>
+                                <span className="rounded bg-[#0A2036] px-1 py-0.2 text-[9px] text-slate-400 font-mono">
+                                  {sug.type}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
                       {/* Section 1: Issue Type & Location */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                         {/* Issue Type */}
