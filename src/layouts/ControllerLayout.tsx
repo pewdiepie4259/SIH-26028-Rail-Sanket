@@ -1,9 +1,11 @@
 import {
+  BarChart3,
   Bell,
   ChevronDown,
+  CloudRain,
+  GitBranch,
   LayoutDashboard,
   LogOut,
-  Map,
   Menu,
   Settings,
   TrainFront,
@@ -18,14 +20,34 @@ const navigation = [
     icon: LayoutDashboard,
   },
   {
-    label: "Live Network",
-    path: "/controller/dashboard",
-    icon: Map,
-  },
-  {
     label: "Train Operations",
     path: "/controller/dashboard",
     icon: TrainFront,
+  },
+  {
+    label: "Weather Impact",
+    path: "/controller/weather",
+    icon: CloudRain,
+  },
+  {
+    label: "Junctions & Conflicts",
+    path: "/controller/junctions",
+    icon: GitBranch,
+  },
+  {
+    label: "Cascade Analysis",
+    path: "/controller/cascade",
+    icon: GitBranch,
+  },
+  {
+    label: "Reports & Audit",
+    path: "/controller/reports",
+    icon: BarChart3,
+  },
+  {
+    label: "Settings",
+    path: "/controller/settings",
+    icon: Settings,
   },
 ]
 

@@ -8,12 +8,16 @@ import StationInformation from "./pages/public/StationInformation"
 import Settings from "./pages/settings"
 import Register from "./pages/register"
 import Login from "./pages/login"
-import ControllerDashboardLegacy from "./pages/ControllerDashboard"
 import ControllerLayout from "./layouts/ControllerLayout"
 import ControllerDashboard from "./pages/controller/Dashboard"
 import TrainETATracker from "./components/TrainETATracker"
 import TrainDetails from "./pages/controller/TrainDetails"
 import WeatherImpact from "./pages/controller/WeatherImpact"
+import JunctionManagement from "./pages/controller/JunctionManagement"
+import CascadeAnalysis from "./pages/controller/CascadeAnalysis"
+import Reports from "./pages/controller/Reports"
+import ControllerSettings from "./pages/controller/ControllerSettings"
+import AdminDashboard from "./pages/admin/Dashboard"
 
 import EmployeeDashboard from "./pages/employee/Dashboard"
 import EmployeeDuty from "./pages/employee/Duty"
@@ -65,7 +69,7 @@ function App() {
 
         <Route
           path="/controller"
-          element={<ControllerDashboardLegacy />}
+          element={<Navigate to="/controller/dashboard" replace />}
         />
 
         <Route element={<ControllerLayout />}>
@@ -82,6 +86,26 @@ function App() {
           <Route
             path="/controller/weather"
             element={<WeatherImpact />}
+          />
+
+          <Route
+            path="/controller/junctions"
+            element={<JunctionManagement />}
+          />
+
+          <Route
+            path="/controller/cascade"
+            element={<CascadeAnalysis />}
+          />
+
+          <Route
+            path="/controller/reports"
+            element={<Reports />}
+          />
+
+          <Route
+            path="/controller/settings"
+            element={<ControllerSettings />}
           />
         </Route>
 
@@ -152,11 +176,7 @@ function App() {
 
         <Route
           path="/admin"
-          element={
-            <div className="p-10">
-              Admin Dashboard
-            </div>
-          }
+          element={<AdminDashboard />}
         />
 
         <Route
