@@ -22,6 +22,20 @@ export interface AuthUser {
   status: "active" | "pending_review" | "suspended";
   avatarUrl?: string;
   createdAt: string;
+
+  // Passenger Profile Details
+  dob?: string;
+  gender?: string;
+  alternatePhone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  emergencyRelationship?: string;
+  preferredLanguage?: string;
+  accessibilityNeeds?: string;
 }
 
 export interface LoginPayload {
@@ -51,6 +65,7 @@ export interface EmployeeRegistrationPayload {
   officialEmail: string;
   department: string;
   requestedRole: "employee" | "controller";
+  operationalRole?: string;
 }
 
 export interface AuthResponse {
@@ -133,7 +148,7 @@ const PROVISIONED_ACCOUNTS: Record<string, { password: string; user: AuthUser }>
     },
   },
 
-  // Employee (Unique Employee ID & Email)
+  // Employee (Unique Employee ID & Email) - Signal Maintainer (S&T)
   "employee@raildrishti.gov.in": {
     password: "Employee@RailDrishti2026",
     user: {
@@ -143,7 +158,8 @@ const PROVISIONED_ACCOUNTS: Record<string, { password: string; user: AuthUser }>
       email: "employee@raildrishti.gov.in",
       role: "employee",
       status: "active",
-      department: "Signal & Telecommunication",
+      department: "Signal & Telecommunication (S&T)",
+      operationalRole: "signal_maintainer",
       createdAt: new Date().toISOString(),
     },
   },
@@ -156,7 +172,188 @@ const PROVISIONED_ACCOUNTS: Record<string, { password: string; user: AuthUser }>
       email: "employee@raildrishti.gov.in",
       role: "employee",
       status: "active",
-      department: "Signal & Telecommunication",
+      department: "Signal & Telecommunication (S&T)",
+      operationalRole: "signal_maintainer",
+      createdAt: new Date().toISOString(),
+    },
+  },
+
+  // 1. Station Master (Operations & Traffic Control)
+  "stationmaster@raildrishti.gov.in": {
+    password: "Employee@RailDrishti2026",
+    user: {
+      id: "usr_emp_sm01",
+      employeeId: "SM-NDLS-101",
+      name: "Amit Kumar",
+      email: "stationmaster@raildrishti.gov.in",
+      role: "employee",
+      status: "active",
+      department: "Operations & Traffic Control",
+      operationalRole: "station_master",
+      createdAt: new Date().toISOString(),
+    },
+  },
+  "sm-ndls-101": {
+    password: "Employee@RailDrishti2026",
+    user: {
+      id: "usr_emp_sm01",
+      employeeId: "SM-NDLS-101",
+      name: "Amit Kumar",
+      email: "stationmaster@raildrishti.gov.in",
+      role: "employee",
+      status: "active",
+      department: "Operations & Traffic Control",
+      operationalRole: "station_master",
+      createdAt: new Date().toISOString(),
+    },
+  },
+
+  // 2. Loco Pilot (Mechanical & Rolling Stock)
+  "locopilot@raildrishti.gov.in": {
+    password: "Employee@RailDrishti2026",
+    user: {
+      id: "usr_emp_lp01",
+      employeeId: "LP-2024-4402",
+      name: "Rahul Sharma",
+      email: "locopilot@raildrishti.gov.in",
+      role: "employee",
+      status: "active",
+      department: "Mechanical & Rolling Stock",
+      operationalRole: "loco_pilot",
+      createdAt: new Date().toISOString(),
+    },
+  },
+  "lp-2024-4402": {
+    password: "Employee@RailDrishti2026",
+    user: {
+      id: "usr_emp_lp01",
+      employeeId: "LP-2024-4402",
+      name: "Rahul Sharma",
+      email: "locopilot@raildrishti.gov.in",
+      role: "employee",
+      status: "active",
+      department: "Mechanical & Rolling Stock",
+      operationalRole: "loco_pilot",
+      createdAt: new Date().toISOString(),
+    },
+  },
+
+  // 3. TTE (Commercial & Passenger Amenities)
+  "tte@raildrishti.gov.in": {
+    password: "Employee@RailDrishti2026",
+    user: {
+      id: "usr_emp_tte01",
+      employeeId: "TTE-2024-5511",
+      name: "Suresh Nair",
+      email: "tte@raildrishti.gov.in",
+      role: "employee",
+      status: "active",
+      department: "Commercial & Passenger Amenities",
+      operationalRole: "tte",
+      createdAt: new Date().toISOString(),
+    },
+  },
+  "tte-2024-5511": {
+    password: "Employee@RailDrishti2026",
+    user: {
+      id: "usr_emp_tte01",
+      employeeId: "TTE-2024-5511",
+      name: "Suresh Nair",
+      email: "tte@raildrishti.gov.in",
+      role: "employee",
+      status: "active",
+      department: "Commercial & Passenger Amenities",
+      operationalRole: "tte",
+      createdAt: new Date().toISOString(),
+    },
+  },
+
+  // 4. Track Maintainer (Civil & Track Engineering)
+  "trackmaintainer@raildrishti.gov.in": {
+    password: "Employee@RailDrishti2026",
+    user: {
+      id: "usr_emp_tm01",
+      employeeId: "TM-2024-6622",
+      name: "Manoj Yadav",
+      email: "trackmaintainer@raildrishti.gov.in",
+      role: "employee",
+      status: "active",
+      department: "Civil & Track Engineering",
+      operationalRole: "track_maintainer",
+      createdAt: new Date().toISOString(),
+    },
+  },
+  "tm-2024-6622": {
+    password: "Employee@RailDrishti2026",
+    user: {
+      id: "usr_emp_tm01",
+      employeeId: "TM-2024-6622",
+      name: "Manoj Yadav",
+      email: "trackmaintainer@raildrishti.gov.in",
+      role: "employee",
+      status: "active",
+      department: "Civil & Track Engineering",
+      operationalRole: "track_maintainer",
+      createdAt: new Date().toISOString(),
+    },
+  },
+
+  // 5. Station Security Officer (Safety & Disaster Management)
+  "security@raildrishti.gov.in": {
+    password: "Employee@RailDrishti2026",
+    user: {
+      id: "usr_emp_sec01",
+      employeeId: "RPF-2024-7733",
+      name: "Vikram Singh",
+      email: "security@raildrishti.gov.in",
+      role: "employee",
+      status: "active",
+      department: "Safety & Disaster Management",
+      operationalRole: "station_security_officer",
+      createdAt: new Date().toISOString(),
+    },
+  },
+  "rpf-2024-7733": {
+    password: "Employee@RailDrishti2026",
+    user: {
+      id: "usr_emp_sec01",
+      employeeId: "RPF-2024-7733",
+      name: "Vikram Singh",
+      email: "security@raildrishti.gov.in",
+      role: "employee",
+      status: "active",
+      department: "Safety & Disaster Management",
+      operationalRole: "station_security_officer",
+      createdAt: new Date().toISOString(),
+    },
+  },
+
+  // 6. Railway Medical Officer / Doctor (Safety & Disaster Management)
+  "doctor@raildrishti.gov.in": {
+    password: "Employee@RailDrishti2026",
+    user: {
+      id: "usr_emp_doc01",
+      employeeId: "MED-2024-8844",
+      name: "Dr. Ananya Roy",
+      email: "doctor@raildrishti.gov.in",
+      role: "employee",
+      status: "active",
+      department: "Safety & Disaster Management",
+      operationalRole: "railway_medical_officer",
+      createdAt: new Date().toISOString(),
+    },
+  },
+  "med-2024-8844": {
+    password: "Employee@RailDrishti2026",
+    user: {
+      id: "usr_emp_doc01",
+      employeeId: "MED-2024-8844",
+      name: "Dr. Ananya Roy",
+      email: "doctor@raildrishti.gov.in",
+      role: "employee",
+      status: "active",
+      department: "Safety & Disaster Management",
+      operationalRole: "railway_medical_officer",
       createdAt: new Date().toISOString(),
     },
   },
@@ -370,7 +567,7 @@ export async function registerUser(payload: UserRegistrationPayload): Promise<Au
  * Submits application into pending review queue.
  */
 export async function registerEmployee(payload: EmployeeRegistrationPayload): Promise<AuthResponse> {
-  const { fullName, employeeId, officialEmail, department, requestedRole } = payload;
+  const { fullName, employeeId, officialEmail, department, requestedRole, operationalRole } = payload;
   const cleanEmail = officialEmail.trim().toLowerCase();
   const cleanEmpId = employeeId.trim().toUpperCase();
 
@@ -408,6 +605,7 @@ export async function registerEmployee(payload: EmployeeRegistrationPayload): Pr
     officialEmail: cleanEmail,
     department,
     requestedRole,
+    operationalRole: requestedRole === "controller" ? undefined : (operationalRole || undefined),
     status: "pending_review",
     submittedAt: new Date().toISOString(),
   };
@@ -450,6 +648,7 @@ export async function login(payload: LoginPayload): Promise<AuthResponse> {
     }
 
     sessionStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(account.user));
+    localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(account.user));
     return { success: true, user: account.user, token: `token_adm_${Date.now()}` };
   }
 
@@ -468,6 +667,7 @@ export async function login(payload: LoginPayload): Promise<AuthResponse> {
     }
 
     sessionStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(account.user));
+    localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(account.user));
     return { success: true, user: account.user, token: `token_ctrl_${Date.now()}` };
   }
 
@@ -492,6 +692,7 @@ export async function login(payload: LoginPayload): Promise<AuthResponse> {
     }
 
     sessionStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(account.user));
+    localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(account.user));
     return { success: true, user: account.user, token: `token_emp_${Date.now()}` };
   }
 
@@ -526,6 +727,7 @@ export async function login(payload: LoginPayload): Promise<AuthResponse> {
     };
 
     sessionStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(user));
+    localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(user));
     return { success: true, user, token: `token_otp_${Date.now()}` };
   }
 
@@ -543,6 +745,7 @@ export async function login(payload: LoginPayload): Promise<AuthResponse> {
   }
 
   sessionStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(account.user));
+  localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(account.user));
   return { success: true, user: account.user, token: `token_user_${Date.now()}` };
 }
 
@@ -566,6 +769,7 @@ export async function handleGoogleSignIn(): Promise<AuthResponse> {
     };
 
     sessionStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(demoGoogleUser));
+    localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(demoGoogleUser));
 
     return {
       success: true,
@@ -585,15 +789,41 @@ export async function handleGoogleSignIn(): Promise<AuthResponse> {
 
 export function getCurrentUser(): AuthUser | null {
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEYS.CURRENT_USER);
+    const raw = sessionStorage.getItem(STORAGE_KEYS.CURRENT_USER) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
   }
 }
 
+export function updateCurrentUser(updatedUser: AuthUser): void {
+  sessionStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(updatedUser));
+  localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(updatedUser));
+
+  // Also sync with registered user cache if exists
+  const registered = getRegisteredUsers();
+  const emailKey = updatedUser.email?.toLowerCase();
+  const phoneKey = updatedUser.phone?.replace(/^(\+91|0)/, "").replace(/\D/g, "");
+
+  if (emailKey && registered[emailKey]) {
+    registered[emailKey].user = updatedUser;
+  }
+  if (phoneKey && registered[phoneKey]) {
+    registered[phoneKey].user = updatedUser;
+  }
+  localStorage.setItem(STORAGE_KEYS.REGISTERED_USERS, JSON.stringify(registered));
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("raildrishti_auth_changed"));
+  }
+}
+
 export function logout(): void {
   sessionStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+  localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("raildrishti_auth_changed"));
+  }
 }
 
 export function getRoleRedirectPath(role: UserRole): string {

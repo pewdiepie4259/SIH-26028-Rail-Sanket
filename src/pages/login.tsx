@@ -188,9 +188,16 @@ export default function Login() {
       });
 
       if (res.success && res.user) {
+        window.dispatchEvent(new Event("raildrishti_auth_changed"));
         setSuccessMessage(`Authentication successful! Welcome, ${res.user.name}.`);
+        const searchParams = new URLSearchParams(location.search);
+        const redirectParam = searchParams.get("redirect");
         setTimeout(() => {
-          navigate(getRoleRedirectPath(res.user!.role));
+          if (redirectParam) {
+            navigate(redirectParam);
+          } else {
+            navigate(getRoleRedirectPath(res.user!.role));
+          }
         }, 800);
       } else {
         setErrorMessage(res.message || "Authentication failed. Please verify credentials.");
@@ -208,9 +215,16 @@ export default function Login() {
     try {
       const res = await handleGoogleSignIn();
       if (res.success && res.user) {
+        window.dispatchEvent(new Event("raildrishti_auth_changed"));
         setSuccessMessage(`Google verified. Welcome, ${res.user.name}!`);
+        const searchParams = new URLSearchParams(location.search);
+        const redirectParam = searchParams.get("redirect");
         setTimeout(() => {
-          navigate(getRoleRedirectPath(res.user!.role));
+          if (redirectParam) {
+            navigate(redirectParam);
+          } else {
+            navigate(getRoleRedirectPath(res.user!.role));
+          }
         }, 800);
       } else {
         setErrorMessage(res.message || "Google authentication could not be completed.");

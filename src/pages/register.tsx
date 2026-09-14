@@ -29,50 +29,26 @@ import {
   type PublicRegistrationRole,
 } from "../services/auth";
 
+import {
+  EMPLOYEE_DEPARTMENTS,
+  DEPARTMENT_ROLES_MAP,
+  EMPLOYEE_ROLES,
+  type EmployeeDepartment,
+  type OperationalRoleId,
+} from "../config/employeeRoles";
+
 const BACKGROUND_SLIDES = [
   "/images/register-platform.jpg",
   "/images/register-coach.jpg",
   "/images/register-blue-coach.jpg",
 ];
 
-const DEPARTMENTS = [
+const DEPARTMENTS = EMPLOYEE_DEPARTMENTS;
+
+const ALLOWED_CONTROLLER_DEPTS = [
   "Operations & Traffic Control",
   "Safety & Disaster Management",
-  "Signal & Telecommunication (S&T)",
-  "Civil & Track Engineering",
-  "Mechanical & Rolling Stock",
-  "Electrical & Traction (OHE)",
-  "Commercial & Passenger Amenities",
 ];
-
-const DEPARTMENT_ROLES_MAP: Record<
-  string,
-  { value: "employee" | "controller"; label: string }[]
-> = {
-  "Operations & Traffic Control": [
-    { value: "employee", label: "Employee" },
-    { value: "controller", label: "Controller (Under Approval)" },
-  ],
-  "Safety & Disaster Management": [
-    { value: "employee", label: "Employee" },
-    { value: "controller", label: "Controller (Under Approval)" },
-  ],
-  "Signal & Telecommunication (S&T)": [
-    { value: "employee", label: "Employee" },
-  ],
-  "Civil & Track Engineering": [
-    { value: "employee", label: "Employee" },
-  ],
-  "Mechanical & Rolling Stock": [
-    { value: "employee", label: "Employee" },
-  ],
-  "Electrical & Traction (OHE)": [
-    { value: "employee", label: "Employee" },
-  ],
-  "Commercial & Passenger Amenities": [
-    { value: "employee", label: "Employee" },
-  ],
-};
 
 export default function Register() {
   const navigate = useNavigate();
@@ -105,7 +81,7 @@ export default function Register() {
   const [empId, setEmpId] = useState("");
   const [empEmail, setEmpEmail] = useState("");
   const [empDepartment, setEmpDepartment] = useState("");
-  const [empRequestedRole, setEmpRequestedRole] = useState<"employee" | "controller" | "">("");
+  const [empRequestedRole, setEmpRequestedRole] = useState<string>("");
 
   // Flow & Notification States
   const [isLoading, setIsLoading] = useState(false);
@@ -181,10 +157,13 @@ export default function Register() {
   // Department change handler with automatic role reset
   const handleDepartmentChange = (newDept: string) => {
     setEmpDepartment(newDept);
-    const allowed = DEPARTMENT_ROLES_MAP[newDept] || [];
-    const isStillValid = allowed.some((r) => r.value === empRequestedRole);
+    const rolesInDept = DEPARTMENT_ROLES_MAP[newDept as EmployeeDepartment] || [];
+    const allowsController = ALLOWED_CONTROLLER_DEPTS.includes(newDept);
+    const isStillValid =
+      rolesInDept.includes(empRequestedRole as OperationalRoleId) ||
+      (allowsController && empRequestedRole === "controller");
     if (!isStillValid) {
-      setEmpRequestedRole(allowed[0]?.value || "employee");
+      setEmpRequestedRole(rolesInDept[0] || "");
     }
   };
 
@@ -214,12 +193,16 @@ export default function Register() {
     }
 
     if (!empRequestedRole) {
-      setErrorMessage("Please select your role.");
+      setErrorMessage("Please select your operational role.");
       return;
     }
 
-    const allowedRoles = DEPARTMENT_ROLES_MAP[empDepartment] || [];
-    const isRoleValid = allowedRoles.some((r) => r.value === empRequestedRole);
+    const isController = empRequestedRole === "controller";
+    const allowedRoles = DEPARTMENT_ROLES_MAP[empDepartment as EmployeeDepartment] || [];
+    const isRoleValid =
+      allowedRoles.includes(empRequestedRole as OperationalRoleId) ||
+      (ALLOWED_CONTROLLER_DEPTS.includes(empDepartment) && isController);
+
     if (!isRoleValid) {
       setErrorMessage("This role is not available for the selected department.");
       return;
@@ -232,7 +215,8 @@ export default function Register() {
         employeeId: empId,
         officialEmail: empEmail,
         department: empDepartment,
-        requestedRole: empRequestedRole as "employee" | "controller",
+        requestedRole: isController ? "controller" : "employee",
+        operationalRole: isController ? undefined : empRequestedRole,
       });
 
       if (res.success) {
@@ -777,7 +761,7 @@ export default function Register() {
 
                           <div>
                             <label className="block text-xs font-semibold uppercase tracking-wider text-[#071A33] mb-1">
-                              Role
+                              Operational Role
                             </label>
                             <div className="relative">
                               <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-[#0E5961]">
@@ -786,9 +770,7 @@ export default function Register() {
                               <select
                                 required
                                 value={empRequestedRole}
-                                onChange={(e) =>
-                                  setEmpRequestedRole(e.target.value as "employee" | "controller")
-                                }
+                                onChange={(e) => setEmpRequestedRole(e.target.value)}
                                 disabled={!empDepartment || isLoading}
                                 className="w-full rounded-xl border border-[#B8C9D2] bg-white/90 backdrop-blur-md py-2 pl-10 pr-3 text-sm text-slate-900 transition-colors focus:border-[#0E7C86] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E7C86]/20 cursor-pointer font-medium shadow-xs disabled:opacity-60 disabled:cursor-not-allowed"
                               >
@@ -797,11 +779,24 @@ export default function Register() {
                                     Select Department First
                                   </option>
                                 ) : (
-                                  (DEPARTMENT_ROLES_MAP[empDepartment] || []).map((role) => (
-                                    <option key={role.value} value={role.value}>
-                                      {role.label}
+                                  <>
+                                    <option value="" disabled>
+                                      Select Operational Role
                                     </option>
-                                  ))
+                                    {(DEPARTMENT_ROLES_MAP[empDepartment as EmployeeDepartment] || []).map((roleId) => {
+                                      const role = EMPLOYEE_ROLES[roleId];
+                                      return (
+                                        <option key={roleId} value={roleId}>
+                                          {role ? role.displayName : roleId}
+                                        </option>
+                                      );
+                                    })}
+                                    {ALLOWED_CONTROLLER_DEPTS.includes(empDepartment) && (
+                                      <option value="controller">
+                                        Controller (Under Approval)
+                                      </option>
+                                    )}
+                                  </>
                                 )}
                               </select>
                             </div>
