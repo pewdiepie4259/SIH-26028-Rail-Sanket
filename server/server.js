@@ -9,15 +9,15 @@ app.use(cors());
 app.use(express.json());
 
 const db = new sqlite3.Database(DB_PATH, (err) => {
-    if (err) console.error("Database connection error:", err.message);
-    else {
-        console.log(`Connected to trains.db SQLite database at: ${DB_PATH}`);
-        initializeDatabase(db);
-    }
+  if (err) console.error("Database connection error:", err.message);
+  else {
+    console.log(`Connected to trains.db SQLite database at: ${DB_PATH}`);
+    initializeDatabase(db);
+  }
 });
 
 app.get('/health', (req, res) => {
-    res.json({ status: "healthy", service: "RailDrishti Trains & Schedules SQLite API" });
+  res.json({ status: "healthy", service: "RailDrishti Trains & Schedules SQLite API" });
 });
 
 // ==========================================
@@ -26,12 +26,12 @@ app.get('/health', (req, res) => {
 // 1. SEARCH TRAINS (By Name, Number, or Station)
 // ==========================================
 app.get('/api/trains/search', (req, res) => {
-    const query = (req.query.q || '').trim();
-    const limit = parseInt(req.query.limit) || 100;
+  const query = (req.query.q || '').trim();
+  const limit = parseInt(req.query.limit) || 100;
 
-    if (!query) {
-        // Return active corridor rakes first, followed by general database trains
-        const sql = `
+  if (!query) {
+    // Return active corridor rakes first, followed by general database trains
+    const sql = `
         SELECT 
           t.train_number, 
           t.train_name, 
@@ -54,15 +54,15 @@ app.get('/api/trains/search', (req, res) => {
           t.train_number ASC
         LIMIT ?
       `;
-        return db.all(sql, [limit], (err, rows) => {
-            if (err) return res.status(500).json({ error: err.message });
-            res.json({ trains: rows || [] });
-        });
-    }
+    return db.all(sql, [limit], (err, rows) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ trains: rows || [] });
+    });
+  }
 
-    const searchPattern = `%${query}%`;
-    const exactStart = `${query}%`;
-    const sql = `
+  const searchPattern = `%${query}%`;
+  const exactStart = `${query}%`;
+  const sql = `
     SELECT DISTINCT
       t.train_number, 
       t.train_name, 
@@ -93,25 +93,25 @@ app.get('/api/trains/search', (req, res) => {
       t.train_number ASC
     LIMIT ?
   `;
-    db.all(sql, [
-      searchPattern, searchPattern, searchPattern, searchPattern, searchPattern, searchPattern,
-      query, searchPattern,
-      query, query, exactStart, searchPattern, searchPattern,
-      limit
-    ], (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json({ trains: rows || [] });
-    });
+  db.all(sql, [
+    searchPattern, searchPattern, searchPattern, searchPattern, searchPattern, searchPattern,
+    query, searchPattern,
+    query, query, exactStart, searchPattern, searchPattern,
+    limit
+  ], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ trains: rows || [] });
+  });
 });
 
 // ==========================================
 // 2. TRAIN ROUTE & COORDINATES (For Leaflet Map)
 // ==========================================
 app.get('/api/trains/:trainNo/route', (req, res) => {
-    const trainNo = req.params.trainNo.trim();
+  const trainNo = req.params.trainNo.trim();
 
-    // Query station stops from train_schedules joined with stations
-    const scheduleSql = `
+  // Query station stops from train_schedules joined with stations
+  const scheduleSql = `
     SELECT 
       ts.stop_sequence, 
       ts.station_code, 
@@ -128,20 +128,20 @@ app.get('/api/trains/:trainNo/route', (req, res) => {
     ORDER BY ts.stop_sequence ASC
   `;
 
-    db.all(scheduleSql, [trainNo], (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
+  db.all(scheduleSql, [trainNo], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
 
-        // Agar schedule table me stops mil gaye toh return karo
-        if (rows && rows.length > 0) {
-            return res.json({
-                train_number: trainNo,
-                total_stops: rows.length,
-                route: rows
-            });
-        }
+    // Agar schedule table me stops mil gaye toh return karo
+    if (rows && rows.length > 0) {
+      return res.json({
+        train_number: trainNo,
+        total_stops: rows.length,
+        route: rows
+      });
+    }
 
-        // Fallback: Agar schedule table abhi empty hai, toh train ke source & dest stations return karo
-        const fallbackSql = `
+    // Fallback: Agar schedule table abhi empty hai, toh train ke source & dest stations return karo
+    const fallbackSql = `
       SELECT 
         t.train_number, t.train_name,
         1 as stop_sequence,
@@ -163,30 +163,30 @@ app.get('/api/trains/:trainNo/route', (req, res) => {
       WHERE t.train_number = ?
     `;
 
-        db.all(fallbackSql, [trainNo, trainNo], (err2, fallbackRows) => {
-            if (err2) return res.status(500).json({ error: err2.message });
-            res.json({
-                train_number: trainNo,
-                total_stops: fallbackRows.length,
-                route: fallbackRows || []
-            });
-        });
+    db.all(fallbackSql, [trainNo, trainNo], (err2, fallbackRows) => {
+      if (err2) return res.status(500).json({ error: err2.message });
+      res.json({
+        train_number: trainNo,
+        total_stops: fallbackRows.length,
+        route: fallbackRows || []
+      });
     });
+  });
 });
 
 // ==========================================
 // 3. REAL-TIME LIVE RUNNING STATUS & ETA
 // ==========================================
 app.get('/api/trains/:trainNo/live', (req, res) => {
-    const trainNo = req.params.trainNo.trim();
+  const trainNo = req.params.trainNo.trim();
 
-    // 1. Pehle database se check karo
-    db.get(`SELECT * FROM live_train_status WHERE train_number = ?`, [trainNo], (err, row) => {
-        if (err) return res.status(500).json({ error: err.message });
-        if (row) return res.json(row);
+  // 1. Pehle database se check karo
+  db.get(`SELECT * FROM live_train_status WHERE train_number = ?`, [trainNo], (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (row) return res.json(row);
 
-        // 2. Fallback / Live simulation generator (Demo ke liye taaki map pe real-time motion dikhe)
-        const sql = `
+    // 2. Fallback / Live simulation generator (Demo ke liye taaki map pe real-time motion dikhe)
+    const sql = `
       SELECT 
         t.train_number, t.train_name,
         t.source_station_code, t.dest_station_code,
@@ -196,40 +196,40 @@ app.get('/api/trains/:trainNo/live', (req, res) => {
       WHERE t.train_number = ?
     `;
 
-        db.get(sql, [trainNo], (err2, trainInfo) => {
-            if (!trainInfo) {
-                return res.status(404).json({ error: "Train not found" });
-            }
+    db.get(sql, [trainNo], (err2, trainInfo) => {
+      if (!trainInfo) {
+        return res.status(404).json({ error: "Train not found" });
+      }
 
-            // Demo Live Status Payload
-            res.json({
-                train_number: trainNo,
-                train_name: trainInfo.train_name,
-                journey_date: new Date().toISOString().slice(0, 10),
-                status: "RUNNING",
-                delay_minutes: 12, // Example delay
-                current_station_code: trainInfo.source_station_code,
-                current_station_name: trainInfo.current_station_name,
-                current_lat: trainInfo.latitude || 28.6139,
-                current_lng: trainInfo.longitude || 77.2090,
-                speed_kmh: 78,
-                eta_next_station: new Date(Date.now() + 25 * 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                last_updated: new Date().toLocaleTimeString()
-            });
-        });
+      // Demo Live Status Payload
+      res.json({
+        train_number: trainNo,
+        train_name: trainInfo.train_name,
+        journey_date: new Date().toISOString().slice(0, 10),
+        status: "RUNNING",
+        delay_minutes: 12, // Example delay
+        current_station_code: trainInfo.source_station_code,
+        current_station_name: trainInfo.current_station_name,
+        current_lat: trainInfo.latitude || 28.6139,
+        current_lng: trainInfo.longitude || 77.2090,
+        speed_kmh: 78,
+        eta_next_station: new Date(Date.now() + 25 * 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        last_updated: new Date().toLocaleTimeString()
+      });
     });
+  });
 });
 
 // ==========================================
 // 4. SEARCH STATIONS (By Name or Code)
 // ==========================================
 app.get('/api/stations/search', (req, res) => {
-    const query = (req.query.q || '').trim();
-    const limit = parseInt(req.query.limit) || 100;
+  const query = (req.query.q || '').trim();
+  const limit = parseInt(req.query.limit) || 100;
 
-    const searchPattern = `%${query}%`;
-    const exactStart = `${query}%`;
-    const sql = `
+  const searchPattern = `%${query}%`;
+  const exactStart = `${query}%`;
+  const sql = `
     SELECT 
       s.code, 
       s.name, 
@@ -253,28 +253,28 @@ app.get('/api/stations/search', (req, res) => {
       s.code ASC
     LIMIT ?
   `;
-    db.all(sql, [searchPattern, searchPattern, searchPattern, searchPattern, exactStart, searchPattern, limit], (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json({ stations: rows || [] });
-    });
+  db.all(sql, [searchPattern, searchPattern, searchPattern, searchPattern, exactStart, searchPattern, limit], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ stations: rows || [] });
+  });
 });
 
 // ==========================================
 // 5. ALL STATIONS LIST (For Dropdowns & Map)
 // ==========================================
 app.get('/api/stations/all', (req, res) => {
-    db.all(
-        `SELECT code, name, state, zone, latitude, longitude FROM stations WHERE latitude IS NOT NULL LIMIT 5000`,
-        [],
-        (err, rows) => {
-            if (err) return res.status(500).json({ error: err.message });
-            res.json({ stations: rows || [] });
-        }
-    );
+  db.all(
+    `SELECT code, name, state, zone, latitude, longitude FROM stations WHERE latitude IS NOT NULL LIMIT 5000`,
+    [],
+    (err, rows) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ stations: rows || [] });
+    }
+  );
 });
 
 // Server Listen
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-    console.log(`Backend API successfully running on http://localhost:${PORT}`);
+  console.log(`Backend API successfully running on http://localhost:${PORT}`);
 });
