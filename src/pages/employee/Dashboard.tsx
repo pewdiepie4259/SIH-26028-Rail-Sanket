@@ -13,31 +13,31 @@ import {
   User,
   LogOut,
   Clock,
-  MapPin,
   ShieldCheck,
   ChevronLeft,
   ChevronRight,
   Menu,
   X,
-  Radio,
-  CheckCircle2,
-  Building2,
   CircleDot,
   UserCircle,
   CheckCheck,
+  Building2,
   Lock,
 } from "lucide-react";
 import { getCurrentUser, logout } from "../../services/auth";
 import {
-  getDemoEmployeeData,
-  getRoleConfig,
-  demoOperationalRole,
-  type AlertDemo,
-  type TaskDemo,
-  type NotificationDemo,
-  type OperationalRoleId,
-  type EmployeeNavItem,
-} from "../../services/employee";
+  getRoleSpecificDashboardData,
+  type RoleTaskItem,
+  type RoleAlertItem,
+} from "../../services/employeeDashboardService";
+import RoleDutyCard from "../../components/employee/RoleDutyCard";
+import RoleAssignmentCard from "../../components/employee/RoleAssignmentCard";
+import RoleDashboardSummary from "../../components/employee/RoleDashboardSummary";
+import RoleTaskSummary from "../../components/employee/RoleTaskSummary";
+import RoleAlertSummary from "../../components/employee/RoleAlertSummary";
+import RoleQuickActions from "../../components/employee/RoleQuickActions";
+import RoleDepartmentWarning from "../../components/employee/RoleDepartmentWarning";
+import type { EmployeeNavItem, NotificationDemo } from "../../services/employee";
 
 export default function EmployeeDashboard() {
   const navigate = useNavigate();
@@ -49,29 +49,19 @@ export default function EmployeeDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeTab] = useState<string>("dashboard");
-
-  // Operational Role Architecture
-  const activeRoleConfig = getRoleConfig(
-    (currentUser?.operationalRole as OperationalRoleId) || demoOperationalRole
-  );
-
-  // Load centralized employee data
-  const initialData = getDemoEmployeeData(currentUser);
-  const [employeeInfo] = useState(initialData.employee);
-  const [dutyInfo] = useState(initialData.duty);
-  const [trainInfo] = useState(initialData.train);
-  const [alerts, setAlerts] = useState<AlertDemo[]>(initialData.alerts);
-  const [tasks, setTasks] = useState<TaskDemo[]>(initialData.tasks);
-  const [notifications, setNotifications] = useState<NotificationDemo[]>(initialData.notifications);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Auth state setup
+  // Sync auth state & safeguard controller redirection
   useEffect(() => {
     const user = getCurrentUser();
     if (user) {
+      if (user.role === "controller") {
+        navigate("/controller/dashboard", { replace: true });
+        return;
+      }
       setCurrentUser(user);
     }
-  }, []);
+  }, [navigate]);
 
   // Live IST Clock
   useEffect(() => {
@@ -80,6 +70,44 @@ export default function EmployeeDashboard() {
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // Compute dynamic role dashboard data
+  const roleData = getRoleSpecificDashboardData(currentUser);
+  const { roleConfig, duty, assignment, summaryWidgets, isRoleValid, warningMessage } = roleData;
+
+  // Local interactive states for Tasks & Alerts
+  const [tasks, setTasks] = useState<RoleTaskItem[]>(roleData.tasks);
+  const [alerts, setAlerts] = useState<RoleAlertItem[]>(roleData.alerts);
+  const [notifications, setNotifications] = useState<NotificationDemo[]>([
+    {
+      id: "notif-01",
+      title: `Duty shift roster for ${roleConfig.displayName} updated by Division`,
+      timestamp: "Today, 06:00 AM",
+      isRead: false,
+      category: "Roster",
+    },
+    {
+      id: "notif-02",
+      title: "Quarterly Safety Protocol & Equipment Circular issued by Sr. Safety Officer",
+      timestamp: "Yesterday, 04:30 PM",
+      isRead: true,
+      category: "Circular",
+    },
+    {
+      id: "notif-03",
+      title: "Monthly Medical & Competency Certificate Verification status: ACTIVE",
+      timestamp: "12 Sep, 11:15 AM",
+      isRead: true,
+      category: "Personnel",
+    },
+  ]);
+
+  // Update tasks/alerts if currentUser/role changes
+  useEffect(() => {
+    const nextData = getRoleSpecificDashboardData(currentUser);
+    setTasks(nextData.tasks);
+    setAlerts(nextData.alerts);
+  }, [currentUser]);
 
   const formatIST = (date: Date, use24: boolean) => {
     return date.toLocaleTimeString("en-IN", {
@@ -119,7 +147,7 @@ export default function EmployeeDashboard() {
               : t.status === "In Progress"
               ? "Completed"
               : "Pending";
-          showToast(`Task "${t.title}" updated to ${nextStatus}`);
+          showToast(`Task status updated to ${nextStatus}`);
           return { ...t, status: nextStatus };
         }
         return t;
@@ -139,9 +167,8 @@ export default function EmployeeDashboard() {
     showToast("All notifications marked as read.");
   };
 
-  // Counts
+  // Computed Counts
   const unreadCount = notifications.filter((n) => !n.isRead).length;
-  const criticalAlertsCount = alerts.filter((a) => a.severity === "CRITICAL").length;
   const pendingTasksCount = tasks.filter((t) => t.status !== "Completed").length;
 
   // Sidebar navigation menu items
@@ -157,6 +184,11 @@ export default function EmployeeDashboard() {
     { id: "history", label: "Activity / History", icon: History, path: "/employee/history", active: true },
     { id: "profile", label: "Profile", icon: User, path: "/employee/profile", active: true },
   ];
+
+  const employeeName = currentUser?.name || "Ramesh Sharma";
+  const employeeId = currentUser?.employeeId || "IR-2024-8841";
+  const departmentName = currentUser?.department || roleConfig.department;
+  const roleDisplayTitle = isRoleValid ? roleConfig.displayName : "Operational Role Not Assigned";
 
   return (
     <div className="min-h-screen bg-[#031426] text-slate-100 flex flex-col font-sans">
@@ -206,7 +238,7 @@ export default function EmployeeDashboard() {
           </div>
         </div>
 
-        {/* Right Header Status, IST Clock, Notifications, Security & Logout */}
+        {/* Right Header: IST Clock, Notifications, Authorized User & Logout */}
         <div className="flex items-center gap-2 sm:gap-3">
           {/* Live IST Clock */}
           <div className="hidden sm:flex items-center gap-2 rounded-lg border border-[#16364A] bg-[#0A2036] px-3 py-1.5 text-xs text-slate-200">
@@ -240,16 +272,16 @@ export default function EmployeeDashboard() {
             )}
           </button>
 
-          {/* Security */}
+          {/* Security & User Badge */}
           <div className="hidden items-center gap-2 border-l border-[#16364A] pl-3 sm:flex">
             <ShieldCheck size={18} className="text-[#0E7C86]" />
 
             <div className="hidden lg:block text-left">
-              <div className="text-xs font-semibold text-white">
-                Authorized Employee
+              <div className="text-xs font-semibold text-white truncate max-w-[130px]">
+                {employeeName}
               </div>
-              <div className="text-[10px] text-[#71899C]">
-                Secure Session
+              <div className="text-[10px] text-teal-400 truncate max-w-[130px]">
+                {roleDisplayTitle}
               </div>
             </div>
 
@@ -284,7 +316,7 @@ export default function EmployeeDashboard() {
             sidebarOpen ? "left-0 w-64 shadow-2xl" : "-left-64 lg:left-0"
           } ${sidebarCollapsed ? "lg:w-20" : "lg:w-64"}`}
         >
-          {/* Sidebar Top: Header & Collapse Button */}
+          {/* Sidebar Header & Collapse Button */}
           <div className="flex items-center justify-between p-4 border-b border-[#16364A]/60">
             <div className={`flex items-center gap-2 ${sidebarCollapsed ? "lg:hidden" : ""}`}>
               <ShieldCheck size={18} className="text-[#0E7C86]" />
@@ -381,9 +413,11 @@ export default function EmployeeDashboard() {
               <div className="text-[11px] text-slate-400 space-y-1">
                 <div className="flex items-center gap-1.5 text-slate-300 font-medium">
                   <Building2 size={13} className="text-[#0E7C86]" />
-                  <span>{employeeInfo.division}</span>
+                  <span className="truncate">{departmentName}</span>
                 </div>
-                <div className="text-[10px] text-[#71899C]">{employeeInfo.zone}</div>
+                <div className="text-[10px] text-[#71899C] truncate">
+                  Role: {roleDisplayTitle}
+                </div>
                 <div className="pt-1 flex items-center justify-between text-[10px] text-slate-400 border-t border-[#16364A]/40">
                   <span>Indian Railways</span>
                   <span className="text-teal-400 font-medium">● Connected</span>
@@ -400,7 +434,15 @@ export default function EmployeeDashboard() {
         {/* DASHBOARD MAIN CONTENT */}
         <main className="flex-1 min-w-0 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6">
           {/* ============================================================ */}
-          {/* 1. HEADER / WELCOME SECTION                                 */}
+          {/* 1. ROLE / DEPARTMENT CONFIGURATION WARNING (IF MISMATCH)     */}
+          {/* ============================================================ */}
+          <RoleDepartmentWarning
+            warningMessage={warningMessage}
+            isUnassigned={!isRoleValid}
+          />
+
+          {/* ============================================================ */}
+          {/* 2. DYNAMIC HEADER / WELCOME SECTION                          */}
           {/* ============================================================ */}
           <section className="rounded-xl border border-[#16364A] bg-[#071A33] p-5 sm:p-6 shadow-sm">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -408,15 +450,19 @@ export default function EmployeeDashboard() {
                 <div className="flex items-center gap-2 mb-1.5">
                   <span className="h-2 w-2 rounded-full bg-teal-400"></span>
                   <span className="text-xs font-semibold text-teal-400 uppercase tracking-wider">
-                    {dutyInfo.dutyStatus || "On Duty"}
+                    {duty.dutyStatus}
                   </span>
                 </div>
 
                 <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-                  {getGreeting()}, <span className="text-white">{employeeInfo.name}</span>
+                  {getGreeting()}, <span className="text-white">{employeeName}</span>
                 </h2>
                 <p className="text-xs sm:text-sm text-slate-400 mt-1">
-                  {activeRoleConfig.name} • {dutyInfo.location}
+                  <span className="text-teal-300 font-semibold">{roleDisplayTitle}</span>
+                  {" • "}
+                  <span className="text-slate-300">{departmentName}</span>
+                  {" • "}
+                  <span className="text-slate-400">{duty.location}</span>
                 </p>
               </div>
 
@@ -425,22 +471,21 @@ export default function EmployeeDashboard() {
                 <div>
                   <div className="text-[10px] font-medium text-slate-400">Employee ID</div>
                   <div className="text-xs font-mono font-semibold text-white mt-0.5">
-                    {employeeInfo.employeeId}
+                    {employeeId}
                   </div>
                 </div>
                 <div className="h-7 w-px bg-[#16364A] hidden sm:block"></div>
                 <div>
                   <div className="text-[10px] font-medium text-slate-400">Department</div>
-                  <div className="text-xs font-semibold text-slate-200 mt-0.5">
-                    {activeRoleConfig.department}
+                  <div className="text-xs font-semibold text-slate-200 mt-0.5 truncate max-w-[160px]">
+                    {departmentName}
                   </div>
                 </div>
                 <div className="h-7 w-px bg-[#16364A] hidden sm:block"></div>
                 <div>
-                  <div className="text-[10px] font-medium text-slate-400">Duty Status</div>
-                  <div className="text-xs font-semibold text-teal-400 mt-0.5 flex items-center gap-1.5">
-                    <span className="h-1.5 w-1.5 rounded-full bg-teal-400"></span>
-                    {dutyInfo.dutyStatus || "On Duty"}
+                  <div className="text-[10px] font-medium text-slate-400">Operational Role</div>
+                  <div className="text-xs font-semibold text-teal-400 mt-0.5 truncate max-w-[150px]">
+                    {roleDisplayTitle}
                   </div>
                 </div>
               </div>
@@ -448,380 +493,45 @@ export default function EmployeeDashboard() {
           </section>
 
           {/* ============================================================ */}
-          {/* 2. SUMMARY CARDS                                             */}
+          {/* 3. ROLE-SPECIFIC SUMMARY WIDGETS                             */}
           {/* ============================================================ */}
-          <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Card 1: Today's Duty */}
-            <div className="rounded-xl border border-[#16364A] bg-[#071A33] p-4.5 shadow-sm">
-              <div className="flex items-center justify-between text-slate-400 mb-2">
-                <span className="text-xs font-medium text-slate-400">Today's Duty</span>
-                <CalendarCheck size={16} className="text-teal-400" />
-              </div>
-              <div className="text-xl font-bold text-white flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-teal-400"></span>
-                {dutyInfo.dutyStatus}
-              </div>
-              <div className="text-xs text-slate-400 mt-1">
-                {dutyInfo.shift}
-              </div>
-            </div>
-
-            {/* Card 2: Assigned Train */}
-            <div className="rounded-xl border border-[#16364A] bg-[#071A33] p-4.5 shadow-sm">
-              <div className="flex items-center justify-between text-slate-400 mb-2">
-                <span className="text-xs font-medium text-slate-400">Assigned Train</span>
-                <TrainFront size={16} className="text-teal-400" />
-              </div>
-              <div className="text-xl font-bold font-mono text-white">
-                {trainInfo.trainNumber}
-              </div>
-              <div className="text-xs text-slate-400 mt-1 truncate">
-                {trainInfo.assignedTrain}
-              </div>
-            </div>
-
-            {/* Card 3: Active Alerts */}
-            <div className="rounded-xl border border-[#16364A] bg-[#071A33] p-4.5 shadow-sm">
-              <div className="flex items-center justify-between text-slate-400 mb-2">
-                <span className="text-xs font-medium text-slate-400">Active Alerts</span>
-                <AlertTriangle size={16} className="text-amber-400" />
-              </div>
-              <div className="text-xl font-bold text-white">
-                {alerts.length}
-              </div>
-              <div className="text-xs mt-1 text-slate-400">
-                {criticalAlertsCount > 0 ? (
-                  <span className="text-amber-400 font-medium">{criticalAlertsCount} Critical</span>
-                ) : (
-                  "All normal"
-                )}
-              </div>
-            </div>
-
-            {/* Card 4: Pending Tasks */}
-            <div className="rounded-xl border border-[#16364A] bg-[#071A33] p-4.5 shadow-sm">
-              <div className="flex items-center justify-between text-slate-400 mb-2">
-                <span className="text-xs font-medium text-slate-400">Pending Tasks</span>
-                <CheckSquare size={16} className="text-teal-400" />
-              </div>
-              <div className="text-xl font-bold text-white">
-                {pendingTasksCount}
-              </div>
-              <div className="text-xs text-slate-400 mt-1">
-                Due during current shift
-              </div>
-            </div>
-          </section>
+          <RoleDashboardSummary widgets={summaryWidgets} />
 
           {/* ============================================================ */}
-          {/* 3 & 4. MY CURRENT DUTY & MY STATION / TRAIN                  */}
+          {/* 4. TODAY'S DUTY & CURRENT ASSIGNMENT (ROLE-AWARE)            */}
           {/* ============================================================ */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* 3. MY CURRENT DUTY */}
-            <div className="rounded-xl border border-[#16364A] bg-[#071A33] p-5 sm:p-6 flex flex-col justify-between shadow-sm">
-              <div>
-                <div className="flex items-center justify-between border-b border-[#16364A] pb-3 mb-4">
-                  <div className="flex items-center gap-2">
-                    <CalendarCheck size={18} className="text-teal-400" />
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-slate-200">
-                      My Current Duty
-                    </h3>
-                  </div>
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-teal-950/60 text-teal-300 border border-teal-700/50 text-xs font-medium">
-                    <span className="h-1.5 w-1.5 rounded-full bg-teal-400"></span>
-                    {dutyInfo.dutyStatus}
-                  </span>
-                </div>
+            {/* TODAY'S DUTY */}
+            <RoleDutyCard duty={duty} roleConfig={roleConfig} />
 
-                <div className="mb-4">
-                  <div className="text-base font-bold text-white">
-                    {activeRoleConfig.name}
-                  </div>
-                  <div className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
-                    <MapPin size={13} className="text-teal-400" />
-                    <span>{dutyInfo.location}</span>
-                    {dutyInfo.stationCode && (
-                      <span className="font-mono text-slate-400">({dutyInfo.stationCode})</span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                  <div className="bg-[#0A2036] p-3 rounded-lg border border-[#16364A]">
-                    <div className="text-slate-400 text-[11px]">Shift</div>
-                    <div className="font-semibold text-white mt-0.5">
-                      {dutyInfo.shift}
-                    </div>
-                  </div>
-
-                  <div className="bg-[#0A2036] p-3 rounded-lg border border-[#16364A]">
-                    <div className="text-slate-400 text-[11px]">Reporting Time</div>
-                    <div className="font-semibold text-white mt-0.5">
-                      {dutyInfo.reportingTime}
-                    </div>
-                  </div>
-
-                  <div className="bg-[#0A2036] p-3 rounded-lg border border-[#16364A] sm:col-span-2">
-                    <div className="text-slate-400 text-[11px]">Responsibility</div>
-                    <div className="font-medium text-slate-200 mt-0.5">
-                      {dutyInfo.responsibility}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4 pt-3 border-t border-[#16364A] flex items-center justify-end">
-                <button
-                  type="button"
-                  onClick={() => navigate("/employee/duty")}
-                  className="text-teal-400 hover:text-teal-300 text-xs font-medium flex items-center gap-1"
-                >
-                  <span>View Full Roster</span>
-                  <ChevronRight size={14} />
-                </button>
-              </div>
-            </div>
-
-            {/* 4. MY STATION / TRAIN */}
-            <div className="rounded-xl border border-[#16364A] bg-[#071A33] p-5 sm:p-6 flex flex-col justify-between shadow-sm">
-              <div>
-                <div className="flex items-center justify-between border-b border-[#16364A] pb-3 mb-4">
-                  <div className="flex items-center gap-2">
-                    <TrainFront size={18} className="text-teal-400" />
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-slate-200">
-                      My Station / Train
-                    </h3>
-                  </div>
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-950/60 text-blue-300 border border-blue-700/50 text-xs font-medium">
-                    <Radio size={12} className="text-blue-400" />
-                    {trainInfo.trainStatus}
-                  </span>
-                </div>
-
-                <div className="mb-4">
-                  <div className="text-base font-bold text-white">
-                    <span className="font-mono text-white mr-1.5">{trainInfo.trainNumber}</span>
-                    <span>{trainInfo.assignedTrain}</span>
-                  </div>
-                  <div className="text-xs text-slate-400 mt-0.5">
-                    Section: {trainInfo.section}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                  <div className="bg-[#0A2036] p-3 rounded-lg border border-[#16364A]">
-                    <div className="text-slate-400 text-[11px]">Current Location</div>
-                    <div className="font-semibold text-white mt-0.5 truncate">
-                      {trainInfo.currentLocation}
-                    </div>
-                  </div>
-
-                  <div className="bg-[#0A2036] p-3 rounded-lg border border-[#16364A]">
-                    <div className="text-slate-400 text-[11px]">Next Station</div>
-                    <div className="font-semibold text-slate-200 mt-0.5 truncate">
-                      {trainInfo.nextStation}
-                    </div>
-                  </div>
-
-                  <div className="bg-[#0A2036] p-3 rounded-lg border border-[#16364A]">
-                    <div className="text-slate-400 text-[11px]">Delay</div>
-                    <div className="font-semibold text-[#F59E0B] mt-0.5 flex items-center gap-1">
-                      <span>{trainInfo.delay}</span>
-                      <span className="text-[11px] text-slate-400 font-normal">({trainInfo.eta})</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4 pt-3 border-t border-[#16364A] flex items-center justify-end">
-                <button
-                  type="button"
-                  onClick={() => navigate("/employee/assignment")}
-                  className="text-teal-400 hover:text-teal-300 text-xs font-medium flex items-center gap-1"
-                >
-                  <span>View Assignment</span>
-                  <ChevronRight size={14} />
-                </button>
-              </div>
-            </div>
+            {/* CURRENT ASSIGNMENT */}
+            <RoleAssignmentCard assignment={assignment} roleConfig={roleConfig} />
           </div>
 
           {/* ============================================================ */}
-          {/* 5. OPERATIONAL ALERTS & PENDING TASKS                        */}
+          {/* 5. ROLE-SPECIFIC ALERTS & TASKS                              */}
           {/* ============================================================ */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* OPERATIONAL ALERTS */}
-            <div className="rounded-xl border border-[#16364A] bg-[#071A33] p-5 sm:p-6 shadow-sm flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between border-b border-[#16364A] pb-3 mb-4">
-                  <div className="flex items-center gap-2">
-                    <AlertTriangle size={18} className="text-amber-400" />
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-slate-200">
-                      Operational Alerts
-                    </h3>
-                  </div>
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded bg-[#16364A] text-slate-300">
-                    {alerts.length} Active
-                  </span>
-                </div>
-
-                <div className="space-y-2.5">
-                  {alerts.length === 0 ? (
-                    <div className="text-center py-6 text-slate-400 text-xs">
-                      <CheckCircle2 size={22} className="mx-auto text-teal-400 mb-1" />
-                      No active operational alerts.
-                    </div>
-                  ) : (
-                    alerts.slice(0, 3).map((alert) => {
-                      const isCritical = alert.severity === "CRITICAL";
-                      const isHigh = alert.severity === "HIGH";
-
-                      const badgeStyle = isCritical
-                        ? "bg-red-950/60 text-red-300 border-red-700/50"
-                        : isHigh
-                        ? "bg-amber-950/60 text-amber-300 border-amber-700/50"
-                        : "bg-blue-950/60 text-blue-300 border-blue-700/50";
-
-                      return (
-                        <div
-                          key={alert.id}
-                          className="rounded-lg border border-[#16364A] bg-[#0A2036] p-3"
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span
-                                className={`text-[9px] font-bold px-1.5 py-0.2 rounded border uppercase tracking-wider shrink-0 ${badgeStyle}`}
-                              >
-                                {alert.severity}
-                              </span>
-                              <h4 className="text-xs font-semibold text-white truncate">{alert.title}</h4>
-                            </div>
-
-                            <span className="text-[10px] text-[#71899C] shrink-0 font-mono">
-                              {alert.timestamp}
-                            </span>
-                          </div>
-
-                          <div className="mt-2 text-xs text-slate-300 flex items-center justify-between">
-                            <span className="font-mono text-slate-400 text-[11px]">
-                              {alert.trainOrSection}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => handleAcknowledgeAlert(alert.id)}
-                              className="text-[10px] px-2 py-0.5 rounded bg-[#16364A] text-slate-300 hover:text-white hover:bg-[#0E7C86] transition"
-                            >
-                              Acknowledge
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
-
-              <div className="mt-4 pt-3 border-t border-[#16364A] flex items-center justify-end">
-                <button
-                  type="button"
-                  onClick={() => navigate("/employee/alerts")}
-                  className="text-teal-400 hover:text-teal-300 text-xs font-medium flex items-center gap-1"
-                >
-                  <span>View All Alerts</span>
-                  <ChevronRight size={14} />
-                </button>
-              </div>
-            </div>
+            <RoleAlertSummary
+              alerts={alerts}
+              onAcknowledgeAlert={handleAcknowledgeAlert}
+            />
 
             {/* PENDING TASKS */}
-            <div className="rounded-xl border border-[#16364A] bg-[#071A33] p-5 sm:p-6 shadow-sm flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between border-b border-[#16364A] pb-3 mb-4">
-                  <div className="flex items-center gap-2">
-                    <CheckSquare size={18} className="text-teal-400" />
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-slate-200">
-                      Pending Tasks
-                    </h3>
-                  </div>
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded bg-[#16364A] text-slate-300">
-                    {pendingTasksCount} Pending
-                  </span>
-                </div>
-
-                <div className="space-y-2.5">
-                  {tasks.slice(0, 3).map((task) => {
-                    const isHigh = task.priority.includes("High");
-                    const isCompleted = task.status === "Completed";
-
-                    return (
-                      <div
-                        key={task.id}
-                        className={`rounded-lg border p-3 transition flex items-center justify-between gap-3 ${
-                          isCompleted
-                            ? "bg-[#0A2036]/50 border-teal-900/30 opacity-70"
-                            : "bg-[#0A2036] border-[#16364A]"
-                        }`}
-                      >
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h4
-                              className={`text-xs font-medium ${
-                                isCompleted ? "line-through text-slate-400" : "text-white"
-                              }`}
-                            >
-                              {task.title}
-                            </h4>
-                            {isHigh && (
-                              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded border bg-red-950/60 text-red-300 border-red-800/40 uppercase">
-                                High
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-400 flex items-center gap-2">
-                            <Clock size={11} className="text-slate-400" />
-                            <span>{task.dueTime}</span>
-                            {task.category && (
-                              <span className="text-[#71899C]">• {task.category}</span>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Status Toggle Button */}
-                        <button
-                          type="button"
-                          onClick={() => toggleTaskStatus(task.id)}
-                          className={`text-[10px] font-semibold px-2.5 py-1 rounded border transition shrink-0 ${
-                            task.status === "Completed"
-                              ? "bg-teal-950 text-teal-300 border-teal-600"
-                              : task.status === "In Progress"
-                              ? "bg-[#0A223D] text-teal-300 border-teal-500"
-                              : "bg-[#16364A] text-slate-200 border-slate-600 hover:border-teal-400"
-                          }`}
-                          title="Click to change status"
-                        >
-                          {task.status || "Pending"}
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="mt-4 pt-3 border-t border-[#16364A] flex items-center justify-end">
-                <button
-                  type="button"
-                  onClick={() => navigate("/employee/tasks")}
-                  className="text-teal-400 hover:text-teal-300 text-xs font-medium flex items-center gap-1"
-                >
-                  <span>View All Tasks</span>
-                  <ChevronRight size={14} />
-                </button>
-              </div>
-            </div>
+            <RoleTaskSummary
+              tasks={tasks}
+              onToggleStatus={toggleTaskStatus}
+            />
           </div>
 
           {/* ============================================================ */}
-          {/* 6. RECENT NOTIFICATIONS                                      */}
+          {/* 6. ROLE QUICK ACTIONS                                        */}
+          {/* ============================================================ */}
+          <RoleQuickActions roleConfig={roleConfig} />
+
+          {/* ============================================================ */}
+          {/* 7. RECENT NOTIFICATIONS                                      */}
           {/* ============================================================ */}
           <section className="rounded-xl border border-[#16364A] bg-[#071A33] p-5 sm:p-6 shadow-sm">
             <div className="flex items-center justify-between border-b border-[#16364A] pb-3 mb-4">
@@ -888,7 +598,7 @@ export default function EmployeeDashboard() {
               <button
                 type="button"
                 onClick={() => navigate("/employee/notifications")}
-                className="text-teal-400 hover:text-teal-300 text-xs font-medium flex items-center gap-1"
+                className="text-teal-400 hover:text-teal-300 text-xs font-medium flex items-center gap-1 transition"
               >
                 <span>View All Notifications</span>
                 <ChevronRight size={14} />
