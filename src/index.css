@@ -63,13 +63,52 @@ body {
   }
 }
 
+/* ==========================================================================
+   RailDrishti Accessibility System Classes
+   ========================================================================== */
+
 html.accessibility-high-contrast body {
-  filter: contrast(1.2);
+  filter: contrast(1.3);
+}
+
+html.accessibility-high-contrast button,
+html.accessibility-high-contrast input,
+html.accessibility-high-contrast select,
+html.accessibility-high-contrast [role="button"] {
+  border-width: 2px !important;
+  border-color: #071A33 !important;
 }
 
 html.accessibility-dark-contrast body {
-  background: #071a33;
-  color: #ffffff;
+  background: #071A33 !important;
+  color: #FFFFFF !important;
+}
+
+html.accessibility-dark-contrast .bg-white {
+  background-color: #0C2442 !important;
+  color: #F1F5F9 !important;
+  border-color: #1E3E66 !important;
+}
+
+html.accessibility-dark-contrast .text-slate-900,
+html.accessibility-dark-contrast .text-slate-800,
+html.accessibility-dark-contrast .text-slate-700 {
+  color: #F8FAFC !important;
+}
+
+html.accessibility-dark-contrast .text-slate-600,
+html.accessibility-dark-contrast .text-slate-500 {
+  color: #CBD5E1 !important;
+}
+
+html.accessibility-dark-contrast .bg-slate-50,
+html.accessibility-dark-contrast .bg-slate-100,
+html.accessibility-dark-contrast .bg-\[\#F4F7FA\] {
+  background-color: #071A33 !important;
+}
+
+html.accessibility-color-vision {
+  filter: saturate(1.25) contrast(1.1);
 }
 
 html.accessibility-color-vision a,
@@ -77,10 +116,85 @@ html.accessibility-color-vision button {
   outline-offset: 2px;
 }
 
+html.accessibility-color-vision [class*="bg-emerald-"],
+html.accessibility-color-vision [class*="bg-green-"] {
+  outline: 2px solid #059669 !important;
+  outline-offset: 1px;
+}
+
+html.accessibility-color-vision [class*="bg-red-"],
+html.accessibility-color-vision [class*="bg-rose-"] {
+  outline: 2px dashed #DC2626 !important;
+  outline-offset: 1px;
+}
+
+html.accessibility-color-vision [class*="bg-amber-"],
+html.accessibility-color-vision [class*="bg-yellow-"] {
+  outline: 2px dotted #D97706 !important;
+  outline-offset: 1px;
+}
+
 html.accessibility-highlight-links a {
   text-decoration: underline !important;
-  text-decoration-thickness: 2px;
-  text-underline-offset: 3px;
+  text-decoration-thickness: 2.5px !important;
+  text-underline-offset: 4px !important;
+  text-decoration-color: #0E7C86 !important;
+  font-weight: 600 !important;
+}
+
+html.accessibility-invert {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+/* Guard media and specific images from double-inverting distortion */
+html.accessibility-invert img,
+html.accessibility-invert video,
+html.accessibility-invert canvas,
+html.accessibility-invert [data-no-invert] {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+html.accessibility-sat-low {
+  filter: saturate(0.6);
+}
+
+html.accessibility-sat-high {
+  filter: saturate(1.75);
+}
+
+html.accessibility-sat-desaturated {
+  filter: saturate(0) grayscale(1);
+}
+
+html.accessibility-reduce-motion *,
+html.accessibility-reduce-motion *::before,
+html.accessibility-reduce-motion *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+
+html.accessibility-reduce-motion .alert-marquee {
+  animation: none !important;
+}
+
+html.accessibility-enhanced-focus *:focus-visible,
+html.accessibility-enhanced-focus a:focus,
+html.accessibility-enhanced-focus button:focus,
+html.accessibility-enhanced-focus input:focus,
+html.accessibility-enhanced-focus select:focus,
+html.accessibility-enhanced-focus [role="button"]:focus {
+  outline: 3px solid #F59E0B !important;
+  outline-offset: 3px !important;
+  box-shadow: 0 0 0 5px rgba(14, 124, 134, 0.5) !important;
+}
+
+html.accessibility-readable-font,
+html.accessibility-readable-font body,
+html.accessibility-readable-font * {
+  font-family: "Segoe UI", Arial, system-ui, -apple-system, BlinkMacSystemFont, sans-serif !important;
+  letter-spacing: 0.02em !important;
 }
 
 /* Suppress Google Translate default top banner, iframes & tooltips */
