@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -19,7 +19,6 @@ import {
   ChevronRight,
   Menu,
   X,
-  CheckCircle2,
   Building2,
   CircleDot,
   CheckCheck,
@@ -36,60 +35,45 @@ import {
   Award,
   Heart,
   Home,
-  FileCheck,
   Radio,
-  Calendar,
+  Lock,
+  ShieldAlert,
 } from "lucide-react";
-import { getCurrentUser, logout } from "../../services/auth";
+import { getCurrentUser, logout, updateCurrentUser, type AuthUser } from "../../services/auth";
 import {
-  demoEmployeeProfile,
-  getRoleConfig,
-  demoOperationalRole,
-  type EmployeeProfileDemo,
-  type OperationalRoleId,
-} from "../../services/employee";
+  getRoleProfileViewData,
+  type RoleProfileViewData,
+} from "../../services/employeeProfileService";
+import type { EmployeeNavItem } from "../../services/employee";
 
 export default function EmployeeProfile() {
   const navigate = useNavigate();
 
   // Authentication & System State
-  const [currentUser, setCurrentUser] = useState(getCurrentUser());
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(getCurrentUser());
   const [is24Hour, setIs24Hour] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Profile Local State (Initialized with demo data or authenticated user)
-  const [profile, setProfile] = useState<EmployeeProfileDemo>(() => {
-    const user = getCurrentUser();
-    return {
-      ...demoEmployeeProfile,
-      name: user?.name || demoEmployeeProfile.name,
-      employeeId: user?.employeeId || demoEmployeeProfile.employeeId,
-      email: user?.email || demoEmployeeProfile.email,
-      department: user?.department || demoEmployeeProfile.department,
-    };
-  });
-
-  // Active Role Architecture Configuration
-  const activeRoleConfig = getRoleConfig(
-    (currentUser?.operationalRole as OperationalRoleId) ||
-      demoOperationalRole
+  // Profile View Data (strictly dynamic according to logged-in operationalRole)
+  const profileData: RoleProfileViewData = useMemo(
+    () => getRoleProfileViewData(currentUser),
+    [currentUser]
   );
 
   // Modals & Interactivity State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Edit Profile Form State
+  // Edit Profile Form State (Only personal contact fields editable; system/role fields locked)
   const [editForm, setEditForm] = useState({
-    name: profile.name,
-    phone: profile.phone,
-    emergencyContact: profile.emergencyContact,
-    email: profile.email,
-    bloodGroup: profile.bloodGroup || "O+ Positive",
-    residentialQuarters: profile.residentialQuarters || "Type-IV Qtr #42B, SWR Colony, Majestic, Bengaluru",
+    name: profileData.name,
+    phone: profileData.phone,
+    emergencyContact: profileData.emergencyContact,
+    residentialAddress: profileData.residentialAddress,
+    bloodGroup: profileData.bloodGroup,
   });
 
   // Change Password Form State
@@ -101,13 +85,16 @@ export default function EmployeeProfile() {
   const [showPassword, setShowPassword] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
 
-  // Auth state setup
+  // Sync edit form with profile data when updated
   useEffect(() => {
-    const user = getCurrentUser();
-    if (user) {
-      setCurrentUser(user);
-    }
-  }, []);
+    setEditForm({
+      name: profileData.name,
+      phone: profileData.phone,
+      emergencyContact: profileData.emergencyContact,
+      residentialAddress: profileData.residentialAddress,
+      bloodGroup: profileData.bloodGroup,
+    });
+  }, [profileData]);
 
   // Live IST Clock
   useEffect(() => {
@@ -134,25 +121,30 @@ export default function EmployeeProfile() {
 
   const handleLogout = () => {
     logout();
-    navigate("/login", { replace: true });
+    navigate("/employee/login", { replace: true });
   };
 
-  // Handle Edit Profile Submission (Frontend demo state only)
+  // Handle Edit Profile Submission (Persists to auth storage)
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
-    setProfile((prev) => ({
-      ...prev,
-      name: editForm.name,
-      phone: editForm.phone,
-      emergencyContact: editForm.emergencyContact,
-      bloodGroup: editForm.bloodGroup,
-      residentialQuarters: editForm.residentialQuarters,
-    }));
+    if (!currentUser) return;
+
+    const updatedUser: AuthUser = {
+      ...currentUser,
+      name: editForm.name.trim() || currentUser.name,
+      phone: editForm.phone.trim() || currentUser.phone,
+      address: editForm.residentialAddress.trim() || currentUser.address,
+      emergencyContactPhone: editForm.emergencyContact.trim(),
+      dob: editForm.bloodGroup.trim(),
+    };
+
+    updateCurrentUser(updatedUser);
+    setCurrentUser(updatedUser);
     setIsEditModalOpen(false);
-    showToast("Employee contact and personal records updated successfully.");
+    showToast("Profile records updated and saved successfully.");
   };
 
-  // Handle Change Password Submission (Frontend demo state only)
+  // Handle Change Password Submission
   const handleSavePassword = (e: React.FormEvent) => {
     e.preventDefault();
     setPasswordError(null);
@@ -172,11 +164,11 @@ export default function EmployeeProfile() {
 
     setIsPasswordModalOpen(false);
     setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
-    showToast("Password changed successfully for employee session.");
+    showToast("Password updated successfully for this session.");
   };
 
   // Sidebar navigation menu items
-  const navItems = [
+  const navItems: EmployeeNavItem[] = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/employee/dashboard", active: true },
     { id: "duty", label: "My Duty", icon: CalendarCheck, path: "/employee/duty", active: true },
     { id: "assignment", label: "My Train / My Section", icon: TrainFront, path: "/employee/assignment", active: true },
@@ -213,7 +205,7 @@ export default function EmployeeProfile() {
           </button>
 
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full border border-[#294665] bg-[#071A33] shadow-md">
+            <div className="h-11 w-11 shrink-0 overflow-hidden rounded-full border border-[#294665] bg-[#071A33] shadow-md">
               <img
                 src="/logos/raildrishti-dark.png"
                 alt="RailDrishti"
@@ -261,10 +253,10 @@ export default function EmployeeProfile() {
 
             <div className="hidden lg:block text-left">
               <div className="text-xs font-semibold text-white">
-                Authorized Employee
+                {profileData.name}
               </div>
               <div className="text-[10px] text-[#71899C]">
-                Secure Session
+                {profileData.roleDisplayName}
               </div>
             </div>
 
@@ -371,12 +363,12 @@ export default function EmployeeProfile() {
               <div className="text-[11px] text-slate-400 space-y-1">
                 <div className="flex items-center gap-1.5 text-slate-300 font-medium">
                   <Building2 size={13} className="text-[#0E7C86]" />
-                  <span>{profile.division}</span>
+                  <span>{profileData.department}</span>
                 </div>
-                <div className="text-[10px] text-[#71899C]">{profile.zone}</div>
+                <div className="text-[10px] text-[#71899C] font-mono">{profileData.employeeId}</div>
                 <div className="pt-1 flex items-center justify-between text-[10px] text-slate-400 border-t border-[#16364A]/40">
-                  <span>Operational Staff</span>
-                  <span className="text-emerald-400 font-semibold">● Verified Active</span>
+                  <span>Operational Role</span>
+                  <span className="text-amber-400 font-semibold">{profileData.roleDisplayName}</span>
                 </div>
               </div>
             ) : (
@@ -389,8 +381,31 @@ export default function EmployeeProfile() {
 
         {/* PROFILE MAIN CONTENT */}
         <main className="flex-1 min-w-0 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6">
+          {/* WARNING BANNER IF APPLICABLE */}
+          {profileData.warningMessage && (
+            <div className="p-3.5 rounded-xl border border-amber-500/40 bg-amber-950/30 text-amber-300 text-xs flex items-center gap-2.5 shadow-md">
+              <AlertTriangle size={18} className="shrink-0 text-amber-400" />
+              <span>{profileData.warningMessage}</span>
+            </div>
+          )}
+
+          {/* CONTROLLER SEPARATION BANNER */}
+          {profileData.isController && (
+            <div className="p-4 rounded-xl border border-cyan-500/50 bg-gradient-to-r from-cyan-950/40 via-[#0A2036] to-cyan-950/20 text-cyan-200 text-xs flex items-start gap-3 shadow-lg">
+              <ShieldAlert size={20} className="shrink-0 text-cyan-400 mt-0.5" />
+              <div>
+                <div className="font-bold text-sm text-white uppercase tracking-wider">
+                  Controller Account — {profileData.approvalStatus}
+                </div>
+                <p className="mt-1 text-slate-300 leading-relaxed">
+                  This account is registered under the Controller Authority division. Trajectory dispatch, precedence overrides, and DSS interlocking remain restricted to approved controller credentials.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* ============================================================ */}
-          {/* 1. HERO PROFILE CARD                                         */}
+          {/* 1. HERO PROFILE HEADER CARD                                  */}
           {/* ============================================================ */}
           <section className="relative overflow-hidden rounded-2xl border border-[#16364A] bg-gradient-to-br from-[#0A223D] via-[#071A33] to-[#041224] p-5 sm:p-7 shadow-xl">
             <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-[#0E7C86]/10 rounded-full blur-3xl pointer-events-none" />
@@ -400,9 +415,12 @@ export default function EmployeeProfile() {
               <div className="flex flex-col sm:flex-row sm:items-center gap-5">
                 <div className="relative h-20 w-20 sm:h-24 sm:w-24 shrink-0 rounded-2xl bg-gradient-to-br from-[#0E7C86] to-[#063443] border-2 border-teal-400/50 p-1 flex items-center justify-center shadow-lg">
                   <span className="text-2xl sm:text-3xl font-bold font-mono tracking-wider text-white">
-                    {profile.avatarInitials}
+                    {profileData.avatarInitials}
                   </span>
-                  <span className="absolute -bottom-1.5 -right-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-white shadow ring-2 ring-[#071A33]" title="Verified Employee">
+                  <span
+                    className="absolute -bottom-1.5 -right-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-white shadow ring-2 ring-[#071A33]"
+                    title="Verified Employee"
+                  >
                     <BadgeCheck size={14} />
                   </span>
                 </div>
@@ -411,35 +429,35 @@ export default function EmployeeProfile() {
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-500/50 text-[11px] font-bold">
                       <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                      {profile.accountStatus}
+                      {profileData.approvalStatus}
                     </span>
                     <span className="px-2.5 py-0.5 rounded bg-[#0A2036] text-teal-300 border border-[#16364A] text-[11px] font-mono font-bold">
-                      {profile.employeeId}
+                      ID: {profileData.employeeId}
                     </span>
                     <span className="px-2.5 py-0.5 rounded bg-[#0A2036] text-amber-300 border border-amber-500/30 text-[11px] font-mono font-semibold">
-                      {profile.hrmsId || "HRMS-SWR-8841"}
+                      {profileData.hrmsId}
                     </span>
                     <span className="px-2 py-0.5 rounded bg-[#0E7C86]/20 text-teal-300 border border-[#0E7C86]/40 text-[10px] uppercase font-bold tracking-wider">
-                      {profile.verificationStatus}
+                      {profileData.accountRole}
                     </span>
                   </div>
 
                   <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-                    {profile.name}
+                    {profileData.name}
                   </h2>
 
                   <div className="flex flex-wrap items-center gap-y-1 gap-x-3 text-xs text-slate-300">
                     <span className="font-semibold text-[#F59E0B] flex items-center gap-1">
                       <Shield size={14} className="text-[#F59E0B]" />
-                      {activeRoleConfig.name}
+                      {profileData.roleDisplayName}
                     </span>
                     <span className="text-slate-600">•</span>
                     <span className="text-teal-300 flex items-center gap-1">
                       <Building2 size={14} className="text-[#0E7C86]" />
-                      {activeRoleConfig.department}
+                      {profileData.department}
                     </span>
                     <span className="text-slate-600">•</span>
-                    <span className="text-slate-400 font-mono">{profile.division}</span>
+                    <span className="text-slate-400 font-mono">{profileData.assignedLocation}</span>
                   </div>
                 </div>
               </div>
@@ -448,17 +466,7 @@ export default function EmployeeProfile() {
               <div className="flex flex-wrap items-center gap-2.5 lg:self-center">
                 <button
                   type="button"
-                  onClick={() => {
-                    setEditForm({
-                      name: profile.name,
-                      phone: profile.phone,
-                      emergencyContact: profile.emergencyContact,
-                      email: profile.email,
-                      bloodGroup: profile.bloodGroup || "O+ Positive",
-                      residentialQuarters: profile.residentialQuarters || "Type-IV Qtr #42B, SWR Colony, Majestic, Bengaluru",
-                    });
-                    setIsEditModalOpen(true);
-                  }}
+                  onClick={() => setIsEditModalOpen(true)}
                   className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#0E7C86] hover:bg-[#0E5961] text-white text-xs font-bold transition shadow-md border border-teal-400/40"
                 >
                   <Edit3 size={15} />
@@ -495,25 +503,30 @@ export default function EmployeeProfile() {
           {/* TWO-COLUMN CONTENT GRID                                       */}
           {/* ============================================================ */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* LEFT COLUMN: 7 SPANS (Personal Info, Service Record, Equipment) */}
+            {/* LEFT COLUMN: 7 SPANS (Personal Info, Employee Info, Equipment) */}
             <div className="lg:col-span-7 space-y-6">
-              {/* 2. EXPANDED PERSONAL & CONTACT INFORMATION */}
+              {/* 2. PERSONAL & CONTACT INFORMATION */}
               <div className="rounded-2xl border border-[#16364A] bg-[#071A33] p-5 sm:p-6 shadow-sm">
                 <div className="flex items-center justify-between border-b border-[#16364A] pb-3 mb-4">
                   <div className="flex items-center gap-2">
                     <User size={18} className="text-teal-400" />
                     <div>
                       <h3 className="text-sm font-bold uppercase tracking-wider text-white">
-                        Personal & Contact Information
+                        Personal Information
                       </h3>
                       <p className="text-[11px] text-slate-400">
-                        Official personal details verified by HRMS / Personnel Department
+                        Editable personal contact records verified by HRMS
                       </p>
                     </div>
                   </div>
-                  <span className="text-[11px] text-teal-400 bg-teal-950/60 px-2.5 py-0.5 rounded border border-teal-700/50 font-medium">
-                    HRMS Verified
-                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditModalOpen(true)}
+                    className="text-xs text-teal-400 hover:text-teal-300 font-semibold flex items-center gap-1"
+                  >
+                    <Edit3 size={13} />
+                    <span>Edit</span>
+                  </button>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
@@ -523,18 +536,7 @@ export default function EmployeeProfile() {
                       Full Legal Name
                     </div>
                     <div className="font-bold text-white text-sm mt-0.5">
-                      {profile.name}
-                    </div>
-                  </div>
-
-                  {/* Official Employee ID & HRMS */}
-                  <div className="bg-[#0A2036] p-3.5 rounded-xl border border-[#16364A]">
-                    <div className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider">
-                      Official Employee ID & HRMS
-                    </div>
-                    <div className="font-mono font-bold text-[#F59E0B] text-sm mt-0.5 flex items-center justify-between">
-                      <span>{profile.employeeId}</span>
-                      <span className="text-xs text-teal-300">{profile.hrmsId}</span>
+                      {profileData.name}
                     </div>
                   </div>
 
@@ -545,7 +547,7 @@ export default function EmployeeProfile() {
                       Official Email
                     </div>
                     <div className="font-medium text-slate-200 text-xs mt-0.5 truncate font-mono">
-                      {profile.email}
+                      {profileData.email}
                     </div>
                   </div>
 
@@ -553,10 +555,10 @@ export default function EmployeeProfile() {
                   <div className="bg-[#0A2036] p-3.5 rounded-xl border border-[#16364A]">
                     <div className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider flex items-center gap-1">
                       <Phone size={12} className="text-emerald-400" />
-                      Primary Contact Number
+                      Primary Mobile Number
                     </div>
                     <div className="font-bold text-white text-xs mt-0.5 font-mono">
-                      {profile.phone}
+                      {profileData.phone}
                     </div>
                   </div>
 
@@ -567,109 +569,117 @@ export default function EmployeeProfile() {
                       Emergency Contact
                     </div>
                     <div className="font-medium text-slate-200 text-xs mt-0.5">
-                      {profile.emergencyContact}
+                      {profileData.emergencyContact}
                     </div>
                   </div>
 
-                  {/* Blood Group & DOB */}
+                  {/* Blood Group */}
                   <div className="bg-[#0A2036] p-3.5 rounded-xl border border-[#16364A]">
                     <div className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider">
-                      Blood Group & DOB
+                      Blood Group
                     </div>
-                    <div className="font-semibold text-white text-xs mt-0.5 flex items-center justify-between">
-                      <span className="text-rose-400 font-bold">{profile.bloodGroup || "O+ Positive"}</span>
-                      <span className="text-slate-300 font-mono text-[11px]">{profile.dateOfBirth || "14 Aug 1988 (38 Yrs)"}</span>
-                    </div>
-                  </div>
-
-                  {/* PF / PRAN Number */}
-                  <div className="bg-[#0A2036] p-3.5 rounded-xl border border-[#16364A]">
-                    <div className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider">
-                      Provident Fund / PRAN Number
-                    </div>
-                    <div className="font-mono font-semibold text-teal-300 text-xs mt-0.5">
-                      {profile.pfNumber || "SWR/PF/098412"}
+                    <div className="font-bold text-rose-400 text-sm mt-0.5">
+                      {profileData.bloodGroup}
                     </div>
                   </div>
 
-                  {/* Residential Station Quarters */}
+                  {/* Residential Address / Quarters */}
                   <div className="bg-[#0A2036] p-3.5 rounded-xl border border-[#16364A]">
                     <div className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider flex items-center gap-1">
                       <Home size={12} className="text-[#F59E0B]" />
-                      Railway Residential Quarters
+                      Residential Quarters / Address
                     </div>
                     <div className="font-medium text-slate-300 text-[11px] mt-0.5 truncate">
-                      {profile.residentialQuarters || "Type-IV Qtr #42B, SWR Colony, Majestic"}
+                      {profileData.residentialAddress}
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* 3. OFFICIAL RAILWAY SERVICE & APPOINTMENT RECORD */}
+              {/* 3. EMPLOYEE & ROLE INFORMATION (READ-ONLY) */}
               <div className="rounded-2xl border border-[#16364A] bg-[#071A33] p-5 sm:p-6 shadow-sm">
                 <div className="flex items-center justify-between border-b border-[#16364A] pb-3 mb-4">
                   <div className="flex items-center gap-2">
-                    <FileCheck size={18} className="text-teal-400" />
+                    <Shield size={18} className="text-[#F59E0B]" />
                     <div>
                       <h3 className="text-sm font-bold uppercase tracking-wider text-white">
-                        Railway Service & Competency Record
+                        Employee & Role Information
                       </h3>
                       <p className="text-[11px] text-slate-400">
-                        Pay matrix level, service tenure, and medical fitness certifications
+                        System-controlled credentials & departmental allocation (Read-Only)
                       </p>
                     </div>
                   </div>
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-500/50 text-xs font-bold">
-                    <BadgeCheck size={13} />
-                    A-1 Medically Fit
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded bg-[#0A2036] text-slate-400 border border-[#16364A] text-[10px] font-mono">
+                    <Lock size={11} className="text-slate-500" />
+                    Read-Only
                   </span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
+                  {/* Account Role */}
                   <div className="bg-[#0A2036] p-3.5 rounded-xl border border-[#16364A]">
                     <div className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider">
-                      Cadre & Pay Matrix Level
+                      Account Role
                     </div>
-                    <div className="font-bold text-white text-xs mt-0.5">
-                      {profile.payLevel || "Level-6 (7th CPC - Grade Pay ₹4200)"}
+                    <div className="font-bold text-white text-sm mt-0.5 flex items-center justify-between">
+                      <span>{profileData.accountRole}</span>
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-teal-950 text-teal-300 border border-teal-700/50">
+                        {profileData.approvalStatus}
+                      </span>
                     </div>
                   </div>
 
+                  {/* Department */}
                   <div className="bg-[#0A2036] p-3.5 rounded-xl border border-[#16364A]">
                     <div className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider">
-                      Initial Appointment & Length of Service
+                      Allocated Department
                     </div>
-                    <div className="font-semibold text-white text-xs mt-0.5 flex items-center justify-between">
-                      <span className="font-mono">{profile.appointmentDate || "12 Nov 2014"}</span>
-                      <span className="text-teal-300 text-[11px]">({profile.serviceLength || "12 Yrs 4 Mos"})</span>
+                    <div className="font-bold text-teal-300 text-sm mt-0.5">
+                      {profileData.department}
                     </div>
                   </div>
 
+                  {/* Operational Role */}
                   <div className="bg-[#0A2036] p-3.5 rounded-xl border border-[#16364A]">
                     <div className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider">
-                      Controlling Officer / Supervisor
+                      Operational Role & Title
                     </div>
-                    <div className="font-semibold text-white text-xs mt-0.5">
-                      {profile.controllingOfficer || "K. Ramanathan (Sr. DOM / SBC)"}
+                    <div className="font-bold text-[#F59E0B] text-sm mt-0.5 flex items-center gap-1.5">
+                      <span>{profileData.roleDisplayName}</span>
+                      <span className="text-[10px] font-mono text-slate-400">({profileData.operationalRoleId})</span>
                     </div>
                   </div>
 
+                  {/* Employee ID & HRMS */}
                   <div className="bg-[#0A2036] p-3.5 rounded-xl border border-[#16364A]">
                     <div className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider">
-                      Safety Competency Certificate
+                      Employee ID / HRMS Reference
                     </div>
-                    <div className="font-mono font-semibold text-teal-300 text-xs mt-0.5">
-                      {profile.competencyCert || "CERT-SWR-SM-2025-9921 (Active)"}
+                    <div className="font-mono font-bold text-white text-xs mt-0.5 flex items-center justify-between">
+                      <span>{profileData.employeeId}</span>
+                      <span className="text-amber-300">{profileData.hrmsId}</span>
                     </div>
                   </div>
 
-                  <div className="sm:col-span-2 bg-[#0A2036] p-3.5 rounded-xl border border-[#16364A]">
+                  {/* Pay Level & Cadre */}
+                  <div className="bg-[#0A2036] p-3.5 rounded-xl border border-[#16364A]">
                     <div className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider">
-                      Interlocking Panel Qualification
+                      Pay Matrix Level
                     </div>
-                    <div className="font-medium text-slate-200 text-xs mt-0.5 flex items-center justify-between">
-                      <span>{profile.interlockingGrade || "Electronic Interlocking (EI Grade-4 Siemens)"}</span>
-                      <span className="text-emerald-400 font-bold text-[11px]">✓ Certified Operator</span>
+                    <div className="font-semibold text-slate-200 text-xs mt-0.5">
+                      {profileData.payLevel}
+                    </div>
+                  </div>
+
+                  {/* Appointment Date & Tenure */}
+                  <div className="bg-[#0A2036] p-3.5 rounded-xl border border-[#16364A]">
+                    <div className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider">
+                      Appointment Date & Service Tenure
+                    </div>
+                    <div className="font-semibold text-slate-200 text-xs mt-0.5 flex items-center justify-between">
+                      <span className="font-mono">{profileData.dateOfAppointment}</span>
+                      <span className="text-teal-300 text-[11px]">({profileData.serviceTenure})</span>
                     </div>
                   </div>
                 </div>
@@ -682,20 +692,20 @@ export default function EmployeeProfile() {
                     <Radio size={18} className="text-teal-400" />
                     <div>
                       <h3 className="text-sm font-bold uppercase tracking-wider text-white">
-                        Issued Operational Equipment
+                        Role-Specific Equipment in Custody
                       </h3>
                       <p className="text-[11px] text-slate-400">
-                        Station inventory and communication equipment logged under employee custody
+                        Operational equipment and inventory logged under {profileData.roleDisplayName} custody
                       </p>
                     </div>
                   </div>
                   <span className="text-xs font-mono font-semibold text-teal-300">
-                    4 Items
+                    {profileData.equipmentIssued.length} Items Logged
                   </span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                  {profile.equipmentIssued?.map((eq, idx) => (
+                  {profileData.equipmentIssued.map((eq, idx) => (
                     <div key={idx} className="bg-[#0A2036] p-3 rounded-xl border border-[#16364A] flex items-center justify-between">
                       <div>
                         <div className="font-semibold text-white">{eq.item}</div>
@@ -710,62 +720,101 @@ export default function EmployeeProfile() {
               </div>
             </div>
 
-            {/* RIGHT COLUMN: 5 SPANS (Duty Assignment, Training Certifications, Leave Ledger, Account) */}
+            {/* RIGHT COLUMN: 5 SPANS (Operational Info & Current Assignment, Certifications) */}
             <div className="lg:col-span-5 space-y-6">
-              {/* 5. CURRENT OPERATIONAL POSTING & DUTY SCOPE */}
+              {/* 5. OPERATIONAL INFORMATION & CURRENT ASSIGNMENT */}
               <div className="rounded-2xl border border-[#16364A] bg-[#071A33] p-5 sm:p-6 shadow-sm">
                 <div className="flex items-center justify-between border-b border-[#16364A] pb-3 mb-4">
                   <div className="flex items-center gap-2">
-                    <CalendarCheck size={18} className="text-teal-400" />
+                    <CalendarCheck size={18} className="text-[#F59E0B]" />
                     <h3 className="text-sm font-bold uppercase tracking-wider text-white">
-                      Current Operational Posting
+                      Operational Information
                     </h3>
                   </div>
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-500/50 text-xs font-bold">
                     <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                    {profile.dutyStatus}
+                    Operational Active
                   </span>
                 </div>
 
-                <div className="space-y-3 text-xs">
-                  <div className="bg-[#0A2036] p-3 rounded-xl border border-[#16364A] space-y-1">
-                    <div className="text-slate-400 text-[10px] uppercase font-semibold">Assigned Station Location</div>
-                    <div className="font-bold text-white flex items-center gap-1.5">
-                      <MapPin size={14} className="text-teal-400" />
-                      <span>{profile.assignedLocation}</span>
+                <div className="space-y-3.5 text-xs">
+                  {/* Primary Responsibility */}
+                  <div className="bg-[#0A2036] p-3.5 rounded-xl border border-[#16364A] space-y-1">
+                    <div className="text-slate-400 text-[10px] uppercase font-semibold">
+                      Primary Responsibility
+                    </div>
+                    <div className="font-medium text-slate-200 leading-relaxed">
+                      {profileData.primaryResponsibility}
                     </div>
                   </div>
 
+                  {/* Duty Type & Assignment Type */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-[#0A2036] p-3 rounded-xl border border-[#16364A] space-y-1">
+                      <div className="text-slate-400 text-[10px] uppercase font-semibold">
+                        Duty Type
+                      </div>
+                      <div className="font-bold text-white">
+                        {profileData.dutyType}
+                      </div>
+                    </div>
+
+                    <div className="bg-[#0A2036] p-3 rounded-xl border border-[#16364A] space-y-1">
+                      <div className="text-slate-400 text-[10px] uppercase font-semibold">
+                        Assignment Type
+                      </div>
+                      <div className="font-bold text-teal-300">
+                        {profileData.assignmentType} Scope
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Current Assignment */}
+                  <div className="bg-gradient-to-b from-[#0A223D] to-[#0A2036] p-4 rounded-xl border border-teal-500/30 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400 text-[10px] uppercase font-semibold">
+                        Current Operational Assignment
+                      </span>
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                          profileData.isAssignmentAvailable
+                            ? "bg-emerald-950 text-emerald-300 border border-emerald-600"
+                            : "bg-slate-800 text-slate-400 border border-slate-700"
+                        }`}
+                      >
+                        {profileData.isAssignmentAvailable ? "Assigned" : "Pending Roster"}
+                      </span>
+                    </div>
+
+                    <div className="font-bold text-white text-sm flex items-center gap-1.5">
+                      <MapPin size={15} className="text-[#0E7C86] shrink-0" />
+                      <span>{profileData.currentAssignment}</span>
+                    </div>
+
+                    <div className="text-[11px] text-slate-400">
+                      Location: <span className="text-slate-200 font-medium">{profileData.assignedLocation}</span>
+                    </div>
+                  </div>
+
+                  {/* Shift Schedule */}
                   <div className="bg-[#0A2036] p-3 rounded-xl border border-[#16364A] space-y-1">
-                    <div className="text-slate-400 text-[10px] uppercase font-semibold">Shift Schedule & Timings</div>
+                    <div className="text-slate-400 text-[10px] uppercase font-semibold">
+                      Shift Timings
+                    </div>
                     <div className="font-bold font-mono text-white">
-                      {profile.shift}
-                    </div>
-                  </div>
-
-                  <div className="bg-[#0A2036] p-3 rounded-xl border border-[#16364A] space-y-1">
-                    <div className="text-slate-400 text-[10px] uppercase font-semibold">Assigned Section Corridor</div>
-                    <div className="font-medium text-teal-300">
-                      {profile.assignedSection}
-                    </div>
-                  </div>
-
-                  <div className="bg-[#0A2036] p-3 rounded-xl border border-[#16364A] space-y-1">
-                    <div className="text-slate-400 text-[10px] uppercase font-semibold">Primary Priority Train</div>
-                    <div className="font-bold text-[#F59E0B]">
-                      {profile.assignedTrain}
+                      {profileData.shiftSchedule}
                     </div>
                   </div>
                 </div>
 
                 <div className="mt-4 pt-3 border-t border-[#16364A] flex items-center justify-between text-[11px] text-slate-400">
-                  <span>Duty Roster Assignment</span>
+                  <span>Assignment Scope Details</span>
                   <button
                     type="button"
-                    onClick={() => navigate("/employee/duty")}
+                    onClick={() => navigate("/employee/assignment")}
                     className="text-teal-400 hover:text-teal-300 font-semibold flex items-center gap-1"
                   >
-                    <span>View Full Roster</span>
+                    <span>View Assignment Page</span>
                     <ChevronRight size={13} />
                   </button>
                 </div>
@@ -777,14 +826,14 @@ export default function EmployeeProfile() {
                   <div className="flex items-center gap-2">
                     <Award size={18} className="text-[#F59E0B]" />
                     <h3 className="text-sm font-bold uppercase tracking-wider text-white">
-                      Training & Certifications
+                      Role Certifications & Training
                     </h3>
                   </div>
                   <span className="text-[11px] text-slate-400 font-mono">ZRTI Verified</span>
                 </div>
 
                 <div className="space-y-2.5 text-xs">
-                  {profile.certifications?.map((cert, idx) => (
+                  {profileData.certifications.map((cert, idx) => (
                     <div key={idx} className="bg-[#0A2036] p-3 rounded-xl border border-[#16364A]">
                       <div className="flex items-center justify-between mb-1">
                         <span className="font-bold text-white text-xs">{cert.title}</span>
@@ -799,49 +848,9 @@ export default function EmployeeProfile() {
                     </div>
                   ))}
                 </div>
-              </div>
 
-              {/* 7. LEAVE LEDGER & ROSTER DETAILS */}
-              <div className="rounded-2xl border border-[#16364A] bg-[#071A33] p-5 sm:p-6 shadow-sm">
-                <div className="flex items-center justify-between border-b border-[#16364A] pb-3 mb-4">
-                  <div className="flex items-center gap-2">
-                    <Calendar size={18} className="text-teal-400" />
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-white">
-                      Leave Ledger Balance
-                    </h3>
-                  </div>
-                  <span className="text-[11px] text-slate-400">Current Year 2026</span>
-                </div>
-
-                <div className="grid grid-cols-3 gap-3 text-center">
-                  <div className="bg-[#0A2036] p-3 rounded-xl border border-[#16364A]">
-                    <div className="text-[10px] font-semibold text-slate-400 uppercase">Casual (CL)</div>
-                    <div className="text-lg font-bold font-mono text-white mt-1">
-                      {profile.leaveBalance?.cl || 6}
-                    </div>
-                    <div className="text-[9px] text-emerald-400">Available</div>
-                  </div>
-
-                  <div className="bg-[#0A2036] p-3 rounded-xl border border-[#16364A]">
-                    <div className="text-[10px] font-semibold text-slate-400 uppercase">LAP</div>
-                    <div className="text-lg font-bold font-mono text-teal-300 mt-1">
-                      {profile.leaveBalance?.lap || 48}
-                    </div>
-                    <div className="text-[9px] text-teal-400">Accumulated</div>
-                  </div>
-
-                  <div className="bg-[#0A2036] p-3 rounded-xl border border-[#16364A]">
-                    <div className="text-[10px] font-semibold text-slate-400 uppercase">Restricted (RH)</div>
-                    <div className="text-lg font-bold font-mono text-amber-300 mt-1">
-                      {profile.leaveBalance?.rh || 2}
-                    </div>
-                    <div className="text-[9px] text-amber-400">Eligible</div>
-                  </div>
-                </div>
-
-                <div className="mt-3 pt-3 border-t border-[#16364A] flex items-center justify-between text-[11px] text-slate-400">
-                  <span>Weekly Rest: Every Sunday</span>
-                  <span className="text-teal-300 font-medium">Night Allowance Active</span>
+                <div className="mt-4 pt-3 border-t border-[#16364A] text-[10px] text-slate-400 font-mono">
+                  Competency Cert: <span className="text-teal-300">{profileData.competencyCert}</span>
                 </div>
               </div>
             </div>
@@ -849,122 +858,118 @@ export default function EmployeeProfile() {
         </main>
       </div>
 
-      {/* ============================================================ */}
-      {/* EDIT PROFILE MODAL (FRONTEND DEMO ONLY)                       */}
-      {/* ============================================================ */}
+      {/* EDIT PROFILE MODAL */}
       {isEditModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-2xl border border-[#16364A] bg-[#071A33] p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between border-b border-[#16364A] pb-3 mb-4">
-              <div className="flex items-center gap-2">
-                <Edit3 size={18} className="text-teal-400" />
-                <h3 className="text-base font-bold text-white">Edit Profile Records</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+          <div className="w-full max-w-lg rounded-2xl border border-[#16364A] bg-[#071A33] p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between border-b border-[#16364A] pb-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#0A2036] border border-[#294665] text-teal-400">
+                  <Edit3 size={18} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Edit Personal Information</h3>
+                  <p className="text-xs text-slate-400">
+                    System-controlled operational roles and assignments are locked
+                  </p>
+                </div>
               </div>
               <button
                 type="button"
                 onClick={() => setIsEditModalOpen(false)}
-                className="text-slate-400 hover:text-white p-1 rounded hover:bg-[#0A2036]"
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-[#0A2036] hover:text-white"
               >
-                <X size={18} />
+                <X size={20} />
               </button>
             </div>
 
             <form onSubmit={handleSaveProfile} className="space-y-4 text-xs">
+              {/* Locked Role Fields Notice */}
+              <div className="bg-[#0A2036] p-3 rounded-xl border border-[#16364A] text-slate-400 flex items-center justify-between">
+                <div>
+                  <span className="font-semibold text-white block">
+                    {profileData.roleDisplayName} • {profileData.department}
+                  </span>
+                  <span className="text-[10px]">ID: {profileData.employeeId} ({profileData.accountRole})</span>
+                </div>
+                <span className="flex items-center gap-1 text-[10px] text-amber-400 bg-amber-950/40 px-2 py-0.5 rounded border border-amber-500/30">
+                  <Lock size={10} />
+                  Role Locked
+                </span>
+              </div>
+
+              {/* Full Name */}
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">
-                  Full Legal Name
-                </label>
+                <label className="block text-slate-300 font-semibold mb-1">Full Legal Name</label>
                 <input
                   type="text"
                   value={editForm.name}
                   onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
                   required
-                  className="w-full rounded-lg border border-[#16364A] bg-[#0A2036] px-3.5 py-2 text-white focus:border-teal-400 focus:outline-none"
+                  className="w-full bg-[#0A2036] border border-[#16364A] rounded-xl px-3.5 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-teal-400"
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-300 font-semibold mb-1">
-                    Primary Phone Number
-                  </label>
-                  <input
-                    type="tel"
-                    value={editForm.phone}
-                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-                    required
-                    className="w-full rounded-lg border border-[#16364A] bg-[#0A2036] px-3.5 py-2 text-white focus:border-teal-400 focus:outline-none font-mono"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-slate-300 font-semibold mb-1">
-                    Blood Group
-                  </label>
-                  <input
-                    type="text"
-                    value={editForm.bloodGroup}
-                    onChange={(e) => setEditForm({ ...editForm, bloodGroup: e.target.value })}
-                    required
-                    className="w-full rounded-lg border border-[#16364A] bg-[#0A2036] px-3.5 py-2 text-white focus:border-teal-400 focus:outline-none font-bold text-rose-300"
-                  />
-                </div>
+              {/* Primary Mobile Number */}
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">Primary Mobile Number</label>
+                <input
+                  type="text"
+                  value={editForm.phone}
+                  onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                  required
+                  className="w-full bg-[#0A2036] border border-[#16364A] rounded-xl px-3.5 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-teal-400"
+                />
               </div>
 
+              {/* Emergency Contact */}
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">
-                  Emergency Contact Details
-                </label>
+                <label className="block text-slate-300 font-semibold mb-1">Emergency Contact</label>
                 <input
                   type="text"
                   value={editForm.emergencyContact}
                   onChange={(e) => setEditForm({ ...editForm, emergencyContact: e.target.value })}
-                  required
-                  className="w-full rounded-lg border border-[#16364A] bg-[#0A2036] px-3.5 py-2 text-white focus:border-teal-400 focus:outline-none"
+                  className="w-full bg-[#0A2036] border border-[#16364A] rounded-xl px-3.5 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-teal-400"
                 />
               </div>
 
+              {/* Blood Group */}
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">
-                  Railway Quarters / Residential Address
-                </label>
+                <label className="block text-slate-300 font-semibold mb-1">Blood Group</label>
                 <input
                   type="text"
-                  value={editForm.residentialQuarters}
-                  onChange={(e) => setEditForm({ ...editForm, residentialQuarters: e.target.value })}
-                  required
-                  className="w-full rounded-lg border border-[#16364A] bg-[#0A2036] px-3.5 py-2 text-white focus:border-teal-400 focus:outline-none"
+                  value={editForm.bloodGroup}
+                  onChange={(e) => setEditForm({ ...editForm, bloodGroup: e.target.value })}
+                  className="w-full bg-[#0A2036] border border-[#16364A] rounded-xl px-3.5 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-teal-400"
                 />
               </div>
 
+              {/* Residential Quarters / Address */}
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">
-                  Official Gov Email (HRMS Linked)
-                </label>
-                <input
-                  type="email"
-                  value={editForm.email}
-                  disabled
-                  className="w-full rounded-lg border border-[#16364A] bg-[#031426] px-3.5 py-2 text-slate-400 cursor-not-allowed font-mono"
+                <label className="block text-slate-300 font-semibold mb-1">Residential Address / Railway Quarters</label>
+                <textarea
+                  rows={2}
+                  value={editForm.residentialAddress}
+                  onChange={(e) => setEditForm({ ...editForm, residentialAddress: e.target.value })}
+                  className="w-full bg-[#0A2036] border border-[#16364A] rounded-xl px-3.5 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-teal-400 resize-none"
                 />
-                <span className="text-[10px] text-slate-400 mt-1 block">
-                  Official email updates require Divisional Personnel Officer (DPO) authentication.
-                </span>
               </div>
 
-              <div className="pt-3 border-t border-[#16364A] flex items-center justify-end gap-2.5">
+              {/* Modal Buttons */}
+              <div className="pt-2 flex items-center justify-end gap-2.5">
                 <button
                   type="button"
                   onClick={() => setIsEditModalOpen(false)}
-                  className="px-4 py-2 rounded-lg bg-[#0A2036] hover:bg-[#16364A] text-slate-300 text-xs font-semibold"
+                  className="px-4 py-2.5 rounded-xl border border-[#294665] bg-[#0A2036] text-slate-300 hover:bg-[#16364A] transition font-semibold"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-lg bg-[#0E7C86] hover:bg-[#0E5961] text-white text-xs font-bold shadow border border-teal-400/40"
+                  className="px-5 py-2.5 rounded-xl bg-[#0E7C86] hover:bg-[#0E5961] text-white font-bold transition shadow-md"
                 >
-                  Save Profile Records
+                  Save Profile
                 </button>
               </div>
             </form>
@@ -972,53 +977,51 @@ export default function EmployeeProfile() {
         </div>
       )}
 
-      {/* ============================================================ */}
-      {/* CHANGE PASSWORD MODAL (FRONTEND DEMO ONLY)                    */}
-      {/* ============================================================ */}
+      {/* CHANGE PASSWORD MODAL */}
       {isPasswordModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl border border-[#16364A] bg-[#071A33] p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between border-b border-[#16364A] pb-3 mb-4">
-              <div className="flex items-center gap-2">
-                <KeyRound size={18} className="text-[#F59E0B]" />
-                <h3 className="text-base font-bold text-white">Change Account Password</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-[#16364A] bg-[#071A33] p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-start justify-between border-b border-[#16364A] pb-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#0A2036] border border-[#294665] text-[#F59E0B]">
+                  <KeyRound size={18} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Change Account Password</h3>
+                  <p className="text-xs text-slate-400">Update your employee security credentials</p>
+                </div>
               </div>
               <button
                 type="button"
                 onClick={() => setIsPasswordModalOpen(false)}
-                className="text-slate-400 hover:text-white p-1 rounded hover:bg-[#0A2036]"
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-[#0A2036] hover:text-white"
               >
-                <X size={18} />
+                <X size={20} />
               </button>
             </div>
 
             {passwordError && (
-              <div className="mb-3.5 p-2.5 rounded-lg bg-red-950/60 border border-red-500/40 text-red-300 text-xs flex items-center gap-2">
-                <AlertOctagon size={15} className="shrink-0" />
+              <div className="p-3 rounded-xl border border-red-500/50 bg-red-950/40 text-red-300 text-xs flex items-center gap-2">
+                <AlertOctagon size={16} className="text-red-400 shrink-0" />
                 <span>{passwordError}</span>
               </div>
             )}
 
-            <form onSubmit={handleSavePassword} className="space-y-3.5 text-xs">
+            <form onSubmit={handleSavePassword} className="space-y-4 text-xs">
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">
-                  Current Password
-                </label>
+                <label className="block text-slate-300 font-semibold mb-1">Current Password</label>
                 <div className="relative">
                   <input
                     type={showPassword ? "text" : "password"}
                     value={passwordForm.currentPassword}
-                    onChange={(e) =>
-                      setPasswordForm({ ...passwordForm, currentPassword: e.target.value })
-                    }
-                    placeholder="Enter current password"
+                    onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
                     required
-                    className="w-full rounded-lg border border-[#16364A] bg-[#0A2036] px-3.5 py-2 text-white focus:border-teal-400 focus:outline-none pr-10"
+                    className="w-full bg-[#0A2036] border border-[#16364A] rounded-xl px-3.5 py-2.5 pr-10 text-white placeholder-slate-500 focus:outline-none focus:border-teal-400"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
                   >
                     {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                   </button>
@@ -1026,60 +1029,38 @@ export default function EmployeeProfile() {
               </div>
 
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">
-                  New Password
-                </label>
+                <label className="block text-slate-300 font-semibold mb-1">New Password (Min 8 Characters)</label>
                 <input
                   type={showPassword ? "text" : "password"}
                   value={passwordForm.newPassword}
-                  onChange={(e) =>
-                    setPasswordForm({ ...passwordForm, newPassword: e.target.value })
-                  }
-                  placeholder="At least 8 characters"
+                  onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
                   required
-                  className="w-full rounded-lg border border-[#16364A] bg-[#0A2036] px-3.5 py-2 text-white focus:border-teal-400 focus:outline-none"
+                  className="w-full bg-[#0A2036] border border-[#16364A] rounded-xl px-3.5 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-teal-400"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">
-                  Confirm New Password
-                </label>
+                <label className="block text-slate-300 font-semibold mb-1">Confirm New Password</label>
                 <input
                   type={showPassword ? "text" : "password"}
                   value={passwordForm.confirmPassword}
-                  onChange={(e) =>
-                    setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })
-                  }
-                  placeholder="Re-enter new password"
+                  onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
                   required
-                  className="w-full rounded-lg border border-[#16364A] bg-[#0A2036] px-3.5 py-2 text-white focus:border-teal-400 focus:outline-none"
+                  className="w-full bg-[#0A2036] border border-[#16364A] rounded-xl px-3.5 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-teal-400"
                 />
               </div>
 
-              <div className="p-3 rounded-lg bg-[#031426] border border-[#16364A] text-[11px] text-slate-400 space-y-1">
-                <div className="font-semibold text-slate-300 mb-1">Password Requirements:</div>
-                <div className="flex items-center gap-1.5 text-slate-300">
-                  <CheckCircle2 size={12} className="text-emerald-400" />
-                  <span>Minimum 8 characters with letters & numbers</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-slate-300">
-                  <CheckCircle2 size={12} className="text-emerald-400" />
-                  <span>RailDrishti session security compliant</span>
-                </div>
-              </div>
-
-              <div className="pt-3 border-t border-[#16364A] flex items-center justify-end gap-2.5">
+              <div className="pt-2 flex items-center justify-end gap-2.5">
                 <button
                   type="button"
                   onClick={() => setIsPasswordModalOpen(false)}
-                  className="px-4 py-2 rounded-lg bg-[#0A2036] hover:bg-[#16364A] text-slate-300 text-xs font-semibold"
+                  className="px-4 py-2.5 rounded-xl border border-[#294665] bg-[#0A2036] text-slate-300 hover:bg-[#16364A] transition font-semibold"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-lg bg-[#F59E0B] hover:bg-amber-600 text-slate-950 text-xs font-bold shadow"
+                  className="px-5 py-2.5 rounded-xl bg-[#0E7C86] hover:bg-[#0E5961] text-white font-bold transition shadow-md"
                 >
                   Update Password
                 </button>
