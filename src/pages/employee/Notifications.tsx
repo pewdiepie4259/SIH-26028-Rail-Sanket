@@ -19,7 +19,6 @@ import {
   X,
   CheckCheck,
   Search,
-  CloudRain,
   Info,
   CheckCircle2,
   ExternalLink,
@@ -28,17 +27,18 @@ import {
   Eye,
   ShieldCheck,
   UserCircle,
+  HeartPulse,
 } from "lucide-react";
-import { logout } from "../../services/auth";
+import { logout, getCurrentUser } from "../../services/auth";
 import {
-  demoEmployeeNotifications,
-  type EmployeeNotificationItem,
-  type EmployeeNotificationCategory,
-  type EmployeeNavItem,
-} from "../../services/employee";
+  getRoleNotificationsViewData,
+  type RoleNotificationItem,
+} from "../../services/employeeAlertService";
+import type { EmployeeNavItem } from "../../services/employee";
 
 export default function EmployeeNotifications() {
   const navigate = useNavigate();
+  const currentUser = getCurrentUser();
 
   // State Setup
   const [is24Hour, setIs24Hour] = useState(false);
@@ -47,8 +47,13 @@ export default function EmployeeNotifications() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Load dynamic role-specific notifications data
+  const roleViewData = useMemo(() => getRoleNotificationsViewData(currentUser), [currentUser]);
+
   // Notifications React Local State
-  const [notifications, setNotifications] = useState<EmployeeNotificationItem[]>(demoEmployeeNotifications);
+  const [notifications, setNotifications] = useState<RoleNotificationItem[]>(
+    roleViewData.notifications
+  );
 
   // Filters & Search State
   const [statusFilter, setStatusFilter] = useState<"ALL" | "UNREAD" | "READ">("ALL");
@@ -56,8 +61,12 @@ export default function EmployeeNotifications() {
   const [searchQuery, setSearchQuery] = useState<string>("");
 
   // Detail Modal State
-  const [selectedNotification, setSelectedNotification] = useState<EmployeeNotificationItem | null>(null);
+  const [selectedNotification, setSelectedNotification] = useState<RoleNotificationItem | null>(null);
 
+  // Sync if user changes
+  useEffect(() => {
+    setNotifications(roleViewData.notifications);
+  }, [roleViewData]);
 
   // Live IST Clock
   useEffect(() => {
@@ -118,7 +127,7 @@ export default function EmployeeNotifications() {
     showToast(`Marked ${unreadCount} notification${unreadCount > 1 ? "s" : ""} as read`);
   };
 
-  // Summary Metrics (Calculated dynamically from React state)
+  // Summary Metrics
   const totalCount = notifications.length;
   const unreadCount = notifications.filter((n) => n.status === "UNREAD").length;
   const readCount = notifications.filter((n) => n.status === "READ").length;
@@ -130,8 +139,16 @@ export default function EmployeeNotifications() {
       if (statusFilter === "UNREAD" && item.status !== "UNREAD") return false;
       if (statusFilter === "READ" && item.status !== "READ") return false;
 
-      // Category filter
-      if (categoryFilter !== "ALL" && item.category !== categoryFilter) return false;
+      // Category filter with alias fallback
+      if (categoryFilter !== "ALL") {
+        const cat = item.category;
+        const matchesExact = cat === categoryFilter;
+        const matchesAlias =
+          (categoryFilter === "Operations" && cat === "TRAIN_UPDATE") ||
+          (categoryFilter === "Tasks" && cat === "TASK") ||
+          (categoryFilter === "Safety" && (cat === "WEATHER" || cat === "OPERATIONAL_ALERT"));
+        if (!matchesExact && !matchesAlias) return false;
+      }
 
       // Search query filter
       if (searchQuery.trim()) {
@@ -160,39 +177,59 @@ export default function EmployeeNotifications() {
     { id: "profile", label: "Profile", icon: User, path: "/employee/profile", active: true },
   ];
 
-  // Helper to render icon for each category
-  const renderCategoryIcon = (category: EmployeeNotificationCategory) => {
+  // Helper to render icon for all 9 unified categories
+  const renderCategoryIcon = (category: string) => {
     switch (category) {
+      case "Operations":
       case "TRAIN_UPDATE":
         return <TrainFront size={16} className="text-cyan-400" />;
-      case "DUTY":
+      case "Duty":
         return <CalendarCheck size={16} className="text-emerald-400" />;
+      case "Tasks":
       case "TASK":
         return <CheckSquare size={16} className="text-blue-400" />;
+      case "Issues":
+        return <FileWarning size={16} className="text-amber-400" />;
+      case "Incidents":
+        return <Flame size={16} className="text-red-400" />;
+      case "Safety":
       case "WEATHER":
-        return <CloudRain size={16} className="text-amber-400" />;
       case "OPERATIONAL_ALERT":
         return <AlertTriangle size={16} className="text-orange-400" />;
-      case "SYSTEM":
+      case "Security":
+        return <ShieldCheck size={16} className="text-rose-400" />;
+      case "Medical":
+        return <HeartPulse size={16} className="text-pink-400" />;
+      case "System":
       default:
         return <Info size={16} className="text-purple-400" />;
     }
   };
 
-  // Helper for category badge styling
-  const getCategoryBadgeClass = (category: EmployeeNotificationCategory) => {
+  // Helper for category badge styling across all 9 categories
+  const getCategoryBadgeClass = (category: string) => {
     switch (category) {
+      case "Operations":
       case "TRAIN_UPDATE":
         return "bg-cyan-500/15 text-cyan-300 border-cyan-500/30";
-      case "DUTY":
+      case "Duty":
         return "bg-emerald-500/15 text-emerald-300 border-emerald-500/30";
+      case "Tasks":
       case "TASK":
         return "bg-blue-500/15 text-blue-300 border-blue-500/30";
-      case "WEATHER":
+      case "Issues":
         return "bg-amber-500/15 text-amber-300 border-amber-500/30";
+      case "Incidents":
+        return "bg-red-500/15 text-red-300 border-red-500/30";
+      case "Safety":
+      case "WEATHER":
       case "OPERATIONAL_ALERT":
         return "bg-orange-500/15 text-orange-300 border-orange-500/30";
-      case "SYSTEM":
+      case "Security":
+        return "bg-rose-500/15 text-rose-300 border-rose-500/30";
+      case "Medical":
+        return "bg-pink-500/15 text-pink-300 border-pink-500/30";
+      case "System":
       default:
         return "bg-purple-500/15 text-purple-300 border-purple-500/30";
     }
@@ -270,10 +307,10 @@ export default function EmployeeNotifications() {
 
             <div className="hidden lg:block text-left">
               <div className="text-xs font-semibold text-white">
-                Authorized Employee
+                {roleViewData.employeeName}
               </div>
               <div className="text-[10px] text-[#71899C]">
-                Secure Session
+                {roleViewData.roleTitle}
               </div>
             </div>
 
@@ -391,13 +428,13 @@ export default function EmployeeNotifications() {
               <div>
                 <div className="flex items-center gap-2 text-xs text-[#0E7C86] font-mono uppercase tracking-wider mb-1">
                   <Bell size={15} />
-                  <span>Employee Notification Center</span>
+                  <span>Role-Specific Notification Center</span>
                 </div>
                 <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
                   NOTIFICATIONS
                 </h1>
                 <p className="text-sm text-slate-300 mt-1">
-                  View updates related to your duties, assignments, train, section and operations.
+                  Updates related to duties and operations for <span className="font-semibold text-cyan-300">{roleViewData.roleTitle}</span> ({roleViewData.department}).
                 </p>
               </div>
 
@@ -424,7 +461,7 @@ export default function EmployeeNotifications() {
                     Total
                   </span>
                   <div className="text-2xl font-bold text-white mt-1 font-mono">{totalCount}</div>
-                  <span className="text-[11px] text-slate-400">Total received updates</span>
+                  <span className="text-[11px] text-slate-400">Role-filtered updates</span>
                 </div>
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#0A2036] border border-[#294665] text-[#0E7C86]">
                   <Bell size={22} />
@@ -539,11 +576,15 @@ export default function EmployeeNotifications() {
                 </span>
                 {[
                   { id: "ALL", label: "All Categories" },
-                  { id: "TRAIN_UPDATE", label: "Train Update" },
-                  { id: "DUTY", label: "Duty" },
-                  { id: "TASK", label: "Task" },
-                  { id: "WEATHER", label: "Weather" },
-                  { id: "OPERATIONAL_ALERT", label: "Operational Alert" },
+                  { id: "Operations", label: "Operations" },
+                  { id: "Duty", label: "Duty" },
+                  { id: "Tasks", label: "Tasks" },
+                  { id: "Issues", label: "Issues" },
+                  { id: "Incidents", label: "Incidents" },
+                  { id: "Safety", label: "Safety" },
+                  { id: "Security", label: "Security" },
+                  { id: "Medical", label: "Medical" },
+                  { id: "System", label: "System" },
                 ].map((cat) => (
                   <button
                     key={cat.id}
@@ -760,7 +801,9 @@ export default function EmployeeNotifications() {
               </div>
               <div>
                 <span className="text-slate-400 block">Source:</span>
-                <span className="font-semibold text-slate-200">RailDrishti Operational Core</span>
+                <span className="font-semibold text-slate-200">
+                  {selectedNotification.source || "RailDrishti Operational Core"}
+                </span>
               </div>
             </div>
 
@@ -804,9 +847,9 @@ export default function EmployeeNotifications() {
                       setSelectedNotification(null);
                       if (route) navigate(route);
                     }}
-                    className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#0E7C86] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#0E5961] shadow-lg transition"
+                    className="w-full sm:w-auto rounded-xl bg-[#0E7C86] px-4 py-2.5 text-xs font-semibold text-white hover:bg-cyan-600 transition flex items-center justify-center gap-1.5"
                   >
-                    <span>{selectedNotification.actionLabel || "View Details"}</span>
+                    <span>{selectedNotification.actionLabel || "Go to Module"}</span>
                     <ExternalLink size={13} />
                   </button>
                 )}
