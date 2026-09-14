@@ -13,6 +13,16 @@ import ControllerLayout from "./layouts/ControllerLayout"
 import ControllerDashboard from "./pages/controller/Dashboard"
 import TrainETATracker from "./components/TrainETATracker"
 import TrainDetails from "./pages/controller/TrainDetails"
+import EmployeeDashboard from "./pages/employee/Dashboard"
+import EmployeeDuty from "./pages/employee/Duty"
+import EmployeeAssignment from "./pages/employee/Assignment"
+import EmployeeAlerts from "./pages/employee/Alerts"
+import EmployeeTasks from "./pages/employee/Tasks"
+import EmployeeReport from "./pages/employee/Report"
+import EmployeeIncidents from "./pages/employee/Incidents"
+import EmployeeNotifications from "./pages/employee/Notifications"
+import EmployeeHistory from "./pages/employee/History"
+import EmployeeProfile from "./pages/employee/Profile"
 
 function App() {
   return (
@@ -54,6 +64,55 @@ function App() {
             element={<TrainDetails />}
           />
         </Route>
+
+        <Route
+          path="/employee/dashboard"
+          element={<EmployeeDashboard />}
+        />
+        <Route
+          path="/employee/duty"
+          element={<EmployeeDuty />}
+        />
+        <Route
+          path="/employee/assignment"
+          element={<EmployeeAssignment />}
+        />
+        <Route
+          path="/employee/alerts"
+          element={<EmployeeAlerts />}
+        />
+        <Route
+          path="/employee/tasks"
+          element={<EmployeeTasks />}
+        />
+        <Route
+          path="/employee/report"
+          element={<EmployeeReport />}
+        />
+        <Route
+          path="/employee/incidents"
+          element={<EmployeeIncidents />}
+        />
+        <Route
+          path="/employee/notifications"
+          element={<EmployeeNotifications />}
+        />
+        <Route
+          path="/employee/history"
+          element={<EmployeeHistory />}
+        />
+        <Route
+          path="/employee/profile"
+          element={<EmployeeProfile />}
+        />
+        <Route
+          path="/employee"
+          element={<Navigate to="/employee/dashboard" replace />}
+        />
+        <Route
+          path="/employee/login"
+          element={<Login />}
+        />
 
         <Route
           path="/admin"

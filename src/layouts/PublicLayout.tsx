@@ -201,6 +201,11 @@ function PublicLayout() {
               Stations
             </NavLink>
 
+            <NavLink to="/settings" className={navLinkClass}>
+              Settings
+            </NavLink>
+
+
             <NavLink to="/controller" className={({ isActive }) =>
               `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${
                 isActive
@@ -210,10 +215,6 @@ function PublicLayout() {
             }>
               <ShieldAlert size={13} />
               Controller DSS
-            </NavLink>
-
-            <NavLink to="/settings" className={navLinkClass}>
-              Settings
             </NavLink>
           </nav>
 
@@ -688,15 +689,6 @@ function PublicLayout() {
             </NavLink>
 
             <NavLink
-              to="/controller"
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-bold bg-amber-500 text-[#071A33]"
-            >
-              <ShieldAlert size={16} />
-              Section Controller DSS
-            </NavLink>
-
-            <NavLink
               to="/settings"
               onClick={() => setMobileMenuOpen(false)}
               className={({ isActive }) =>
@@ -706,6 +698,16 @@ function PublicLayout() {
               }
             >
               Settings & Diagnostics
+            </NavLink>
+
+
+            <NavLink
+              to="/controller"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-bold bg-amber-500 text-[#071A33]"
+            >
+              <ShieldAlert size={16} />
+              Section Controller DSS
             </NavLink>
 
             <div className="pt-3 border-t border-slate-700/60 flex flex-col gap-2">
