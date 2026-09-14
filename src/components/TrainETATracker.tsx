@@ -676,8 +676,8 @@ export default function TrainETATracker() {
                                     <div style={{ color: '#fbbf24', fontWeight: 600, fontSize: '13px' }}>🕒 {liveStatus.eta_next_station}</div>
                                 </div>
                                 <div style={{ background: '#0a0f1d', padding: '8px 10px', borderRadius: '8px' }}>
-                                    <span style={{ color: '#64748b' }}>AI Confidence:</span>
-                                    <div style={{ color: '#22c55e', fontWeight: 600, fontSize: '13px' }}>🎯 94% Accurate</div>
+                                    <span style={{ color: '#64748b' }}>Prediction Confidence:</span>
+                                    <div style={{ color: '#22c55e', fontWeight: 600, fontSize: '13px' }}>94%</div>
                                 </div>
                             </div>
                         </div>

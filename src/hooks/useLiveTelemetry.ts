@@ -43,7 +43,6 @@ export function useLiveTelemetry() {
             socketRef.current = socket;
 
             socket.onopen = () => {
-                console.log("Connected to RailDrishti telemetry stream");
                 setIsConnected(true);
             };
 

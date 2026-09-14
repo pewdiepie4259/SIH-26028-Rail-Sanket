@@ -169,7 +169,7 @@ function PublicLayout() {
               </div>
 
               <div className="mt-1 hidden text-[9px] font-bold uppercase tracking-wider text-[#F59E0B] sm:block">
-                Dynamic Train ETA & Copilot
+                Dynamic Train ETA & Decision Support
               </div>
             </div>
           </Link>

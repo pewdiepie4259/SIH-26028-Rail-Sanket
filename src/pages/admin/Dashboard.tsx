@@ -1,4 +1,4 @@
-﻿import {
+import {
   Activity,
   AlertTriangle,
   BrainCircuit,
@@ -97,7 +97,7 @@ function AdminDashboard() {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           title="System Health"
-          value="98.7%"
+          value="Normal"
           detail="All critical services operational"
           icon={Activity}
           positive

@@ -339,7 +339,7 @@ export const LiveMap: React.FC = () => {
                 Bengaluru Corridor Live Network Map
               </h1>
               <p className="text-xs text-slate-400">
-                Real-time RTIS Track Geofencing • ST-GNN Cascading Delay Engine • Section Copilot
+                Real-time train positions, signal states and delay propagation across the Bengaluru corridor.
               </p>
             </div>
           </div>
@@ -390,7 +390,7 @@ export const LiveMap: React.FC = () => {
             </div>
           </div>
           <span className="text-[10px] uppercase tracking-wider px-2 py-1 bg-red-500/20 text-red-300 rounded border border-red-500/30 whitespace-nowrap">
-            Section Copilot Active
+            Delay Alert Active
           </span>
         </div>
       )}

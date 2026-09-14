@@ -335,7 +335,7 @@ export const WhatsAppChatModal: React.FC<WhatsAppChatModalProps> = ({
                         <span className="text-xs font-extrabold tracking-wide text-white flex items-center gap-1">
                             Rail<span className="text-[#F59E0B]">Drishti</span> AI
                         </span>
-                        <span className="text-[10px] text-teal-300 font-medium">RTIS Copilot</span>
+                        <span className="text-[10px] text-teal-300 font-medium">RTIS Assistant</span>
                     </div>
                     <span className="relative flex h-2.5 w-2.5 ml-1">
                         <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
@@ -368,7 +368,7 @@ export const WhatsAppChatModal: React.FC<WhatsAppChatModalProps> = ({
                                 </h4>
                                 <div className="mt-1 flex items-center gap-1.5 text-[11px] text-[#A5C7D7]">
                                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                                    <span>Live Telemetry Copilot</span>
+                                    <span>Live Telemetry Assistant</span>
                                 </div>
                             </div>
                         </div>
