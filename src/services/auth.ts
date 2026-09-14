@@ -14,6 +14,7 @@ export interface AuthUser {
   email: string;
   phone?: string;
   role: UserRole;
+  operationalRole?: string;
   employeeId?: string;
   controllerId?: string;
   adminId?: string;
@@ -278,7 +279,7 @@ export async function requestOTP(destination: string, type: "phone" | "email"): 
 
   return {
     success: true,
-    message: `OTP sent successfully to ${cleanDest}. (Demo code: ${otpCode})`,
+    message: `OTP sent successfully to ${cleanDest}.`,
     cooldownSeconds: 30,
     mockCode: otpCode,
   };
@@ -602,9 +603,10 @@ export function getRoleRedirectPath(role: UserRole): string {
     case "controller":
       return "/controller";
     case "employee":
-      return "/trains";
+      return "/employee/dashboard";
     case "user":
     default:
       return "/";
   }
 }
+

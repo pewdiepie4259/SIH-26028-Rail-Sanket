@@ -1,5 +1,5 @@
 import { useState, useEffect, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
   Eye,
   EyeOff,
@@ -33,6 +33,7 @@ const BACKGROUND_SLIDES = [
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   // 2-second continuous background slide rotation
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -44,8 +45,24 @@ export default function Login() {
     return () => clearInterval(interval);
   }, []);
 
-  // Role & Method state
-  const [selectedRole, setSelectedRole] = useState<UserRole>("user");
+  // Role & Method state - Auto-select role based on route
+  const [selectedRole, setSelectedRole] = useState<UserRole>(() => {
+    if (location.pathname.includes("employee")) return "employee";
+    if (location.pathname.includes("controller")) return "controller";
+    if (location.pathname.includes("admin")) return "admin";
+    return "user";
+  });
+
+  useEffect(() => {
+    if (location.pathname.includes("employee")) {
+      setSelectedRole("employee");
+    } else if (location.pathname.includes("controller")) {
+      setSelectedRole("controller");
+    } else if (location.pathname.includes("admin")) {
+      setSelectedRole("admin");
+    }
+  }, [location.pathname]);
+
   const [userLoginMethod, setUserLoginMethod] = useState<LoginMethod>("password");
 
   // Input states
@@ -352,6 +369,7 @@ export default function Login() {
                 <span className="leading-snug">{successMessage}</span>
               </div>
             )}
+
 
             {/* Form */}
             <form onSubmit={handleLoginSubmit} className="space-y-3.5">
