@@ -23,6 +23,7 @@ import {
   Calendar,
   UserCircle,
   MapPin,
+  ExternalLink,
 } from "lucide-react";
 import { getCurrentUser, logout } from "../../services/auth";
 import {
@@ -31,6 +32,7 @@ import {
   type ActivityCategory,
 } from "../../services/employeeHistoryService";
 import type { EmployeeNavItem } from "../../services/employee";
+import { caseService } from "../../services/caseService";
 
 export default function EmployeeHistory() {
   const navigate = useNavigate();
@@ -44,6 +46,51 @@ export default function EmployeeHistory() {
 
   // Dynamic role-specific activities data
   const historyViewData = useMemo(() => getRoleActivitiesViewData(currentUser), [currentUser]);
+  const [caseActivities, setCaseActivities] = useState<RoleActivityItem[]>([]);
+
+  // Fetch live cases and map to activity entries
+  useEffect(() => {
+    const fetchCases = async () => {
+      try {
+        const res = await caseService.getCases({
+          role: "employee",
+          employeeId: currentUser?.employeeId,
+        });
+        if (res.success && res.data) {
+          const items: RoleActivityItem[] = res.data.map((c) => ({
+            id: `case-act-${c.id}`,
+            date: new Date(c.createdAt).toLocaleDateString("en-IN", {
+              day: "2-digit",
+              month: "short",
+            }),
+            time: new Date(c.createdAt).toLocaleTimeString("en-IN", {
+              timeZone: "Asia/Kolkata",
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+            action:
+              c.caseType === "INCIDENT"
+                ? `Reported Incident: ${c.category} (${c.severity})`
+                : `Reported Issue: ${c.category} (${c.severity})`,
+            category: (c.caseType === "INCIDENT" ? "INCIDENT" : "ISSUE") as ActivityCategory,
+            status:
+              c.status === "RESOLVED" || c.status === "CLOSED"
+                ? "Completed"
+                : c.status === "IN_PROGRESS"
+                ? "In Progress"
+                : "Reported",
+            details: c.description,
+            location: c.location,
+            referenceId: c.id,
+          }));
+          setCaseActivities(items);
+        }
+      } catch (err) {
+        console.error("Failed to fetch cases for history", err);
+      }
+    };
+    fetchCases();
+  }, [currentUser?.employeeId]);
 
   // Filters & Search State
   const [categoryFilter, setCategoryFilter] = useState<string>("ALL");
@@ -75,7 +122,13 @@ export default function EmployeeHistory() {
     navigate("/employee/login", { replace: true });
   };
 
-  const activities = historyViewData.activities;
+  // Combine live case activities with role activities (preventing duplicates by referenceId)
+  const activities = useMemo(() => {
+    const defaultFiltered = historyViewData.activities.filter(
+      (d) => !caseActivities.some((c) => c.referenceId && c.referenceId === d.referenceId)
+    );
+    return [...caseActivities, ...defaultFiltered];
+  }, [caseActivities, historyViewData.activities]);
 
   // Summary Metrics
   const totalCount = activities.length;
@@ -458,9 +511,18 @@ export default function EmployeeHistory() {
                                     {act.status}
                                   </span>
                                   {act.referenceId && (
-                                    <span className="font-mono text-[10px] text-slate-500">
-                                      Ref: {act.referenceId}
-                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        navigate(`/employee/cases/${act.referenceId}`);
+                                      }}
+                                      className="inline-flex items-center gap-1 font-mono text-[10px] text-amber-400 hover:text-amber-300 font-bold bg-[#0A2036] px-1.5 py-0.5 rounded border border-[#294665]"
+                                      title="Open Operational Case File"
+                                    >
+                                      <span>Ref: {act.referenceId}</span>
+                                      <ExternalLink size={10} />
+                                    </button>
                                   )}
                                 </div>
 

@@ -22,7 +22,8 @@ import CascadeAnalysis from "./pages/controller/CascadeAnalysis"
 import Reports from "./pages/controller/Reports"
 import ControllerSettings from "./pages/controller/ControllerSettings"
 import ControllerDispatches from "./pages/controller/Dispatches"
-import AdminDashboard from "./pages/admin/Dashboard"
+import AdminDashboard from "./pages/admin/AdminDashboard"
+import CaseDetail from "./pages/employee/CaseDetail"
 
 import EmployeeDashboard from "./pages/employee/Dashboard"
 import EmployeeMail from "./pages/employee/Mail"
@@ -211,6 +212,10 @@ function App() {
             path="/controller/mail"
             element={<ControllerDispatches />}
           />
+          <Route
+            path="/controller/cases/:caseId"
+            element={<CaseDetail />}
+          />
         </Route>
 
         <Route
@@ -313,6 +318,15 @@ function App() {
         />
 
         <Route
+          path="/employee/cases/:caseId"
+          element={
+            <EmployeeProtectedRoute>
+              <CaseDetail />
+            </EmployeeProtectedRoute>
+          }
+        />
+
+        <Route
           path="/employee"
           element={
             <EmployeeProtectedRoute>
@@ -332,6 +346,11 @@ function App() {
         <Route
           path="/admin"
           element={<AdminDashboard />}
+        />
+
+        <Route
+          path="/admin/cases/:caseId"
+          element={<CaseDetail />}
         />
 
         <Route

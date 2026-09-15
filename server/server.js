@@ -12,6 +12,21 @@ import {
   getMailStats,
   STAFF_DIRECTORY
 } from './mail_service.js';
+import {
+  initializeCaseService,
+  createCase,
+  getCases,
+  getCaseById,
+  acknowledgeCase,
+  reviewCase,
+  assignCase,
+  updateCaseStatus,
+  verifyCase,
+  addCaseComment,
+  getNotifications,
+  markNotificationRead,
+  markAllNotificationsRead
+} from './case_service.js';
 
 const app = express();
 app.use(cors());
@@ -23,6 +38,7 @@ const db = new sqlite3.Database(DB_PATH, (err) => {
     console.log(`Connected to trains.db SQLite database at: ${DB_PATH}`);
     initializeDatabase(db);
     initializeMailService(db);
+    initializeCaseService(db);
   }
 });
 
@@ -570,6 +586,135 @@ app.get('/api/mail/stats', async (req, res) => {
     res.json({ success: true, stats });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ==========================================
+// 7. OPERATIONAL CASES & INCIDENTS WORKFLOW API
+// ==========================================
+
+// Create a new issue or incident
+app.post('/api/cases', async (req, res) => {
+  try {
+    const newCase = await createCase(db, req.body);
+    res.status(201).json({ success: true, case: newCase, message: 'Case created successfully.' });
+  } catch (err) {
+    console.error('[Case API Error - Create]:', err.message);
+    res.status(400).json({ success: false, message: err.message });
+  }
+});
+
+// Query cases with filtering
+app.get('/api/cases', async (req, res) => {
+  try {
+    const cases = await getCases(db, req.query);
+    res.json({ success: true, cases });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Query case notifications
+app.get('/api/cases/notifications', async (req, res) => {
+  try {
+    const notifications = await getNotifications(db, req.query);
+    res.json({ success: true, notifications });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Mark single notification as read
+app.patch('/api/cases/notifications/:id/read', async (req, res) => {
+  try {
+    const result = await markNotificationRead(db, req.params.id);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Mark all notifications as read
+app.patch('/api/cases/notifications/mark-all-read', async (req, res) => {
+  try {
+    const result = await markAllNotificationsRead(db, req.body);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Get single case details including audit trail and comments
+app.get('/api/cases/:id', async (req, res) => {
+  try {
+    const caseData = await getCaseById(db, req.params.id);
+    if (!caseData) {
+      return res.status(404).json({ success: false, message: 'Case not found' });
+    }
+    res.json({ success: true, case: caseData });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Controller acknowledge
+app.patch('/api/cases/:id/acknowledge', async (req, res) => {
+  try {
+    const result = await acknowledgeCase(db, req.params.id, req.body.actor || {});
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+});
+
+// Controller operational review
+app.patch('/api/cases/:id/review', async (req, res) => {
+  try {
+    const result = await reviewCase(db, req.params.id, req.body.actor || {}, req.body.notes);
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+});
+
+// Controller / Admin assign
+app.patch('/api/cases/:id/assign', async (req, res) => {
+  try {
+    const result = await assignCase(db, req.params.id, req.body.actor || {}, req.body);
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+});
+
+// Responsible Team / Controller / Admin update status
+app.patch('/api/cases/:id/status', async (req, res) => {
+  try {
+    const { status, remarks, actor } = req.body;
+    const result = await updateCaseStatus(db, req.params.id, actor || {}, status, remarks);
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+});
+
+// Controller verify and close
+app.patch('/api/cases/:id/verify', async (req, res) => {
+  try {
+    const result = await verifyCase(db, req.params.id, req.body.actor || {}, req.body.notes);
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+});
+
+// Add case comment / note
+app.post('/api/cases/:id/comments', async (req, res) => {
+  try {
+    const comment = await addCaseComment(db, req.params.id, req.body);
+    res.status(201).json({ success: true, comment });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
   }
 });
 

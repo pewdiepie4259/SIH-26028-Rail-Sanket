@@ -35,6 +35,7 @@ import {
   type RoleNotificationItem,
 } from "../../services/employeeAlertService";
 import type { EmployeeNavItem } from "../../services/employee";
+import { caseService } from "../../services/caseService";
 
 export default function EmployeeNotifications() {
   const navigate = useNavigate();
@@ -63,10 +64,44 @@ export default function EmployeeNotifications() {
   // Detail Modal State
   const [selectedNotification, setSelectedNotification] = useState<RoleNotificationItem | null>(null);
 
-  // Sync if user changes
+  // Load live notifications from central backend
   useEffect(() => {
-    setNotifications(roleViewData.notifications);
-  }, [roleViewData]);
+    const loadLiveNotifications = async () => {
+      try {
+        const res = await caseService.getNotifications({
+          role: "employee",
+          employeeId: currentUser?.employeeId,
+        });
+        if (res.success && res.data) {
+          const liveItems: RoleNotificationItem[] = res.data.map((item) => ({
+            id: item.id,
+            title: item.title,
+            description: item.message,
+            category: (item.type === "CASE_CREATED" ? "Issues" : "Operations") as any,
+            categoryLabel: item.type === "CASE_CREATED" ? "Case Registered" : "Operational Update",
+            time: new Date(item.createdAt).toLocaleTimeString("en-IN", {
+              timeZone: "Asia/Kolkata",
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+            status: item.read ? "READ" : "UNREAD",
+            actionRoute: `/employee/cases/${item.caseId}`,
+            actionLabel: `View Case ${item.caseId}`,
+            source: "Central Operations Control",
+          }));
+
+          // Merge live items on top of static role items, avoiding duplicate IDs
+          const staticFiltered = roleViewData.notifications.filter(
+            (s) => !liveItems.some((l) => l.id === s.id)
+          );
+          setNotifications([...liveItems, ...staticFiltered]);
+        }
+      } catch (err) {
+        console.error("Failed to load live case notifications", err);
+      }
+    };
+    loadLiveNotifications();
+  }, [currentUser?.employeeId, roleViewData]);
 
   // Live IST Clock
   useEffect(() => {
@@ -99,6 +134,7 @@ export default function EmployeeNotifications() {
   // Mark single notification as READ
   const handleMarkAsRead = (notifId: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
+    caseService.markNotificationRead(notifId).catch(console.error);
     setNotifications((prev) =>
       prev.map((n) => {
         if (n.id === notifId) {
@@ -120,6 +156,12 @@ export default function EmployeeNotifications() {
       showToast("All notifications are already read");
       return;
     }
+    caseService
+      .markAllNotificationsRead({
+        role: "employee",
+        employeeId: currentUser?.employeeId,
+      })
+      .catch(console.error);
     setNotifications((prev) => prev.map((n) => ({ ...n, status: "READ" })));
     if (selectedNotification) {
       setSelectedNotification((prev) => (prev ? { ...prev, status: "READ" } : null));

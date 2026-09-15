@@ -6,10 +6,6 @@ import {
   TrainFront,
   ArrowRight,
   Radio,
-  Activity,
-  Ticket,
-  Map,
-  Building2,
   CloudRain,
   ShieldCheck,
   TrendingUp,
@@ -21,7 +17,8 @@ import ETAFragment, { type ETATrain } from "../components/ETAFragment";
 import { WhatsAppChatModal } from "../components/WhatsAppChatModal";
 import { TrainSearchResultCard } from "../components/TrainSearchResultCard";
 import { useLiveTelemetry } from "../hooks/useLiveTelemetry";
-import { getCurrentUser } from "../services/auth";
+import { getCurrentUser, type AuthUser } from "../services/auth";
+import UserPNRSection from "../components/UserPNRSection";
 import {
   type TrainRecord,
   type FilterClass,
@@ -264,6 +261,20 @@ export default function PublicDashboard() {
   const navigate = useNavigate();
   const { trains: liveTelemetryMap } = useLiveTelemetry();
 
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => getCurrentUser());
+
+  useEffect(() => {
+    const handleAuthChange = () => {
+      setCurrentUser(getCurrentUser());
+    };
+    window.addEventListener("raildrishti_auth_changed", handleAuthChange);
+    window.addEventListener("storage", handleAuthChange);
+    return () => {
+      window.removeEventListener("raildrishti_auth_changed", handleAuthChange);
+      window.removeEventListener("storage", handleAuthChange);
+    };
+  }, []);
+
   const [station, setStation] = useState<RailwayStation>(defaultStation);
   const [locationStatus, setLocationStatus] = useState("Locating...");
   const [searchQuery, setSearchQuery] = useState("");
@@ -275,8 +286,6 @@ export default function PublicDashboard() {
   const [loadingSearch, setLoadingSearch] = useState(false);
   const [selectedTrain, setSelectedTrain] = useState<TrainRecord | null>(null);
 
-  // Quick info modal for passenger services that are informational in P1
-  const [quickServiceNotice, setQuickServiceNotice] = useState<string | null>(null);
 
   // WhatsApp Assistant State
   const [botTrainNumber, setBotTrainNumber] = useState<string | undefined>(undefined);
@@ -456,27 +465,6 @@ export default function PublicDashboard() {
     }
   };
 
-  // Quick Services Item Handler
-  const handleQuickServiceClick = (serviceName: string, path?: string) => {
-    if (path === "/pnr") {
-      const user = getCurrentUser();
-      if (user) {
-        navigate("/pnr");
-      } else {
-        navigate("/login?redirect=/pnr");
-      }
-      return;
-    }
-
-    if (path) {
-      navigate(path);
-    } else {
-      setQuickServiceNotice(
-        `${serviceName} service portal is integrated with official Passenger Reservation Systems (PRS). Please search by train or station below for instant live status.`
-      );
-      setTimeout(() => setQuickServiceNotice(null), 4500);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-[#F4F7FA]">
@@ -597,81 +585,15 @@ export default function PublicDashboard() {
         </div>
       </section>
 
-      {/* Quick Service Notice Toast (if user clicks informational service) */}
-      {quickServiceNotice && (
-        <div className="mx-auto max-w-[1600px] px-6 pt-4 lg:px-12">
-          <div className="rounded-xl border border-teal-200 bg-teal-50/95 p-3.5 text-xs font-medium text-teal-900 shadow-sm flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2">
-            <div className="flex items-center gap-2">
-              <Activity size={16} className="text-[#0E7C86] shrink-0" />
-              <span>{quickServiceNotice}</span>
-            </div>
-            <button
-              onClick={() => setQuickServiceNotice(null)}
-              className="text-xs font-bold text-[#0E7C86] hover:underline shrink-0"
-            >
-              Dismiss
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* 2. LIVE ALERTS MARQUEE */}
       <div id="alerts" className="mb-2">
         <AlertMarquee />
       </div>
 
-      {/* 3. QUICK SERVICES SECTION */}
-      <section className="mx-auto max-w-[1600px] px-6 py-6 lg:px-12">
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-3 sm:gap-4">
-          {[
-            {
-              id: "live_train",
-              label: "Live Train",
-              icon: TrainFront,
-              path: "/live",
-              color: "text-emerald-700 bg-emerald-50 border-emerald-200",
-            },
-            {
-              id: "pnr",
-              label: "PNR Status",
-              icon: Ticket,
-              path: "/pnr",
-              color: "text-blue-700 bg-blue-50 border-blue-200",
-            },
-            {
-              id: "live_map",
-              label: "Live Map",
-              icon: Map,
-              path: "/map",
-              color: "text-teal-700 bg-teal-50 border-teal-200",
-            },
-            {
-              id: "station",
-              label: "Station Info",
-              icon: Building2,
-              path: "/stations",
-              color: "text-purple-700 bg-purple-50 border-purple-200",
-            },
-          ].map((svc) => {
-            const Icon = svc.icon;
-            return (
-              <button
-                key={svc.id}
-                type="button"
-                onClick={() => handleQuickServiceClick(svc.label, svc.path)}
-                className="group flex flex-col items-center justify-center p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs hover:border-[#0E7C86] hover:shadow-md transition-all duration-200 cursor-pointer hover:-translate-y-0.5"
-              >
-                <div className={`p-2.5 rounded-xl border ${svc.color} group-hover:scale-110 transition-transform shadow-xs`}>
-                  <Icon size={20} />
-                </div>
-                <span className="mt-2 text-xs font-bold text-slate-800 group-hover:text-[#071A33] text-center leading-tight">
-                  {svc.label}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </section>
+      {/* 3. PNR SECTION (Visible only after user logs in) */}
+      {currentUser && (
+        <UserPNRSection currentUser={currentUser} />
+      )}
 
       {/* In-Page Dynamic ETA View if train selected */}
       {selectedTrain && etaData[selectedTrain.train_number] ? (

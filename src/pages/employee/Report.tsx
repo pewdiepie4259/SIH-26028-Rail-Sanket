@@ -50,6 +50,7 @@ import {
   type IssueReportItem,
   type EmployeeNavItem,
 } from "../../services/employee";
+import { caseService } from "../../services/caseService";
 
 export default function EmployeeReport() {
   const navigate = useNavigate();
@@ -87,8 +88,39 @@ export default function EmployeeReport() {
   // Timeline Modal State
   const [selectedTimelineReport, setSelectedTimelineReport] = useState<IssueReportItem | null>(null);
 
-  // Dynamic reference counter seed
-  const [nextRefNumber, setNextRefNumber] = useState(142);
+  // Fetch live cases from central backend
+  useEffect(() => {
+    const fetchCases = async () => {
+      try {
+        const res = await caseService.getCases({
+          role: "employee",
+          employeeId: currentUser?.employeeId,
+          caseType: "ISSUE",
+        });
+        if (res.success && res.data && res.data.length > 0) {
+          const mapped: IssueReportItem[] = res.data.map((c) => ({
+            id: c.id,
+            issueType: (c.category as IssueType) || "Other",
+            location: c.location,
+            severity: c.severity as IssueSeverity,
+            description: c.description,
+            currentStatus: (c.operationalImpact as OperationalImpactStatus) || "RESTRICTED",
+            status: c.status as any,
+            assignedTo: c.assignedTeam || c.department || "Section Controller",
+            createdAt: new Date(c.createdAt).toLocaleTimeString("en-IN", {
+              timeZone: "Asia/Kolkata",
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+          }));
+          setRecentReports(mapped);
+        }
+      } catch (err) {
+        console.error("Failed to load cases", err);
+      }
+    };
+    fetchCases();
+  }, [currentUser?.employeeId]);
 
 
   // IST Clock
@@ -196,7 +228,7 @@ export default function EmployeeReport() {
   };
 
   // Form Submission
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
 
@@ -207,75 +239,61 @@ export default function EmployeeReport() {
 
     setIsSubmitting(true);
 
-    // Simulate short network delay for professional UX (no actual backend call)
-    setTimeout(() => {
-      const generatedId = `RD-2026-${String(nextRefNumber).padStart(5, "0")}`;
-      setNextRefNumber((prev) => prev + 1);
-
+    try {
       const effectiveLocation = location === "Other" ? customLocation.trim() : location.trim();
-
-      const getAssignedTeam = (type: IssueType) => {
-        switch (type) {
-          case "Signal":
-            return "S&T Signal Maintenance Desk";
-          case "Track":
-            return "P-Way Engineering Gang";
-          case "Platform":
-            return "Station Operations & Commercial";
-          case "Train":
-            return "Rolling Stock & TXR Depot";
-          case "Electrical":
-            return "Traction (OHE) Control";
-          case "Telecom":
-            return "Telecom Operations Cell";
-          case "Safety":
-            return "Divisional Safety Directorate";
-          case "Security":
-            return "RPF Security Post";
-          case "Medical":
-            return "Railway Medical Unit";
-          case "Other":
-          default:
-            return "Section Controller";
-        }
-      };
-
-      const assignedTo = getAssignedTeam(issueType as IssueType);
-
-      const newReport: IssueReportItem = {
-        id: generatedId,
-        issueType: issueType as IssueType,
+      const res = await caseService.createCase({
+        caseType: "ISSUE",
+        reporterId: currentUser?.employeeId || "EMP-7701",
+        reporterName: currentUser?.name || "Railway Staff",
+        reporterRole: rawRole,
+        category: issueType as string,
         location: effectiveLocation,
-        severity: severity as IssueSeverity,
+        severity: severity as any,
         description: description.trim(),
-        currentStatus: currentStatus as OperationalImpactStatus,
-        status: "SUBMITTED",
-        assignedTo,
-        imageUrl: imagePreviewUrl || undefined,
-        imageFileName: attachedImage?.name,
-        createdAt: "Just now",
-      };
+        operationalImpact: currentStatus || "MINOR",
+      });
 
-      // Persist to centralized employee activity history
-      logEmployeeActivity(
-        {
-          date: new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short" }),
-          time: formatIST(new Date(), is24Hour),
-          action: `Reported ${issueType} Issue`,
-          category: "ISSUE",
-          status: "Reported",
-          details: description.trim(),
+      if (res.success && res.data) {
+        const generatedCase = res.data;
+        const newReport: IssueReportItem = {
+          id: generatedCase.id,
+          issueType: issueType as IssueType,
           location: effectiveLocation,
-          referenceId: generatedId,
-        },
-        currentUser?.employeeId
-      );
+          severity: severity as IssueSeverity,
+          description: description.trim(),
+          currentStatus: currentStatus as OperationalImpactStatus,
+          status: generatedCase.status as any,
+          assignedTo: generatedCase.assignedTeam || generatedCase.department || "Section Controller",
+          imageUrl: imagePreviewUrl || undefined,
+          imageFileName: attachedImage?.name,
+          createdAt: "Just now",
+        };
 
-      setSubmittedReport(newReport);
-      setRecentReports((prev) => [newReport, ...prev]);
+        logEmployeeActivity(
+          {
+            date: new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short" }),
+            time: formatIST(new Date(), is24Hour),
+            action: `Reported ${issueType} Issue`,
+            category: "ISSUE",
+            status: "Reported",
+            details: description.trim(),
+            location: effectiveLocation,
+            referenceId: generatedCase.id,
+          },
+          currentUser?.employeeId
+        );
+
+        setSubmittedReport(newReport);
+        setRecentReports((prev) => [newReport, ...prev.filter((p) => p.id !== newReport.id)]);
+        showToast(`Issue ${generatedCase.id} registered & dispatched to Central Operations!`);
+      } else {
+        showToast(res.error || "Failed to create case on server.");
+      }
+    } catch (err: any) {
+      showToast(err.message || "Failed to submit report.");
+    } finally {
       setIsSubmitting(false);
-      showToast(`Issue ${generatedId} reported successfully!`);
-    }, 600);
+    }
   };
 
   // Reset Form for another submission
@@ -854,11 +872,20 @@ export default function EmployeeReport() {
                     <div className="mt-6 flex flex-col sm:flex-row items-center gap-3">
                       <button
                         type="button"
+                        onClick={() => navigate(`/employee/cases/${submittedReport.id}`)}
+                        className="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 px-5 py-3 text-sm font-bold text-black shadow-lg hover:from-amber-400 hover:to-amber-500 transition"
+                      >
+                        <ExternalLink size={17} />
+                        <span>Open Live Case File ({submittedReport.id})</span>
+                      </button>
+
+                      <button
+                        type="button"
                         onClick={() => setSelectedTimelineReport(submittedReport)}
-                        className="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 rounded-xl bg-[#0E7C86] px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-[#0E5961] focus:ring-2 focus:ring-cyan-400"
+                        className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-[#0E7C86] px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-[#0E5961]"
                       >
                         <Eye size={17} />
-                        <span>View Status Timeline</span>
+                        <span>Timeline View</span>
                       </button>
 
                       <button
@@ -1338,14 +1365,23 @@ export default function EmployeeReport() {
                           >
                             {item.severity}
                           </span>
-                          <button
-                            type="button"
-                            onClick={() => setSelectedTimelineReport(item)}
-                            className="flex items-center gap-1 text-[11px] text-[#0E7C86] hover:text-cyan-300 font-medium"
-                          >
-                            <span>View Status</span>
-                            <ExternalLink size={11} />
-                          </button>
+                          <div className="flex items-center gap-3">
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/employee/cases/${item.id}`)}
+                              className="flex items-center gap-1 text-[11px] text-amber-400 hover:text-amber-300 font-semibold"
+                            >
+                              <span>Case File</span>
+                              <ExternalLink size={11} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedTimelineReport(item)}
+                              className="flex items-center gap-1 text-[11px] text-[#0E7C86] hover:text-cyan-300 font-medium"
+                            >
+                              <span>Timeline</span>
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ))}

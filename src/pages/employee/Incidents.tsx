@@ -48,6 +48,7 @@ import {
   type IncidentReportItem,
   type EmployeeNavItem,
 } from "../../services/employee";
+import { caseService } from "../../services/caseService";
 
 export default function EmployeeIncidents() {
   const navigate = useNavigate();
@@ -91,8 +92,39 @@ export default function EmployeeIncidents() {
   // Timeline Modal State
   const [selectedTimelineIncident, setSelectedTimelineIncident] = useState<IncidentReportItem | null>(null);
 
-  // Dynamic incident reference counter seed
-  const [nextRefNumber, setNextRefNumber] = useState(21);
+  // Fetch live incidents from central backend
+  useEffect(() => {
+    const fetchIncidents = async () => {
+      try {
+        const res = await caseService.getCases({
+          role: "employee",
+          employeeId: currentUser?.employeeId,
+          caseType: "INCIDENT",
+        });
+        if (res.success && res.data && res.data.length > 0) {
+          const mapped: IncidentReportItem[] = res.data.map((c) => ({
+            id: c.id,
+            incidentType: (c.category as IncidentType) || "Safety",
+            location: c.location,
+            severity: c.severity as IncidentSeverity,
+            description: c.description,
+            currentStatus: (c.operationalImpact as IncidentOperationalStatus) || "BLOCKED",
+            status: c.status as any,
+            assignedTo: c.assignedTeam || c.department || "Emergency Triage Cell",
+            createdAt: new Date(c.createdAt).toLocaleTimeString("en-IN", {
+              timeZone: "Asia/Kolkata",
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+          }));
+          setRecentIncidents(mapped);
+        }
+      } catch (err) {
+        console.error("Failed to load incidents", err);
+      }
+    };
+    fetchIncidents();
+  }, [currentUser?.employeeId]);
 
 
   // IST Clock
@@ -212,51 +244,66 @@ export default function EmployeeIncidents() {
     setShowConfirmModal(true);
   };
 
-  // Final Confirmed Submission (simulated short delay)
-  const handleConfirmSubmit = () => {
+  // Final Confirmed Submission
+  const handleConfirmSubmit = async () => {
     setShowConfirmModal(false);
     setIsSubmitting(true);
 
-    setTimeout(() => {
-      const generatedId = `INC-2026-${String(nextRefNumber).padStart(5, "0")}`;
-      setNextRefNumber((prev) => prev + 1);
-
+    try {
       const effectiveLocation = location === "Other" ? customLocation.trim() : location.trim();
-
-      const newIncident: IncidentReportItem = {
-        id: generatedId,
-        incidentType: incidentType as IncidentType,
+      const res = await caseService.createCase({
+        caseType: "INCIDENT",
+        reporterId: currentUser?.employeeId || "EMP-7701",
+        reporterName: currentUser?.name || "Railway Staff",
+        reporterRole: rawRole,
+        category: incidentType as string,
         location: effectiveLocation,
-        severity: severity as IncidentSeverity,
+        severity: severity || "CRITICAL",
         description: description.trim(),
-        currentStatus: currentStatus as IncidentOperationalStatus,
-        status: "SUBMITTED",
-        assignedTo: "Section Controller & Emergency Triage Cell",
-        imageUrl: imagePreviewUrl || undefined,
-        imageFileName: attachedImage?.name,
-        createdAt: "Just now",
-      };
+        operationalImpact: currentStatus || "BLOCKED",
+      });
 
-      // Persist to centralized employee activity history
-      logEmployeeActivity(
-        {
-          date: new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short" }),
-          time: formatIST(new Date(), is24Hour),
-          action: `Reported ${incidentType} (${severity})`,
-          category: "INCIDENT",
-          status: "Reported",
-          details: description.trim(),
+      if (res.success && res.data) {
+        const generatedCase = res.data;
+        const newIncident: IncidentReportItem = {
+          id: generatedCase.id,
+          incidentType: incidentType as IncidentType,
           location: effectiveLocation,
-          referenceId: generatedId,
-        },
-        currentUser?.employeeId
-      );
+          severity: severity as IncidentSeverity,
+          description: description.trim(),
+          currentStatus: currentStatus as IncidentOperationalStatus,
+          status: generatedCase.status as any,
+          assignedTo: generatedCase.assignedTeam || "Section Controller & Emergency Cell",
+          imageUrl: imagePreviewUrl || undefined,
+          imageFileName: attachedImage?.name,
+          createdAt: "Just now",
+        };
 
-      setSubmittedIncident(newIncident);
-      setRecentIncidents((prev) => [newIncident, ...prev]);
+        logEmployeeActivity(
+          {
+            date: new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short" }),
+            time: formatIST(new Date(), is24Hour),
+            action: `Reported ${incidentType} (${severity})`,
+            category: "INCIDENT",
+            status: "Reported",
+            details: description.trim(),
+            location: effectiveLocation,
+            referenceId: generatedCase.id,
+          },
+          currentUser?.employeeId
+        );
+
+        setSubmittedIncident(newIncident);
+        setRecentIncidents((prev) => [newIncident, ...prev.filter((p) => p.id !== newIncident.id)]);
+        showToast(`Emergency Incident ${generatedCase.id} logged and dispatched to Central Control!`);
+      } else {
+        showToast(res.error || "Failed to log emergency incident.");
+      }
+    } catch (err: any) {
+      showToast(err.message || "Failed to dispatch incident.");
+    } finally {
       setIsSubmitting(false);
-      showToast(`Emergency Incident ${generatedId} logged and dispatched!`);
-    }, 600);
+    }
   };
 
   // Reset Form for another incident report
@@ -800,11 +847,20 @@ export default function EmployeeIncidents() {
                     <div className="mt-6 flex flex-col sm:flex-row items-center gap-3">
                       <button
                         type="button"
+                        onClick={() => navigate(`/employee/cases/${submittedIncident.id}`)}
+                        className="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-red-600 via-orange-600 to-amber-600 px-5 py-3 text-sm font-bold text-white shadow-xl hover:from-red-500 hover:to-amber-500 transition"
+                      >
+                        <ExternalLink size={17} />
+                        <span>Open Live Incident Case ({submittedIncident.id})</span>
+                      </button>
+
+                      <button
+                        type="button"
                         onClick={() => setSelectedTimelineIncident(submittedIncident)}
-                        className="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-3 text-sm font-bold text-white shadow-xl transition hover:bg-red-700 focus:ring-2 focus:ring-red-400"
+                        className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-[#0E7C86] px-5 py-3 text-sm font-bold text-white shadow-xl transition hover:bg-[#0E5961]"
                       >
                         <Eye size={17} />
-                        <span>View Incident Status</span>
+                        <span>Timeline View</span>
                       </button>
 
                       <button
@@ -1316,14 +1372,23 @@ export default function EmployeeIncidents() {
                           >
                             {item.severity}
                           </span>
-                          <button
-                            type="button"
-                            onClick={() => setSelectedTimelineIncident(item)}
-                            className="flex items-center gap-1 text-[11px] text-red-400 hover:text-red-300 font-semibold"
-                          >
-                            <span>View Status</span>
-                            <ExternalLink size={11} />
-                          </button>
+                          <div className="flex items-center gap-3">
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/employee/cases/${item.id}`)}
+                              className="flex items-center gap-1 text-[11px] text-red-400 hover:text-red-300 font-bold"
+                            >
+                              <span>Case File</span>
+                              <ExternalLink size={11} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedTimelineIncident(item)}
+                              className="flex items-center gap-1 text-[11px] text-slate-400 hover:text-white font-medium"
+                            >
+                              <span>Timeline</span>
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ))}

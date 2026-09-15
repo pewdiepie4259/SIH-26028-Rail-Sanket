@@ -17,6 +17,7 @@ import {
   Check,
   X,
   ExternalLink,
+  Radio,
 } from "lucide-react";
 import {
   getCurrentUser,
@@ -28,6 +29,7 @@ import {
   DEMO_TEAM_CREDENTIALS,
   type EmployeeApplicationRecord,
 } from "../../services/auth";
+import { caseService, type OperationalCase } from "../../services/caseService";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -35,7 +37,8 @@ export default function AdminDashboard() {
 
   const [applications, setApplications] = useState<EmployeeApplicationRecord[]>([]);
   const [staffList, setStaffList] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<"pending" | "staff">("pending");
+  const [cases, setCases] = useState<OperationalCase[]>([]);
+  const [activeTab, setActiveTab] = useState<"pending" | "staff" | "cases">("pending");
   const [loading, setLoading] = useState(false);
   const [actionMessage, setActionMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -43,18 +46,26 @@ export default function AdminDashboard() {
 
   const loadData = async () => {
     setLoading(true);
-    const [apps, staff] = await Promise.all([
-      fetchPendingApplications(),
-      fetchStaffDirectory(),
-    ]);
-    setApplications(apps);
-    if (staff && staff.length > 0) {
-      setStaffList(staff);
-    } else {
-      // Local fallback representation
-      setStaffList(DEMO_TEAM_CREDENTIALS);
+    try {
+      const [apps, staff, casesRes] = await Promise.all([
+        fetchPendingApplications(),
+        fetchStaffDirectory(),
+        caseService.getCases({ role: "admin" }),
+      ]);
+      setApplications(apps);
+      if (staff && staff.length > 0) {
+        setStaffList(staff);
+      } else {
+        setStaffList(DEMO_TEAM_CREDENTIALS);
+      }
+      if (casesRes.success && casesRes.data) {
+        setCases(casesRes.data);
+      }
+    } catch (err) {
+      console.error("Error loading admin data", err);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -257,13 +268,29 @@ export default function AdminDashboard() {
 
             <button
               onClick={() => setActiveTab("staff")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${activeTab === "staff"
-                  ? "bg-gradient-to-r from-[#F59E0B] to-[#D97706] text-[#071A33] shadow-md shadow-amber-500/20"
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                activeTab === "staff"
+                  ? "bg-gradient-to-r from-[#F59E0B] to-[#D97706] text-[#071A33] shadow-md shadow-amber-500/20 font-bold"
                   : "text-slate-300 hover:bg-[#06283B] hover:text-white"
                 }`}
             >
               <Users className="w-4 h-4" />
               <span>Authorized Staff Directory</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("cases")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                activeTab === "cases"
+                  ? "bg-gradient-to-r from-[#F59E0B] to-[#D97706] text-[#071A33] shadow-md shadow-amber-500/20 font-bold"
+                  : "text-slate-300 hover:bg-[#06283B] hover:text-white"
+              }`}
+            >
+              <Radio className="w-4 h-4" />
+              <span>Operational Cases Oversight</span>
+              <span className="ml-1 rounded-full bg-[#0E5961] text-cyan-200 px-2 py-0.5 text-[10px] font-mono">
+                {cases.length}
+              </span>
             </button>
           </div>
 
@@ -485,6 +512,154 @@ export default function AdminDashboard() {
                       </td>
                     </tr>
                   ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 3: OPERATIONAL CASES & GOVERNANCE OVERSIGHT */}
+        {activeTab === "cases" && (
+          <div className="space-y-4">
+            <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-bold text-white flex items-center gap-2">
+                  <span>Central Operational Cases & Incident Governance</span>
+                  <span className="rounded-full bg-[#0E5961] text-cyan-300 px-2 py-0.5 text-[11px] font-mono">
+                    {cases.length} Total Records
+                  </span>
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Full administrative visibility across employee reports, section controller assignments, and field resolutions.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-400">Filter:</span>
+                {["ALL", "CRITICAL", "OPEN", "RESOLVED"].map((f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => {
+                      if (f === "ALL") setRoleFilter("all");
+                      else setRoleFilter(f);
+                    }}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition ${
+                      (f === "ALL" && roleFilter === "all") || roleFilter === f
+                        ? "bg-[#0E5961] text-white"
+                        : "bg-[#06283B] text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    {f}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="overflow-hidden rounded-2xl border border-[#0E5961]/30 bg-[#06283B]/50 backdrop-blur-md shadow-md">
+              <table className="w-full text-left text-xs">
+                <thead className="border-b border-[#0E5961]/30 bg-[#031426]/70 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  <tr>
+                    <th className="py-3.5 px-4">Case ID & Type</th>
+                    <th className="py-3.5 px-4">Priority / Severity</th>
+                    <th className="py-3.5 px-4">Category & Location</th>
+                    <th className="py-3.5 px-4">Reported By</th>
+                    <th className="py-3.5 px-4">Assigned Department / Team</th>
+                    <th className="py-3.5 px-4">Status</th>
+                    <th className="py-3.5 px-4 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#0E5961]/20 text-slate-200">
+                  {cases
+                    .filter((c) => {
+                      if (roleFilter === "CRITICAL" && c.severity !== "CRITICAL") return false;
+                      if (roleFilter === "OPEN" && (c.status === "RESOLVED" || c.status === "CLOSED")) return false;
+                      if (roleFilter === "RESOLVED" && c.status !== "RESOLVED" && c.status !== "CLOSED") return false;
+                      if (searchQuery.trim()) {
+                        const q = searchQuery.toLowerCase();
+                        return (
+                          c.id.toLowerCase().includes(q) ||
+                          c.location.toLowerCase().includes(q) ||
+                          c.description.toLowerCase().includes(q) ||
+                          c.reporterName.toLowerCase().includes(q)
+                        );
+                      }
+                      return true;
+                    })
+                    .map((c) => (
+                      <tr key={c.id} className="hover:bg-[#071A33]/50 transition-colors">
+                        <td className="py-3 px-4">
+                          <div className="font-mono font-bold text-amber-400">{c.id}</div>
+                          <span
+                            className={`rounded px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider ${
+                              c.caseType === "INCIDENT"
+                                ? "bg-red-500/20 text-red-300 border border-red-500/30"
+                                : "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30"
+                            }`}
+                          >
+                            {c.caseType}
+                          </span>
+                        </td>
+
+                        <td className="py-3 px-4">
+                          <span
+                            className={`rounded px-2 py-0.5 text-[10px] font-black border ${
+                              c.severity === "CRITICAL"
+                                ? "bg-red-500/20 text-red-400 border-red-500/30 animate-pulse"
+                                : c.severity === "HIGH"
+                                ? "bg-orange-500/20 text-orange-400 border-orange-500/30"
+                                : "bg-amber-500/20 text-amber-300 border-amber-500/30"
+                            }`}
+                          >
+                            {c.severity}
+                          </span>
+                        </td>
+
+                        <td className="py-3 px-4">
+                          <div className="font-semibold text-white">{c.category}</div>
+                          <div className="text-[11px] text-slate-400">{c.location}</div>
+                        </td>
+
+                        <td className="py-3 px-4">
+                          <div className="text-white font-medium">{c.reporterName}</div>
+                          <div className="text-[10px] text-slate-400 font-mono">
+                            {c.reporterId} ({c.reporterRole})
+                          </div>
+                        </td>
+
+                        <td className="py-3 px-4">
+                          <div className="text-cyan-300 font-semibold">{c.department || "Pending Triage"}</div>
+                          <div className="text-[11px] text-slate-300">{c.assignedTeam || "Not dispatched"}</div>
+                        </td>
+
+                        <td className="py-3 px-4">
+                          <span
+                            className={`rounded-full px-2.5 py-0.5 text-[10px] font-mono font-bold border ${
+                              c.status === "CLOSED"
+                                ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                                : c.status === "RESOLVED"
+                                ? "bg-cyan-500/15 text-cyan-300 border-cyan-500/30"
+                                : c.status === "IN_PROGRESS"
+                                ? "bg-blue-500/15 text-blue-300 border-blue-500/30"
+                                : "bg-amber-500/15 text-amber-300 border-amber-500/30"
+                            }`}
+                          >
+                            {c.status.replace("_", " ")}
+                          </span>
+                        </td>
+
+                        <td className="py-3 px-4 text-right">
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/admin/cases/${c.id}`)}
+                            className="inline-flex items-center gap-1 px-3 py-1 rounded-lg border border-[#0E5961] bg-[#0A2540] hover:bg-[#0E5961] text-cyan-200 text-xs font-semibold transition"
+                          >
+                            <span>Inspect File</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
                 </tbody>
               </table>
             </div>

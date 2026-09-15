@@ -484,6 +484,12 @@ function PublicLayout() {
               Stations
             </NavLink>
 
+            {currentUser && (
+              <NavLink to="/pnr" className={navLinkClass}>
+                PNR Status
+              </NavLink>
+            )}
+
             <NavLink to="/controller" className={({ isActive }) =>
               `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${isActive
                 ? "bg-amber-500 text-[#071A33] font-bold shadow-sm"
@@ -1137,6 +1143,19 @@ function PublicLayout() {
             >
               Stations & Amenities
             </NavLink>
+
+            {currentUser && (
+              <NavLink
+                to="/pnr"
+                onClick={() => setMobileMenuOpen(false)}
+                className={({ isActive }) =>
+                  `flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold ${isActive ? "bg-white/20 text-[#F59E0B]" : "text-slate-200 hover:bg-white/10"
+                  }`
+                }
+              >
+                <span className="font-bold">PNR Status</span>
+              </NavLink>
+            )}
 
             <NavLink
               to="/settings"

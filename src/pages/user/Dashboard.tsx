@@ -21,6 +21,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import AlertMarquee from "../../components/AlertMarquee";
 import ETAFragment, { type ETATrain } from "../../components/ETAFragment";
+import UserPNRSection from "../../components/UserPNRSection";
 import { WhatsAppChatModal } from "../../components/WhatsAppChatModal";
 import { TrainSearchResultCard } from "../../components/TrainSearchResultCard";
 import { useLiveTelemetry } from "../../hooks/useLiveTelemetry";
@@ -531,6 +532,11 @@ export default function UserDashboard() {
           })}
         </div>
       </section>
+
+      {/* PNR Status & Active Bookings Section */}
+      {currentUser && (
+        <UserPNRSection currentUser={currentUser} />
+      )}
 
       {/* In-Page Dynamic ETA View if train selected */}
       {selectedTrain && etaData[selectedTrain.train_number] ? (
