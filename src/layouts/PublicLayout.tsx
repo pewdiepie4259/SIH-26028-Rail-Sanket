@@ -86,7 +86,14 @@ function PublicLayout() {
 
   // Ensure currentUser is always reactive to route changes & storage events
   useEffect(() => {
-    setCurrentUser(getCurrentUser())
+    const syncUser = () => setCurrentUser(getCurrentUser())
+    syncUser()
+    window.addEventListener("raildrishti_auth_changed", syncUser)
+    window.addEventListener("storage", syncUser)
+    return () => {
+      window.removeEventListener("raildrishti_auth_changed", syncUser)
+      window.removeEventListener("storage", syncUser)
+    }
   }, [location.pathname])
 
   const languages = [
@@ -490,15 +497,17 @@ function PublicLayout() {
               </NavLink>
             )}
 
-            <NavLink to="/controller" className={({ isActive }) =>
-              `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${isActive
-                ? "bg-amber-500 text-[#071A33] font-bold shadow-sm"
-                : "bg-indigo-950/60 border border-indigo-700/60 text-indigo-300 hover:bg-indigo-900/60 hover:text-white"
-              }`
-            }>
-              <ShieldAlert size={13} />
-              Controller DSS
-            </NavLink>
+            {currentUser?.role !== "user" && (
+              <NavLink to="/controller" className={({ isActive }) =>
+                `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${isActive
+                  ? "bg-amber-500 text-[#071A33] font-bold shadow-sm"
+                  : "bg-indigo-950/60 border border-indigo-700/60 text-indigo-300 hover:bg-indigo-900/60 hover:text-white"
+                }`
+              }>
+                <ShieldAlert size={13} />
+                Controller DSS
+              </NavLink>
+            )}
           </nav>
 
           {/* Right Actions: Live Clock Pill, Login, Register, Language, Accessibility, Mobile Toggle */}
@@ -1169,14 +1178,16 @@ function PublicLayout() {
             </NavLink>
 
 
-            <NavLink
-              to="/controller"
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-bold bg-amber-500 text-[#071A33]"
-            >
-              <ShieldAlert size={16} />
-              Section Controller DSS
-            </NavLink>
+            {currentUser?.role !== "user" && (
+              <NavLink
+                to="/controller"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-bold bg-amber-500 text-[#071A33]"
+              >
+                <ShieldAlert size={16} />
+                Section Controller DSS
+              </NavLink>
+            )}
 
             <div className="pt-3 border-t border-slate-700/60 flex flex-col gap-2">
               <button

@@ -104,6 +104,9 @@ function ControllerProtectedRoute({ children }: { children: React.ReactNode }) {
     } catch {}
     return <>{children}</>;
   }
+  if (user.role === "user") {
+    return <Navigate to="/" replace />;
+  }
   if (user.role === "employee") {
     return <Navigate to="/employee/dashboard" replace />;
   }
