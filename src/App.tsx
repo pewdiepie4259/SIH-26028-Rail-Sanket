@@ -30,6 +30,7 @@ import ModelConfiguration from "./pages/admin/ModelConfiguration"
 import WeatherConfiguration from "./pages/admin/WeatherConfiguration"
 import Integrations from "./pages/admin/Integrations"
 import AlertsRules from "./pages/admin/AlertsRules"
+import SystemMonitoring from "./pages/admin/SystemMonitoring"
 import AdminPlaceholder from "./pages/admin/AdminPlaceholder"
 
 import EmployeeDashboard from "./pages/employee/Dashboard"
@@ -417,12 +418,7 @@ function App() {
           />
           <Route
             path="/admin/monitoring"
-            element={
-              <AdminPlaceholder
-                title="System Monitoring"
-                subtitle="Microservice container health, WebSocket telemetry metrics, and runtime latency."
-              />
-            }
+            element={<SystemMonitoring />}
           />
           <Route
             path="/admin/audit"
