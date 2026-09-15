@@ -5,6 +5,7 @@ import {
   Network,
   TrainFront,
 } from "lucide-react"
+import { Link } from "react-router-dom"
 
 interface CascadeNode {
   train: string
@@ -125,12 +126,15 @@ function DelayCascade() {
 
         <div className="mt-4 flex items-center justify-between border-t border-[#16364A] pt-4">
           <span className="text-[10px] text-[#71899C]">
-            Forecast horizon
+            Forecast horizon: <span className="font-bold text-[#D7E5EC]">Next 45 mins</span>
           </span>
 
-          <span className="text-[10px] font-bold text-[#D7E5EC]">
-            Next 45 minutes
-          </span>
+          <Link
+            to="/controller/cascade"
+            className="text-[10px] font-bold uppercase tracking-wide text-[#0E7C86] transition hover:text-[#F59E0B]"
+          >
+            Full Cascade View →
+          </Link>
         </div>
       </div>
     </section>

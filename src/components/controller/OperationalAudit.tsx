@@ -5,6 +5,7 @@ import {
   ShieldCheck,
   UserCircle,
 } from "lucide-react"
+import { Link } from "react-router-dom"
 
 interface AuditEntry {
   id: string
@@ -183,12 +184,12 @@ function OperationalAudit() {
           Actions are recorded for operational traceability.
         </span>
 
-        <button
-          type="button"
+        <Link
+          to="/controller/reports"
           className="text-left text-[10px] font-bold uppercase tracking-wide text-[#0E7C86] transition hover:text-[#F59E0B] sm:text-right"
         >
           View full audit history
-        </button>
+        </Link>
       </div>
     </section>
   )

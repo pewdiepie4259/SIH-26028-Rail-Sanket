@@ -1,4 +1,5 @@
-﻿import {
+import { useState } from "react"
+import {
   AlertTriangle,
   ArrowDown,
   ArrowRight,
@@ -10,6 +11,7 @@
   ShieldAlert,
   TrainFront,
 } from "lucide-react"
+import { Link } from "react-router-dom"
 
 const junctions = [
   {
@@ -154,6 +156,13 @@ function SignalBadge({ signal }: { signal: string }) {
 }
 
 function JunctionManagement() {
+  const [actionFeedback, setActionFeedback] = useState<string | null>(null)
+
+  function handleAction(action: string) {
+    setActionFeedback(`${action} — recorded at ${new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Kolkata" })} IST`)
+    setTimeout(() => setActionFeedback(null), 4000)
+  }
+
   return (
     <div className="controller-page min-h-full px-4 py-5 lg:px-6">
       <div className="mb-6">
@@ -493,10 +502,13 @@ function JunctionManagement() {
                     </div>
                   </div>
 
-                  <button className="col-span-2 flex items-center justify-center gap-1.5 rounded-md border border-[#F59E0B] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-3 py-2 text-[10px] font-bold uppercase text-white transition-transform hover:scale-[1.01] sm:col-span-1">
+                  <Link
+                    to="/controller/junctions"
+                    className="col-span-2 flex items-center justify-center gap-1.5 rounded-md border border-[#F59E0B] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-3 py-2 text-[10px] font-bold uppercase text-white transition-transform hover:scale-[1.01] sm:col-span-1"
+                  >
                     Review
                     <ArrowRight size={13} />
-                  </button>
+                  </Link>
                 </div>
               </div>
             </div>
@@ -523,6 +535,14 @@ function JunctionManagement() {
           </div>
         </div>
 
+        {/* Action feedback banner */}
+        {actionFeedback && (
+          <div className="mb-4 flex items-center gap-2 rounded-md border border-emerald-700 bg-emerald-950/30 px-4 py-2.5 text-xs font-semibold text-emerald-400">
+            <CheckCircle2 size={14} />
+            {actionFeedback}
+          </div>
+        )}
+
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {[
             "Hold Train",
@@ -532,6 +552,7 @@ function JunctionManagement() {
           ].map((action) => (
             <button
               key={action}
+              onClick={() => handleAction(action)}
               className="controller-button rounded-md px-4 py-3 text-xs font-bold"
             >
               {action}

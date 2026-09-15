@@ -1,4 +1,6 @@
-﻿import {
+import { useState } from "react"
+import { useNavigate } from "react-router-dom"
+import {
   Bell,
   Check,
   ChevronRight,
@@ -11,6 +13,44 @@
 } from "lucide-react"
 
 function ControllerSettings() {
+  const navigate = useNavigate()
+
+  // Dynamic Toggles State
+  const [toggles, setToggles] = useState<Record<string, boolean>>({
+    criticalDelay: true,
+    junctionConflict: true,
+    weatherImpact: true,
+    cascadeRisk: true,
+    systemNotifications: false,
+    weatherAwareEta: true,
+    monitorDownstream: true,
+    severeWeatherNotifs: true,
+  })
+
+  // Dynamic Thresholds State
+  const [thresholds, setThresholds] = useState({
+    delayAlert: "10",
+    criticalDelay: "30",
+    cascadeRisk: "70",
+    weatherRisk: "60",
+  })
+
+  const [savedFeedback, setSavedFeedback] = useState(false)
+  const [securityModal, setSecurityModal] = useState<string | null>(null)
+
+  function toggleSetting(key: string) {
+    setToggles((prev) => ({ ...prev, [key]: !prev[key] }))
+  }
+
+  function handleSave() {
+    setSavedFeedback(true)
+    setTimeout(() => setSavedFeedback(false), 3000)
+  }
+
+  function handleSignOut() {
+    navigate("/login")
+  }
+
   return (
     <div className="controller-page min-h-full px-4 py-5 lg:px-6">
       {/* Header */}
@@ -107,31 +147,36 @@ function ControllerSettings() {
               <SettingRow
                 title="Critical Delay Alerts"
                 description="Notify when a train crosses the configured delay threshold."
-                enabled
+                enabled={toggles.criticalDelay}
+                onToggle={() => toggleSetting("criticalDelay")}
               />
 
               <SettingRow
                 title="Junction Conflict Alerts"
                 description="Notify when conflicting train movements are detected."
-                enabled
+                enabled={toggles.junctionConflict}
+                onToggle={() => toggleSetting("junctionConflict")}
               />
 
               <SettingRow
                 title="Weather Impact Alerts"
                 description="Notify when weather conditions may affect train movement."
-                enabled
+                enabled={toggles.weatherImpact}
+                onToggle={() => toggleSetting("weatherImpact")}
               />
 
               <SettingRow
                 title="Cascade Risk Alerts"
                 description="Notify when delay propagation risk becomes significant."
-                enabled
+                enabled={toggles.cascadeRisk}
+                onToggle={() => toggleSetting("cascadeRisk")}
               />
 
               <SettingRow
                 title="System Notifications"
                 description="Receive platform and integration status notifications."
-                enabled={false}
+                enabled={toggles.systemNotifications}
+                onToggle={() => toggleSetting("systemNotifications")}
               />
             </div>
           </section>
@@ -156,26 +201,30 @@ function ControllerSettings() {
             <div className="grid gap-4 p-4 sm:grid-cols-2">
               <Threshold
                 label="Delay Alert Threshold"
-                value="10"
+                value={thresholds.delayAlert}
                 unit="minutes"
+                onChange={(val) => setThresholds((t) => ({ ...t, delayAlert: val }))}
               />
 
               <Threshold
                 label="Critical Delay Threshold"
-                value="30"
+                value={thresholds.criticalDelay}
                 unit="minutes"
+                onChange={(val) => setThresholds((t) => ({ ...t, criticalDelay: val }))}
               />
 
               <Threshold
                 label="Cascade Risk Threshold"
-                value="70"
+                value={thresholds.cascadeRisk}
                 unit="%"
+                onChange={(val) => setThresholds((t) => ({ ...t, cascadeRisk: val }))}
               />
 
               <Threshold
                 label="Weather Risk Threshold"
-                value="60"
+                value={thresholds.weatherRisk}
                 unit="%"
+                onChange={(val) => setThresholds((t) => ({ ...t, weatherRisk: val }))}
               />
             </div>
           </section>
@@ -201,19 +250,22 @@ function ControllerSettings() {
               <SettingRow
                 title="Enable Weather-Aware ETA"
                 description="Use downstream weather conditions when estimating arrival times."
-                enabled
+                enabled={toggles.weatherAwareEta}
+                onToggle={() => toggleSetting("weatherAwareEta")}
               />
 
               <SettingRow
                 title="Monitor Downstream Stations"
                 description="Include weather conditions along the train's remaining route."
-                enabled
+                enabled={toggles.monitorDownstream}
+                onToggle={() => toggleSetting("monitorDownstream")}
               />
 
               <SettingRow
                 title="Severe Weather Notifications"
                 description="Raise alerts when operational weather thresholds are exceeded."
-                enabled
+                enabled={toggles.severeWeatherNotifs}
+                onToggle={() => toggleSetting("severeWeatherNotifs")}
               />
             </div>
           </section>
@@ -248,15 +300,10 @@ function ControllerSettings() {
                 name="Railway Network"
                 status="Connected"
               />
-
-              <ConnectionStatus
-                name="Notification Service"
-                status="Connected"
-              />
             </div>
           </section>
 
-          {/* Access */}
+          {/* Access & Security */}
           <section className="controller-panel overflow-hidden rounded-lg">
             <div className="controller-header px-4 py-3">
               <div className="flex items-center gap-2">
@@ -269,7 +316,10 @@ function ControllerSettings() {
             </div>
 
             <div className="divide-y divide-[#145158]">
-              <button className="flex w-full items-center justify-between p-4 text-left hover:bg-[#08383D]">
+              <button
+                onClick={() => setSecurityModal(securityModal === "password" ? null : "password")}
+                className="flex w-full items-center justify-between p-4 text-left hover:bg-[#08383D]"
+              >
                 <div>
                   <div className="text-xs font-semibold text-white">
                     Change Password
@@ -282,7 +332,25 @@ function ControllerSettings() {
                 <ChevronRight size={16} className="text-[#718F96]" />
               </button>
 
-              <button className="flex w-full items-center justify-between p-4 text-left hover:bg-[#08383D]">
+              {securityModal === "password" && (
+                <div className="bg-[#031A1F] p-4 text-xs">
+                  <div className="text-amber-400 font-bold mb-2">Password Update Protocol</div>
+                  <p className="text-[11px] text-[#9FB8BE] mb-3">
+                    Contact your Divisional Network Administrator or IRCTC IT Desk to reset Control Room operational credentials.
+                  </p>
+                  <button
+                    onClick={() => setSecurityModal(null)}
+                    className="rounded bg-[#08383D] border border-[#145158] px-3 py-1 text-[10px] text-white"
+                  >
+                    Close
+                  </button>
+                </div>
+              )}
+
+              <button
+                onClick={() => setSecurityModal(securityModal === "session" ? null : "session")}
+                className="flex w-full items-center justify-between p-4 text-left hover:bg-[#08383D]"
+              >
                 <div>
                   <div className="text-xs font-semibold text-white">
                     Session Security
@@ -294,6 +362,20 @@ function ControllerSettings() {
 
                 <ChevronRight size={16} className="text-[#718F96]" />
               </button>
+
+              {securityModal === "session" && (
+                <div className="bg-[#031A1F] p-4 text-xs">
+                  <div className="text-emerald-400 font-bold mb-1">Active Session Secure</div>
+                  <div className="text-[10px] text-[#9FB8BE]">Desk ID: DESK-SBC-04</div>
+                  <div className="text-[10px] text-[#9FB8BE]">IP: 10.14.22.81 (Internal Railway VPN)</div>
+                  <button
+                    onClick={() => setSecurityModal(null)}
+                    className="mt-3 rounded bg-[#08383D] border border-[#145158] px-3 py-1 text-[10px] text-white"
+                  >
+                    Acknowledge
+                  </button>
+                </div>
+              )}
             </div>
           </section>
 
@@ -308,14 +390,27 @@ function ControllerSettings() {
               control-room procedures.
             </p>
 
-            <button className="controller-button mt-4 w-full rounded-md px-4 py-2.5 text-xs font-bold">
+            {savedFeedback && (
+              <div className="mt-3 flex items-center gap-2 rounded border border-emerald-500/40 bg-emerald-950/40 px-3 py-2 text-xs font-bold text-emerald-400">
+                <Check size={14} />
+                Preferences updated successfully
+              </div>
+            )}
+
+            <button
+              onClick={handleSave}
+              className="controller-button mt-4 flex w-full items-center justify-center gap-2 rounded-md px-4 py-2.5 text-xs font-bold"
+            >
               <Check size={15} />
               Save Preferences
             </button>
           </section>
 
           {/* Sign out */}
-          <button className="flex w-full items-center justify-center gap-2 rounded-lg border border-red-900/60 bg-[#031A1F] px-4 py-3 text-xs font-bold text-red-400 transition hover:bg-red-950/30">
+          <button
+            onClick={handleSignOut}
+            className="flex w-full items-center justify-center gap-2 rounded-lg border border-red-900/60 bg-[#031A1F] px-4 py-3 text-xs font-bold text-red-400 transition hover:bg-red-950/30"
+          >
             <LogOut size={15} />
             Sign Out
           </button>
@@ -329,13 +424,18 @@ function SettingRow({
   title,
   description,
   enabled,
+  onToggle,
 }: {
   title: string
   description: string
   enabled: boolean
+  onToggle: () => void
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 p-4">
+    <div
+      onClick={onToggle}
+      className="flex cursor-pointer items-center justify-between gap-4 p-4 transition-colors hover:bg-[#08383D]/40"
+    >
       <div>
         <div className="text-xs font-semibold text-white">
           {title}
@@ -349,15 +449,15 @@ function SettingRow({
       <div
         className={
           enabled
-            ? "relative h-5 w-9 shrink-0 rounded-full bg-[#0E7C86]"
-            : "relative h-5 w-9 shrink-0 rounded-full bg-[#145158]"
+            ? "relative h-5 w-9 shrink-0 rounded-full bg-[#0E7C86] transition-colors"
+            : "relative h-5 w-9 shrink-0 rounded-full bg-[#145158] transition-colors"
         }
       >
         <div
           className={
             enabled
-              ? "absolute right-0.5 top-0.5 h-4 w-4 rounded-full bg-white"
-              : "absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-[#9FB8BE]"
+              ? "absolute right-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition-all"
+              : "absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-[#9FB8BE] transition-all"
           }
         />
       </div>
@@ -369,10 +469,12 @@ function Threshold({
   label,
   value,
   unit,
+  onChange,
 }: {
   label: string
   value: string
   unit: string
+  onChange: (val: string) => void
 }) {
   return (
     <div>
@@ -381,9 +483,12 @@ function Threshold({
       </label>
 
       <div className="mt-2 flex overflow-hidden rounded-md border border-[#145158] bg-[#031A1F]">
-        <div className="flex-1 px-3 py-2.5 text-sm font-semibold text-white">
-          {value}
-        </div>
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full bg-transparent px-3 py-2 text-sm font-semibold text-white focus:outline-none"
+        />
 
         <div className="flex items-center border-l border-[#145158] px-3 text-xs font-bold text-[#9FB8BE]">
           {unit}

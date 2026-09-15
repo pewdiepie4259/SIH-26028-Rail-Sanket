@@ -5,6 +5,7 @@ import {
   Radio,
   ShieldAlert,
 } from "lucide-react"
+import { Link } from "react-router-dom"
 
 interface CriticalAlert {
   [key: string]: unknown
@@ -111,9 +112,10 @@ function CriticalAlerts({
               type.toLowerCase() === "error"
 
             return (
-              <div
+              <Link
                 key={`${trainNumber ?? "alert"}-${index}`}
-                className="group px-4 py-3 transition-colors hover:bg-[#071A33]"
+                to={trainNumber ? `/controller/trains/${trainNumber}` : "/controller/junctions"}
+                className="group block px-4 py-3 transition-colors hover:bg-[#071A33]"
               >
                 <div className="flex gap-3">
                   <div
@@ -162,7 +164,7 @@ function CriticalAlerts({
                     </div>
                   </div>
                 </div>
-              </div>
+              </Link>
             )
           })}
         </div>

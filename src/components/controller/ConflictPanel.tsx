@@ -5,6 +5,7 @@ import {
   GitBranch,
   TrainFront,
 } from "lucide-react"
+import { Link } from "react-router-dom"
 
 interface Conflict {
   id: string
@@ -185,13 +186,13 @@ function ConflictPanel() {
               </div>
             </div>
 
-            <button
-              type="button"
+            <Link
+              to="/controller/junctions"
               className="mt-3 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-[#0E7C86] transition hover:text-[#F59E0B]"
             >
               Inspect conflict
               <ArrowRight size={12} />
-            </button>
+            </Link>
           </div>
         ))}
       </div>

@@ -67,11 +67,11 @@ function TrainDetails() {
     <div className="min-h-full bg-[#031426] px-4 py-6 text-white lg:px-6">
       <div className="mb-5">
         <Link
-          to="/controller/trains"
+          to="/controller/dashboard"
           className="inline-flex items-center gap-2 text-xs font-semibold text-[#AFC0D4] transition hover:text-white"
         >
           <ArrowLeft size={15} />
-          Back to Train Operations
+          Back to Network Operations
         </Link>
       </div>
 
@@ -275,9 +275,25 @@ function TrainDetails() {
             </div>
 
             <div className="relative h-2 overflow-hidden rounded-full bg-[#0A2036]">
-              <div className="absolute inset-y-0 left-0 w-[58%] rounded-full bg-[#0E7C86]" />
-
-              <div className="absolute left-[58%] top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[#F59E0B] bg-[#031426]" />
+              {(() => {
+                const dist = forecast?.distance_remaining_km ?? 0
+                // Estimate progress: assume typical 50km leg, cap at 95%
+                const progressPct = dist > 0
+                  ? Math.min(Math.round((1 - dist / Math.max(dist + 15, 50)) * 100), 95)
+                  : 58
+                return (
+                  <>
+                    <div
+                      className="absolute inset-y-0 left-0 rounded-full bg-[#0E7C86]"
+                      style={{ width: `${progressPct}%` }}
+                    />
+                    <div
+                      className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[#F59E0B] bg-[#031426]"
+                      style={{ left: `${progressPct}%` }}
+                    />
+                  </>
+                )
+              })()}
             </div>
 
             <div className="mt-3 flex justify-between text-[10px] text-[#71899C]">
@@ -362,65 +378,97 @@ function TrainDetails() {
         </section>
       </div>
 
-      <section className="mt-5 rounded-xl border border-[#16364A] bg-[#0A2036] p-5">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
+        {/* Delay Assessment */}
+        <section className="mt-5 rounded-xl border border-[#16364A] bg-[#0A2036]">
+          <div className="border-b border-[#16364A] px-5 py-3">
             <h2 className="text-sm font-bold text-white">
-              Operational Actions
+              Delay Assessment
             </h2>
-
-            <p className="mt-1 text-xs text-[#71899C]">
-              Controller actions will be connected to the
-              operational decision layer.
+            <p className="mt-0.5 text-[11px] text-[#71899C]">
+              Operational factors contributing to the current delay
             </p>
           </div>
 
-          <span className="w-fit rounded-md border border-[#F59E0B]/30 bg-[#F59E0B]/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-[#F59E0B]">
-            Decision support
-          </span>
-        </div>
-
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          <button
-            type="button"
-            className="rounded-lg border border-[#16364A] bg-[#071A33] px-4 py-3 text-left transition hover:border-[#0E7C86]"
-          >
-            <div className="text-xs font-bold text-white">
-              Review Delay
+          <div className="p-5">
+            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#F59E0B]">
+              Primary factors
             </div>
 
-            <div className="mt-1 text-[10px] text-[#71899C]">
-              Inspect contributing operational factors.
-            </div>
-          </button>
+            <ul className="mt-3 space-y-2 text-sm text-[#D7E5EC]">
+              <li className="flex items-start gap-2">
+                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#F59E0B]" />
+                Signal restriction at current block
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#F59E0B]" />
+                Junction occupancy on approach section
+              </li>
+              {forecast && (forecast.cascade_risk ?? 0) > 0.3 && (
+                <li className="flex items-start gap-2">
+                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#F59E0B]" />
+                  Downstream cascade risk detected
+                </li>
+              )}
+            </ul>
 
-          <button
-            type="button"
-            className="rounded-lg border border-[#16364A] bg-[#071A33] px-4 py-3 text-left transition hover:border-[#0E7C86]"
-          >
-            <div className="text-xs font-bold text-white">
-              Check Downstream
+            <div className="mt-4 border-t border-[#16364A] pt-4">
+              <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#71899C]">
+                Expected recovery
+              </div>
+              <div className="mt-1.5 text-sm font-semibold text-white">
+                2–3 minutes before the next major station
+              </div>
             </div>
+          </div>
+        </section>
 
-            <div className="mt-1 text-[10px] text-[#71899C]">
-              Review upcoming network conditions.
-            </div>
-          </button>
+        {/* Operational actions */}
+        <section className="mt-5 rounded-xl border border-[#16364A] bg-[#0A2036] p-5">
+          <h2 className="text-sm font-bold text-white">
+            Operational Actions
+          </h2>
+          <p className="mt-0.5 text-[11px] text-[#71899C]">
+            Navigate to related operational views
+          </p>
 
-          <button
-            type="button"
-            className="rounded-lg border border-[#F59E0B]/40 bg-[#F59E0B]/10 px-4 py-3 text-left transition hover:bg-[#F59E0B]/15"
-          >
-            <div className="text-xs font-bold text-[#F59E0B]">
-              Open Decision Tools
-            </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <Link
+              to="/controller/junctions"
+              className="rounded-lg border border-[#16364A] bg-[#071A33] px-4 py-3 text-left transition hover:border-[#0E7C86]"
+            >
+              <div className="text-xs font-bold text-white">
+                View Junctions
+              </div>
+              <div className="mt-1 text-[10px] text-[#71899C]">
+                Inspect route conflicts ahead.
+              </div>
+            </Link>
 
-            <div className="mt-1 text-[10px] text-[#AFC0D4]">
-              Review available controller interventions.
-            </div>
-          </button>
-        </div>
-      </section>
+            <Link
+              to="/controller/weather"
+              className="rounded-lg border border-[#16364A] bg-[#071A33] px-4 py-3 text-left transition hover:border-[#0E7C86]"
+            >
+              <div className="text-xs font-bold text-white">
+                View Weather Impact
+              </div>
+              <div className="mt-1 text-[10px] text-[#71899C]">
+                Weather along downstream sections.
+              </div>
+            </Link>
+
+            <Link
+              to="/controller/cascade"
+              className="rounded-lg border border-[#F59E0B]/40 bg-[#F59E0B]/10 px-4 py-3 text-left transition hover:bg-[#F59E0B]/15"
+            >
+              <div className="text-xs font-bold text-[#F59E0B]">
+                View Cascade Analysis
+              </div>
+              <div className="mt-1 text-[10px] text-[#AFC0D4]">
+                Downstream delay propagation.
+              </div>
+            </Link>
+          </div>
+        </section>
     </div>
   )
 }

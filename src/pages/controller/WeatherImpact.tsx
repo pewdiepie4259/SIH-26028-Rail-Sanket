@@ -7,7 +7,9 @@ import {
   Wind,
   AlertTriangle,
   Clock3,
+  ArrowRight,
 } from "lucide-react"
+import { Link } from "react-router-dom"
 
 const weatherSections = [
   {
@@ -19,6 +21,7 @@ const weatherSections = [
     temperature: "23°C",
     impact: "Medium",
     speedImpact: "-10 km/h",
+    affectedTrains: ["12628"],
   },
   {
     section: "KSR – Baiyappanahalli",
@@ -29,6 +32,7 @@ const weatherSections = [
     temperature: "22°C",
     impact: "High",
     speedImpact: "-20 km/h",
+    affectedTrains: ["12627", "16589"],
   },
   {
     section: "Baiyappanahalli – Whitefield",
@@ -39,6 +43,7 @@ const weatherSections = [
     temperature: "24°C",
     impact: "Low",
     speedImpact: "-5 km/h",
+    affectedTrains: ["16526"],
   },
   {
     section: "Whitefield – Malur",
@@ -49,6 +54,7 @@ const weatherSections = [
     temperature: "25°C",
     impact: "None",
     speedImpact: "0 km/h",
+    affectedTrains: [],
   },
 ]
 
@@ -182,6 +188,7 @@ function WeatherImpact() {
                 <th className="px-4 py-3">Temperature</th>
                 <th className="px-4 py-3">Impact</th>
                 <th className="px-4 py-3">Speed Adjustment</th>
+                <th className="px-4 py-3">Affected Trains</th>
               </tr>
             </thead>
 
@@ -236,6 +243,25 @@ function WeatherImpact() {
 
                   <td className="px-4 py-4 text-xs font-bold text-[#F59E0B]">
                     {section.speedImpact}
+                  </td>
+
+                  <td className="px-4 py-4">
+                    {section.affectedTrains.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {section.affectedTrains.map((tr) => (
+                          <Link
+                            key={tr}
+                            to={`/controller/trains/${tr}`}
+                            className="inline-flex items-center gap-1 rounded bg-[#031A1F] border border-[#145158] px-2 py-0.5 text-[10px] font-bold text-[#0E7C86] hover:text-[#F59E0B] hover:border-[#F59E0B]"
+                          >
+                            {tr}
+                            <ArrowRight size={10} />
+                          </Link>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-[10px] text-[#71899C]">None</span>
+                    )}
                   </td>
                 </tr>
               ))}

@@ -1,4 +1,5 @@
-﻿import {
+import { useState } from "react"
+import {
   Activity,
   AlertTriangle,
   BarChart3,
@@ -75,6 +76,14 @@ const interventions = [
 ]
 
 function Reports() {
+  const [activePeriod, setActivePeriod] = useState("Today")
+  const [exported, setExported] = useState(false)
+
+  function handleExport() {
+    setExported(true)
+    setTimeout(() => setExported(false), 3000)
+  }
+
   return (
     <div className="controller-page min-h-full px-4 py-5 lg:px-6">
       {/* Header */}
@@ -93,9 +102,12 @@ function Reports() {
           </p>
         </div>
 
-        <button className="controller-button rounded-lg px-4 py-2.5 text-xs font-bold">
+        <button
+          onClick={handleExport}
+          className="controller-button flex items-center gap-2 rounded-lg px-4 py-2.5 text-xs font-bold"
+        >
           <Download size={15} />
-          Export Report
+          {exported ? "Exported ✓" : "Export Report"}
         </button>
       </div>
 
@@ -107,16 +119,17 @@ function Reports() {
           </div>
 
           <div className="mt-1 text-sm font-semibold text-white">
-            Today · 00:00 – 18:00
+            {activePeriod === "Today" ? "Today · 00:00 – 18:00" : activePeriod === "7 Days" ? "Past 7 Days (Consolidated)" : "Past 30 Days (Full Cycle)"}
           </div>
         </div>
 
         <div className="flex gap-2">
-          {["Today", "7 Days", "30 Days"].map((period, index) => (
+          {["Today", "7 Days", "30 Days"].map((period) => (
             <button
               key={period}
+              onClick={() => setActivePeriod(period)}
               className={
-                index === 0
+                activePeriod === period
                   ? "rounded-md border border-[#F59E0B] bg-[#071A33] px-3 py-2 text-[11px] font-bold text-white"
                   : "rounded-md border border-[#145158] bg-[#031A1F] px-3 py-2 text-[11px] font-semibold text-[#9FB8BE] hover:text-white"
               }

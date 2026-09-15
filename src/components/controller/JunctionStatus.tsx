@@ -4,6 +4,7 @@ import {
   Gauge,
   TrainFront,
 } from "lucide-react"
+import { Link } from "react-router-dom"
 
 interface Junction {
   name: string
@@ -145,13 +146,13 @@ function JunctionStatus() {
               </div>
             </div>
 
-            <button
-              type="button"
-              className="mt-3 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-[#0E7C86] transition hover:text-[#F59E0B]"
+            <Link
+              to="/controller/junctions"
+              className="mt-3 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-[#0E7C86] transition hover:text-[#F59E0B]"
             >
               View junction
               <ArrowUpRight size={12} />
-            </button>
+            </Link>
           </div>
         ))}
       </div>

@@ -11,24 +11,28 @@ const metrics = [
     value: "126",
     detail: "Across monitored sections",
     icon: TrainFront,
+    status: null,
   },
   {
-    label: "Network Health",
-    value: "98.4%",
-    detail: "Operational availability",
+    label: "Network Status",
+    value: "Normal",
+    detail: "All sections operational",
     icon: Activity,
+    status: "normal" as const,
   },
   {
     label: "Junction Load",
-    value: "74%",
+    value: "Moderate",
     detail: "Current network pressure",
     icon: GitBranch,
+    status: "caution" as const,
   },
   {
     label: "Critical Alerts",
     value: "03",
     detail: "Require attention",
     icon: AlertTriangle,
+    status: null,
   },
 ]
 
@@ -37,11 +41,17 @@ function NetworkHealthStrip() {
     <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {metrics.map((metric) => {
         const Icon = metric.icon
+        const valueColor =
+          metric.status === "normal"
+            ? "text-emerald-400"
+            : metric.status === "caution"
+              ? "text-[#F59E0B]"
+              : "text-white"
 
         return (
           <div
             key={metric.label}
-            className="rounded-xl border border-[#16364A] bg-[#0A2036] p-4 transition-colors duration-200 hover:border-[#0E5961]"
+            className="rounded-lg border border-[#16364A] bg-[#0A2036] p-4 transition-colors duration-200 hover:border-[#0E5961]"
           >
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -49,7 +59,7 @@ function NetworkHealthStrip() {
                   {metric.label}
                 </p>
 
-                <p className="mt-2 text-2xl font-bold tracking-tight text-white">
+                <p className={`mt-2 text-xl font-bold tracking-tight ${valueColor}`}>
                   {metric.value}
                 </p>
 
@@ -58,7 +68,7 @@ function NetworkHealthStrip() {
                 </p>
               </div>
 
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#16364A] bg-[#071A33]">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-[#16364A] bg-[#071A33]">
                 <Icon
                   size={17}
                   strokeWidth={2}
@@ -73,4 +83,4 @@ function NetworkHealthStrip() {
   )
 }
 
-export default NetworkHealthStrip
+export default NetworkHealthStrip

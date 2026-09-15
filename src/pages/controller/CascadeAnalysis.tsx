@@ -8,6 +8,7 @@ import {
   TrainFront,
   TrendingUp,
 } from "lucide-react"
+import { Link } from "react-router-dom"
 
 const cascadeEvents = [
   {
@@ -508,17 +509,26 @@ function CascadeAnalysis() {
         </div>
 
         <div className="mt-5 flex flex-wrap gap-3">
-          <button className="controller-button rounded-md px-4 py-2.5 text-[10px] font-bold uppercase">
-            Review Mitigation
-          </button>
+          <Link
+            to="/controller/dashboard"
+            className="controller-button rounded-md px-4 py-2.5 text-[10px] font-bold uppercase"
+          >
+            Review on Network Map
+          </Link>
 
-          <button className="rounded-md border border-[#145158] bg-[#08383D] px-4 py-2.5 text-[10px] font-bold uppercase text-[#D7E5EC] hover:bg-[#0E5961]">
-            View Affected Trains
-          </button>
+          <Link
+            to="/controller/trains/12627"
+            className="rounded-md border border-[#145158] bg-[#08383D] px-4 py-2.5 text-[10px] font-bold uppercase text-[#D7E5EC] hover:bg-[#0E5961]"
+          >
+            View Source Train
+          </Link>
 
-          <button className="rounded-md border border-[#145158] bg-[#08383D] px-4 py-2.5 text-[10px] font-bold uppercase text-[#D7E5EC] hover:bg-[#0E5961]">
-            Open Junction
-          </button>
+          <Link
+            to="/controller/junctions"
+            className="rounded-md border border-[#145158] bg-[#08383D] px-4 py-2.5 text-[10px] font-bold uppercase text-[#D7E5EC] hover:bg-[#0E5961]"
+          >
+            View Junction
+          </Link>
         </div>
       </section>
     </div>

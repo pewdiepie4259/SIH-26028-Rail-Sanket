@@ -1,4 +1,5 @@
-﻿import {
+import { useState } from "react"
+import {
   Check,
   ChevronRight,
   Clock3,
@@ -7,6 +8,7 @@
 } from "lucide-react"
 
 type ActionPriority = "Critical" | "High" | "Medium"
+type ActionStatus = "pending" | "accepted" | "rejected" | "reviewing"
 
 interface RecommendedAction {
   id: string
@@ -22,7 +24,7 @@ interface RecommendedAction {
   time: string
 }
 
-const recommendations: RecommendedAction[] = [
+const initialRecommendations: RecommendedAction[] = [
   {
     id: "ACT-1042",
     priority: "Critical",
@@ -64,7 +66,14 @@ const recommendations: RecommendedAction[] = [
   },
 ]
 
-const actionHistory = [
+interface HistoryEntry {
+  time: string
+  action: string
+  train: string
+  result: string
+}
+
+const initialHistory: HistoryEntry[] = [
   {
     time: "17:42",
     action: "Platform reassigned",
@@ -85,10 +94,69 @@ const actionHistory = [
   },
 ]
 
+function nowIST(): string {
+  return new Date().toLocaleTimeString("en-IN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Asia/Kolkata",
+  })
+}
+
 function RecommendedActions() {
+  const [statuses, setStatuses] = useState<Record<string, ActionStatus>>(
+    Object.fromEntries(initialRecommendations.map((r) => [r.id, "pending"])),
+  )
+  const [history, setHistory] = useState<HistoryEntry[]>(initialHistory)
+
+  function handleAccept(rec: RecommendedAction) {
+    setStatuses((prev) => ({ ...prev, [rec.id]: "accepted" }))
+    setHistory((prev) => [
+      {
+        time: nowIST(),
+        action: rec.action,
+        train: rec.train,
+        result: "Action accepted",
+      },
+      ...prev,
+    ])
+  }
+
+  function handleReject(rec: RecommendedAction) {
+    setStatuses((prev) => ({ ...prev, [rec.id]: "rejected" }))
+    setHistory((prev) => [
+      {
+        time: nowIST(),
+        action: `Recommendation rejected — ${rec.id}`,
+        train: rec.train,
+        result: "No action taken",
+      },
+      ...prev,
+    ])
+  }
+
+  function handleReview(rec: RecommendedAction) {
+    setStatuses((prev) => ({ ...prev, [rec.id]: "reviewing" }))
+  }
+
+  // Show pending first, then reviewing, then resolved
+  const sorted = [...initialRecommendations].sort((a, b) => {
+    const order: Record<ActionStatus, number> = {
+      pending: 0,
+      reviewing: 1,
+      accepted: 2,
+      rejected: 3,
+    }
+    return order[statuses[a.id]] - order[statuses[b.id]]
+  })
+
+  const pendingCount = initialRecommendations.filter(
+    (r) => statuses[r.id] === "pending",
+  ).length
+
   return (
     <div className="space-y-5">
-      {/* Header */}
+      {/* Header + cards */}
       <section className="controller-panel overflow-hidden rounded-lg">
         <div className="controller-header px-4 py-3">
           <div className="flex flex-col justify-between gap-2 md:flex-row md:items-center">
@@ -96,7 +164,6 @@ function RecommendedActions() {
               <h2 className="text-sm font-bold text-white">
                 Recommended Actions
               </h2>
-
               <p className="mt-0.5 text-[11px] text-[#D7E5EC]/70">
                 Operational actions requiring controller review
               </p>
@@ -104,17 +171,20 @@ function RecommendedActions() {
 
             <div className="flex items-center gap-2 text-[10px] font-bold text-[#D7E5EC]">
               <span className="h-1.5 w-1.5 rounded-full bg-[#F59E0B]" />
-              {recommendations.length} pending review
+              {pendingCount} pending review
             </div>
           </div>
         </div>
 
-        {/* Action cards */}
         <div className="divide-y divide-[#145158]">
-          {recommendations.map((recommendation) => (
+          {sorted.map((rec) => (
             <ActionCard
-              key={recommendation.id}
-              recommendation={recommendation}
+              key={rec.id}
+              recommendation={rec}
+              status={statuses[rec.id]}
+              onAccept={() => handleAccept(rec)}
+              onReject={() => handleReject(rec)}
+              onReview={() => handleReview(rec)}
             />
           ))}
         </div>
@@ -125,12 +195,10 @@ function RecommendedActions() {
         <div className="controller-header px-4 py-3">
           <div className="flex items-center gap-2">
             <Clock3 size={16} className="text-[#F59E0B]" />
-
             <div>
               <h2 className="text-sm font-bold text-white">
-                Recent Action History
+                Action History
               </h2>
-
               <p className="mt-0.5 text-[11px] text-[#D7E5EC]/70">
                 Previously executed operational interventions
               </p>
@@ -142,41 +210,39 @@ function RecommendedActions() {
           <table className="w-full min-w-[650px] text-left">
             <thead>
               <tr className="border-b border-[#145158] bg-[#08383D]">
-                <th className="px-4 py-3 text-[10px] font-bold uppercase tracking-wide text-[#9FB8BE]">
-                  Time
-                </th>
-                <th className="px-4 py-3 text-[10px] font-bold uppercase tracking-wide text-[#9FB8BE]">
-                  Action
-                </th>
-                <th className="px-4 py-3 text-[10px] font-bold uppercase tracking-wide text-[#9FB8BE]">
-                  Train
-                </th>
-                <th className="px-4 py-3 text-[10px] font-bold uppercase tracking-wide text-[#9FB8BE]">
-                  Result
-                </th>
+                {["Time", "Action", "Train", "Result"].map((h) => (
+                  <th
+                    key={h}
+                    className="px-4 py-3 text-[10px] font-bold uppercase tracking-wide text-[#9FB8BE]"
+                  >
+                    {h}
+                  </th>
+                ))}
               </tr>
             </thead>
-
             <tbody>
-              {actionHistory.map((item) => (
+              {history.map((item, i) => (
                 <tr
-                  key={`${item.time}-${item.train}`}
+                  key={`${item.time}-${i}`}
                   className="border-b border-[#145158]/70 last:border-0"
                 >
                   <td className="px-4 py-3 text-xs text-[#9FB8BE]">
                     {item.time}
                   </td>
-
                   <td className="px-4 py-3 text-xs font-semibold text-white">
                     {item.action}
                   </td>
-
                   <td className="px-4 py-3 text-xs font-bold text-[#D7E5EC]">
                     {item.train}
                   </td>
-
                   <td className="px-4 py-3">
-                    <span className="rounded-full border border-[#145158] bg-[#031A1F] px-2 py-1 text-[10px] font-bold text-emerald-400">
+                    <span
+                      className={`rounded border px-2 py-1 text-[10px] font-bold ${
+                        item.result === "No action taken"
+                          ? "border-[#145158] bg-[#031A1F] text-[#9FB8BE]"
+                          : "border-[#145158] bg-[#031A1F] text-emerald-400"
+                      }`}
+                    >
                       {item.result}
                     </span>
                   </td>
@@ -192,8 +258,16 @@ function RecommendedActions() {
 
 function ActionCard({
   recommendation,
+  status,
+  onAccept,
+  onReject,
+  onReview,
 }: {
   recommendation: RecommendedAction
+  status: ActionStatus
+  onAccept: () => void
+  onReject: () => void
+  onReview: () => void
 }) {
   const priorityClass =
     recommendation.priority === "Critical"
@@ -202,22 +276,41 @@ function ActionCard({
         ? "border-[#F59E0B]/50 bg-[#F59E0B]/5 text-[#F59E0B]"
         : "border-[#145158] bg-[#031A1F] text-[#9FB8BE]"
 
+  const isResolved = status === "accepted" || status === "rejected"
+
   return (
-    <div className="p-4">
+    <div className={`p-4 ${isResolved ? "opacity-50" : ""}`}>
+      {/* Status banner */}
+      {status !== "pending" && (
+        <div
+          className={`mb-3 flex items-center gap-2 rounded-md border px-3 py-2 text-xs font-bold ${
+            status === "accepted"
+              ? "border-emerald-700 bg-emerald-950/30 text-emerald-400"
+              : status === "rejected"
+                ? "border-red-900 bg-red-950/30 text-red-400"
+                : "border-[#F59E0B]/40 bg-[#F59E0B]/5 text-[#F59E0B]"
+          }`}
+        >
+          {status === "accepted" && <Check size={13} />}
+          {status === "rejected" && <X size={13} />}
+          {status === "accepted" && "Action accepted — recorded in history"}
+          {status === "rejected" && "Recommendation rejected"}
+          {status === "reviewing" && "Under review by controller"}
+        </div>
+      )}
+
       <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         {/* Main */}
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <span
-              className={`rounded-full border px-2 py-1 text-[9px] font-bold uppercase tracking-wide ${priorityClass}`}
+              className={`rounded border px-2 py-1 text-[9px] font-bold uppercase tracking-wide ${priorityClass}`}
             >
               {recommendation.priority}
             </span>
-
             <span className="text-[10px] font-semibold text-[#718F96]">
               {recommendation.id}
             </span>
-
             <span className="text-[10px] text-[#718F96]">
               {recommendation.time}
             </span>
@@ -227,18 +320,15 @@ function ActionCard({
             <div className="rounded-md border border-[#145158] bg-[#031A1F] p-2">
               <TrainFront size={18} className="text-[#F59E0B]" />
             </div>
-
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <h3 className="text-sm font-bold text-white">
                   {recommendation.train}
                 </h3>
-
                 <span className="text-[11px] text-[#9FB8BE]">
                   {recommendation.trainName}
                 </span>
               </div>
-
               <div className="mt-1 text-xs text-red-400">
                 Current delay:{" "}
                 <span className="font-bold">
@@ -253,17 +343,14 @@ function ActionCard({
               <div className="text-[9px] font-bold uppercase tracking-wide text-[#718F96]">
                 Reason
               </div>
-
               <div className="mt-1.5 text-[11px] leading-5 text-[#D7E5EC]">
                 {recommendation.reason}
               </div>
             </div>
-
             <div className="rounded-md border border-[#145158] bg-[#031A1F] p-3">
               <div className="text-[9px] font-bold uppercase tracking-wide text-[#718F96]">
                 Recommended Action
               </div>
-
               <div className="mt-1.5 text-[11px] leading-5 font-semibold text-white">
                 {recommendation.action}
               </div>
@@ -275,37 +362,46 @@ function ActionCard({
               label="Expected reduction"
               value={recommendation.expectedReduction}
             />
-
             <ImpactItem
               label="Risk if ignored"
               value={recommendation.riskIfIgnored}
               warning
             />
-
             <ImpactItem
-              label="Confidence"
+              label="Prediction confidence"
               value={`${recommendation.confidence}%`}
             />
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex shrink-0 flex-row gap-2 xl:flex-col xl:w-28">
-          <button className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-emerald-700 bg-emerald-950/20 px-3 py-2.5 text-[10px] font-bold text-emerald-400 transition hover:bg-emerald-950/40">
-            <Check size={14} />
-            Accept
-          </button>
-
-          <button className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-red-900/70 bg-red-950/20 px-3 py-2.5 text-[10px] font-bold text-red-400 transition hover:bg-red-950/40">
-            <X size={14} />
-            Reject
-          </button>
-
-          <button className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-[#145158] bg-[#031A1F] px-3 py-2.5 text-[10px] font-bold text-[#D7E5EC] transition hover:bg-[#08383D]">
-            Review
-            <ChevronRight size={13} />
-          </button>
-        </div>
+        {/* Action buttons */}
+        {!isResolved && (
+          <div className="flex shrink-0 flex-row gap-2 xl:w-28 xl:flex-col">
+            <button
+              onClick={onAccept}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-emerald-700 bg-emerald-950/20 px-3 py-2.5 text-[10px] font-bold text-emerald-400 transition hover:bg-emerald-950/40"
+            >
+              <Check size={14} />
+              Accept
+            </button>
+            <button
+              onClick={onReject}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-red-900/70 bg-red-950/20 px-3 py-2.5 text-[10px] font-bold text-red-400 transition hover:bg-red-950/40"
+            >
+              <X size={14} />
+              Reject
+            </button>
+            {status === "pending" && (
+              <button
+                onClick={onReview}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-[#145158] bg-[#031A1F] px-3 py-2.5 text-[10px] font-bold text-[#D7E5EC] transition hover:bg-[#08383D]"
+              >
+                Review
+                <ChevronRight size={13} />
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -325,7 +421,6 @@ function ImpactItem({
       <div className="text-[9px] font-bold uppercase tracking-wide text-[#718F96]">
         {label}
       </div>
-
       <div
         className={
           warning
