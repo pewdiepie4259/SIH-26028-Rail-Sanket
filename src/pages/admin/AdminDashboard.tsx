@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   ShieldCheck,
@@ -11,15 +11,12 @@ import {
   LogOut,
   Building,
   Mail,
-  Phone,
   RefreshCw,
   Search,
   Check,
   X,
   ExternalLink,
-  ChevronRight,
   Shield,
-  Layers,
 } from "lucide-react";
 import {
   getCurrentUser,
@@ -173,7 +170,7 @@ export default function AdminDashboard() {
             </div>
             <div className="mt-2 flex items-baseline gap-2">
               <span className="text-2xl font-black text-amber-400">{pendingCount}</span>
-              <span className="text-xs text-slate-400">awaiting admin review</span>
+              <span className="text-xs text-slate-400">awaiting admin review ({approvedCount} approved)</span>
             </div>
           </div>
 

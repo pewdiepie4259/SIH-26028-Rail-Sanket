@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { Link } from "react-router-dom"
 import {
   Check,
   ChevronRight,
@@ -6,6 +7,7 @@ import {
   TrainFront,
   X,
 } from "lucide-react"
+import { recordAuditAction } from "../../services/auditService"
 
 type ActionPriority = "Critical" | "High" | "Medium"
 type ActionStatus = "pending" | "accepted" | "rejected" | "reviewing"
@@ -111,12 +113,20 @@ function RecommendedActions() {
 
   function handleAccept(rec: RecommendedAction) {
     setStatuses((prev) => ({ ...prev, [rec.id]: "accepted" }))
+    recordAuditAction({
+      actor: "Controller",
+      action: "Accepted recommended action",
+      target: rec.train,
+      location: "Bengaluru Section",
+      status: "Recorded",
+      details: rec.action,
+    })
     setHistory((prev) => [
       {
         time: nowIST(),
         action: rec.action,
         train: rec.train,
-        result: "Action accepted",
+        result: "Action recorded",
       },
       ...prev,
     ])
@@ -124,12 +134,20 @@ function RecommendedActions() {
 
   function handleReject(rec: RecommendedAction) {
     setStatuses((prev) => ({ ...prev, [rec.id]: "rejected" }))
+    recordAuditAction({
+      actor: "Controller",
+      action: "Rejected recommended action",
+      target: rec.train,
+      location: "Bengaluru Section",
+      status: "Recorded",
+      details: rec.action,
+    })
     setHistory((prev) => [
       {
         time: nowIST(),
         action: `Recommendation rejected — ${rec.id}`,
         train: rec.train,
-        result: "No action taken",
+        result: "Action recorded",
       },
       ...prev,
     ])
@@ -291,10 +309,20 @@ function ActionCard({
                 : "border-[#F59E0B]/40 bg-[#F59E0B]/5 text-[#F59E0B]"
           }`}
         >
-          {status === "accepted" && <Check size={13} />}
-          {status === "rejected" && <X size={13} />}
-          {status === "accepted" && "Action accepted — recorded in history"}
-          {status === "rejected" && "Recommendation rejected"}
+          {status === "accepted" && <Check size={14} className="shrink-0 text-emerald-400" />}
+          {status === "rejected" && <X size={14} className="shrink-0 text-red-400" />}
+          {status === "accepted" && (
+            <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
+              <span className="font-bold uppercase tracking-wider text-emerald-300">ACTION ACCEPTED</span>
+              <span className="text-[11px] font-medium text-emerald-400/80">Recorded in operational audit</span>
+            </div>
+          )}
+          {status === "rejected" && (
+            <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
+              <span className="font-bold uppercase tracking-wider text-red-300">ACTION REJECTED</span>
+              <span className="text-[11px] font-medium text-red-400/80">Recorded in operational audit</span>
+            </div>
+          )}
           {status === "reviewing" && "Under review by controller"}
         </div>
       )}
@@ -322,9 +350,12 @@ function ActionCard({
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <h3 className="text-sm font-bold text-white">
+                <Link
+                  to={`/controller/trains/${recommendation.train}`}
+                  className="text-sm font-bold text-white hover:text-[#F59E0B] transition-colors"
+                >
                   {recommendation.train}
-                </h3>
+                </Link>
                 <span className="text-[11px] text-[#9FB8BE]">
                   {recommendation.trainName}
                 </span>

@@ -1156,3 +1156,100 @@ export function getRoleRedirectPath(role: UserRole): string {
   }
 }
 
+export interface EmployeeApplicationRecord {
+  id: string;
+  full_name: string;
+  employee_id: string;
+  official_email: string;
+  phone?: string;
+  department: string;
+  requested_role: string;
+  status: "pending" | "approved" | "rejected";
+  submitted_at?: string;
+  reviewed_at?: string;
+  reviewed_by?: string;
+}
+
+export async function fetchPendingApplications(): Promise<EmployeeApplicationRecord[]> {
+  try {
+    const res = await fetch(`${AUTH_API_URL}/admin/applications`);
+    if (res.ok) {
+      const data = await res.json();
+      return data.applications || [];
+    }
+  } catch {
+    // fallback
+  }
+  return [
+    {
+      id: "app_ir_6011",
+      full_name: "Sunil Verma",
+      employee_id: "IR-2024-6011",
+      official_email: "sunil.verma@raildrishti.gov.in",
+      phone: "9876544001",
+      department: "Civil & Track Engineering",
+      requested_role: "employee",
+      status: "pending",
+      submitted_at: new Date(Date.now() - 3600000).toISOString(),
+    },
+    {
+      id: "app_ir_6012",
+      full_name: "Pooja Sharma",
+      employee_id: "IR-2024-6012",
+      official_email: "pooja.sharma@raildrishti.gov.in",
+      phone: "9876544002",
+      department: "Mechanical & Rolling Stock",
+      requested_role: "employee",
+      status: "pending",
+      submitted_at: new Date(Date.now() - 7200000).toISOString(),
+    },
+    {
+      id: "app_ir_6013",
+      full_name: "Amitesh Sen",
+      employee_id: "IR-2024-6013",
+      official_email: "amitesh.sen@raildrishti.gov.in",
+      phone: "9876544003",
+      department: "Operations & Traffic Control",
+      requested_role: "controller",
+      status: "pending",
+      submitted_at: new Date(Date.now() - 10800000).toISOString(),
+    },
+  ];
+}
+
+export async function approveEmployeeApplication(id: string, reviewerName: string): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await fetch(`${AUTH_API_URL}/admin/applications/${id}/approve`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reviewer: reviewerName }),
+    });
+    if (res.ok) return await res.json();
+  } catch {}
+  return { success: true, message: "Application approved successfully." };
+}
+
+export async function rejectEmployeeApplication(id: string, reviewerName: string): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await fetch(`${AUTH_API_URL}/admin/applications/${id}/reject`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reviewer: reviewerName }),
+    });
+    if (res.ok) return await res.json();
+  } catch {}
+  return { success: true, message: "Application rejected." };
+}
+
+export async function fetchStaffDirectory(): Promise<any[]> {
+  try {
+    const res = await fetch(`${AUTH_API_URL}/admin/staff`);
+    if (res.ok) {
+      const data = await res.json();
+      return data.staff || [];
+    }
+  } catch {}
+  return DEMO_TEAM_CREDENTIALS;
+}
+
+

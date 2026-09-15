@@ -140,7 +140,12 @@ function CascadeAnalysis() {
             <TrainFront size={17} className="text-[#F59E0B]" />
           </div>
 
-          <div className="mt-2 text-2xl font-bold">12627</div>
+          <Link
+            to="/controller/trains/12627"
+            className="mt-2 block text-2xl font-bold text-white hover:text-[#F59E0B] transition-colors"
+          >
+            12627
+          </Link>
 
           <div className="mt-1 text-[11px] text-[#9FB8BE]">
             Karnataka Express
@@ -411,9 +416,12 @@ function CascadeAnalysis() {
                   className="border-b border-[#145158] last:border-0 hover:bg-[#08383D]/50"
                 >
                   <td className="px-4 py-4">
-                    <div className="text-xs font-bold text-white">
+                    <Link
+                      to={`/controller/trains/${train.train}`}
+                      className="text-xs font-bold text-white hover:text-[#F59E0B] transition-colors"
+                    >
                       {train.train}
-                    </div>
+                    </Link>
 
                     <div className="mt-0.5 text-[10px] text-[#9FB8BE]">
                       {train.name}

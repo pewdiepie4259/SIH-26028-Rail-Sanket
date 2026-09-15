@@ -13,7 +13,7 @@ import {
   UserRound,
   X,
 } from "lucide-react"
-import { NavLink, Outlet } from "react-router-dom"
+import { NavLink, Outlet, useLocation } from "react-router-dom"
 
 const navOperations = [
   {
@@ -23,7 +23,7 @@ const navOperations = [
   },
   {
     label: "Train Operations",
-    path: "/controller/dashboard",
+    path: "/controller/trains",
     icon: TrainFront,
   },
   {
@@ -59,14 +59,6 @@ const navSystem = [
   },
 ]
 
-const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-  [
-    "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-semibold transition-colors",
-    isActive
-      ? "controller-sidebar-active"
-      : "text-[#D7E5EC] hover:bg-[#08383D]",
-  ].join(" ")
-
 function NavSection({
   label,
   items,
@@ -74,6 +66,8 @@ function NavSection({
   label: string
   items: typeof navOperations
 }) {
+  const location = useLocation()
+
   return (
     <div className="mb-4">
       <div className="mb-1.5 px-3 text-[10px] font-bold uppercase tracking-[0.16em] text-[#9FB8BE]">
@@ -82,8 +76,23 @@ function NavSection({
       <nav className="space-y-0.5">
         {items.map((item) => {
           const Icon = item.icon
+          const isActive =
+            item.path === "/controller/dashboard"
+              ? location.pathname === "/controller/dashboard" ||
+                location.pathname === "/controller"
+              : location.pathname.startsWith(item.path)
+
           return (
-            <NavLink key={item.label} to={item.path} className={navLinkClass}>
+            <NavLink
+              key={item.label}
+              to={item.path}
+              className={[
+                "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-semibold transition-colors",
+                isActive
+                  ? "controller-sidebar-active"
+                  : "text-[#D7E5EC] hover:bg-[#08383D]",
+              ].join(" ")}
+            >
               <Icon size={16} strokeWidth={2} />
               <span>{item.label}</span>
             </NavLink>

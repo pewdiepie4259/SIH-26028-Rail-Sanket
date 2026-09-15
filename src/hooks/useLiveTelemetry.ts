@@ -1,33 +1,24 @@
 import { useEffect, useState, useRef } from "react";
+import type {
+  ControllerTrain,
+  OperationalAlert,
+  TelemetryData,
+  ForecastItem,
+  LiveTrain,
+} from "../types/controller";
 
-const WS_URL = "ws://127.0.0.1:8000/ws/telemetry";
+export type {
+  ControllerTrain,
+  OperationalAlert,
+  TelemetryData,
+  ForecastItem,
+  LiveTrain,
+};
 
-export interface TelemetryData {
-    lat: number;
-    lon: number;
-    speed_kmh: number;
-    signal: string;
-}
+const WS_URL =
+  import.meta.env.VITE_TELEMETRY_WS_URL ||
+  "ws://127.0.0.1:8000/ws/telemetry";
 
-export interface ForecastItem {
-    station: string;
-    station_name: string;
-    distance_remaining_km: number;
-    baseline_static_eta: string;
-    dynamic_gnn_eta: string;
-    predicted_delay_min: number;
-    cascade_risk: number;
-}
-
-export interface LiveTrain {
-    trainNumber: string;
-    name: string;
-    priority: number;
-    currentBlock: string;
-    telemetry: TelemetryData;
-    forecasts: ForecastItem[];
-    updatedAt: string;
-}
 
 export function useLiveTelemetry() {
     const [trains, setTrains] = useState < Record < string, LiveTrain>> ({});

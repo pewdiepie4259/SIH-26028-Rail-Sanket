@@ -372,9 +372,12 @@ function JunctionManagement() {
                   className="border-b border-[#145158] last:border-0 hover:bg-[#08383D]/50"
                 >
                   <td className="px-4 py-3">
-                    <div className="text-xs font-bold text-white">
+                    <Link
+                      to={`/controller/trains/${movement.train}`}
+                      className="text-xs font-bold text-white hover:text-[#F59E0B] transition-colors"
+                    >
                       {movement.train}
-                    </div>
+                    </Link>
 
                     <div className="mt-0.5 text-[10px] text-[#9FB8BE]">
                       {movement.name}
@@ -477,8 +480,25 @@ function JunctionManagement() {
                     </div>
 
                     <div className="mt-2 flex items-center gap-2 text-xs font-semibold text-[#D7E5EC]">
-                      <TrainFront size={14} />
-                      {conflict.trains}
+                      <TrainFront size={14} className="text-[#F59E0B]" />
+                      <div className="flex items-center gap-1.5">
+                        {conflict.trains.split("↔").map((t, idx, arr) => {
+                          const trainNo = t.trim()
+                          return (
+                            <span key={trainNo} className="inline-flex items-center">
+                              <Link
+                                to={`/controller/trains/${trainNo}`}
+                                className="font-semibold text-white hover:text-[#F59E0B] transition-colors"
+                              >
+                                {trainNo}
+                              </Link>
+                              {idx < arr.length - 1 && (
+                                <span className="mx-1 text-[#718F96]">↔</span>
+                              )}
+                            </span>
+                          )
+                        })}
+                      </div>
                     </div>
                   </div>
                 </div>

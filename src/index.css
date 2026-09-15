@@ -356,3 +356,9 @@ body > .skiptranslate {
 .controller-divider {
   border-color: var(--rd-controller-border);
 }
+
+/* Leaflet Map Container Full Fill */
+.leaflet-container {
+  width: 100% !important;
+  height: 100% !important;
+}

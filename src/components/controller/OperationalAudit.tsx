@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react"
 import {
   CheckCircle2,
   Clock3,
@@ -6,48 +7,21 @@ import {
   UserCircle,
 } from "lucide-react"
 import { Link } from "react-router-dom"
-
-interface AuditEntry {
-  id: string
-  time: string
-  action: string
-  train: string
-  location: string
-  status: "Approved" | "Recommended" | "Completed"
-  controller: string
-}
-
-const auditEntries: AuditEntry[] = [
-  {
-    id: "AUD-1048",
-    time: "14:18:32",
-    action: "Precedence review",
-    train: "12627",
-    location: "Krishnarajapuram Junction",
-    status: "Approved",
-    controller: "Section Controller",
-  },
-  {
-    id: "AUD-1047",
-    time: "14:14:06",
-    action: "Movement regulation",
-    train: "16591",
-    location: "Baiyappanahalli",
-    status: "Completed",
-    controller: "Section Controller",
-  },
-  {
-    id: "AUD-1046",
-    time: "14:09:41",
-    action: "Alternate route review",
-    train: "12639",
-    location: "Bengaluru Cantonment",
-    status: "Recommended",
-    controller: "System",
-  },
-]
+import {
+  getAuditEntries,
+  subscribeAudit,
+  type AuditRecord,
+} from "../../services/auditService"
 
 function OperationalAudit() {
+  const [auditEntries, setAuditEntries] = useState<AuditRecord[]>(getAuditEntries)
+
+  useEffect(() => {
+    return subscribeAudit((updated) => {
+      setAuditEntries([...updated])
+    })
+  }, [])
+
   return (
     <section className="overflow-hidden rounded-xl border border-[#16364A] bg-[#0A2036]">
       <div className="flex flex-col gap-3 border-b border-[#16364A] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
@@ -137,22 +111,31 @@ function OperationalAudit() {
                 </td>
 
                 <td className="px-5 py-4">
-                  <span className="rounded-md border border-[#16364A] bg-[#071A33] px-2 py-1 text-[10px] font-bold text-[#D7E5EC]">
-                    {entry.train}
-                  </span>
+                  {/^\d{4,5}$/.test(entry.target) ? (
+                    <Link
+                      to={`/controller/trains/${entry.target}`}
+                      className="inline-block rounded-md border border-[#16364A] bg-[#071A33] px-2 py-1 text-[10px] font-bold text-[#D7E5EC] hover:text-[#F59E0B] transition-colors"
+                    >
+                      {entry.target}
+                    </Link>
+                  ) : (
+                    <span className="rounded-md border border-[#16364A] bg-[#071A33] px-2 py-1 text-[10px] font-bold text-[#D7E5EC]">
+                      {entry.target}
+                    </span>
+                  )}
                 </td>
 
                 <td className="px-5 py-4 text-[11px] text-[#AFC0D4]">
-                  {entry.location}
+                  {entry.location || "Bengaluru Division"}
                 </td>
 
                 <td className="px-5 py-4">
                   <span
                     className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[9px] font-bold uppercase tracking-wide ${
-                      entry.status === "Approved"
-                        ? "border-[#0E7C86]/40 bg-[#0E7C86]/10 text-[#6DD3D5]"
-                        : entry.status === "Completed"
-                          ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                      entry.status === "Approved" || entry.status === "Completed"
+                        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                        : entry.status === "Recorded"
+                          ? "border-[#0E7C86]/40 bg-[#0E7C86]/10 text-[#6DD3D5]"
                           : "border-[#F59E0B]/40 bg-[#F59E0B]/10 text-[#F59E0B]"
                     }`}
                   >
@@ -169,7 +152,7 @@ function OperationalAudit() {
                     />
 
                     <span className="text-[10px] text-[#AFC0D4]">
-                      {entry.controller}
+                      {entry.actor}
                     </span>
                   </div>
                 </td>

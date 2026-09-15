@@ -1,7 +1,6 @@
 import { Activity, Radio } from "lucide-react"
 import { useLiveTelemetry } from "../../hooks/useLiveTelemetry"
 
-import ActiveTrainTable from "../../components/controller/ActiveTrainTable"
 import CascadeImpact from "../../components/controller/DelayCascade"
 import ConflictPanel from "../../components/controller/ConflictPanel"
 import CriticalAlerts from "../../components/controller/CriticalAlerts"
@@ -56,7 +55,7 @@ function ControllerDashboard() {
       <NetworkHealthStrip />
 
       <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <section className="controller-panel min-h-[560px] overflow-hidden rounded-lg">
+        <section className="controller-panel h-[560px] overflow-hidden rounded-lg">
           <div className="controller-header px-4 py-3">
             <div className="flex items-center justify-between gap-4">
               <div>
@@ -84,10 +83,12 @@ function ControllerDashboard() {
             </div>
           </div>
 
-          <OperationalMap
-            trains={trains}
-            isConnected={isConnected}
-          />
+          <div className="h-[calc(100%-57px)] w-full">
+            <OperationalMap
+              trains={trains}
+              isConnected={isConnected}
+            />
+          </div>
         </section>
 
         <div className="space-y-5">
@@ -96,11 +97,11 @@ function ControllerDashboard() {
           <section className="controller-panel overflow-hidden rounded-lg">
             <div className="controller-header px-4 py-3">
               <div className="text-sm font-bold text-white">
-                Active Train Operations
+                Telemetry Feed Status
               </div>
 
               <div className="mt-0.5 text-[11px] text-[#D7E5EC]/70">
-                Current telemetry feed status
+                Network telemetry and feed health
               </div>
             </div>
 
@@ -145,12 +146,7 @@ function ControllerDashboard() {
         </div>
       </div>
 
-      <div className="mt-5">
-        <ActiveTrainTable
-          trains={trains}
-          isConnected={isConnected}
-        />
-      </div>
+
 
       <div className="mt-5 grid gap-5 xl:grid-cols-2">
         <JunctionStatus />
