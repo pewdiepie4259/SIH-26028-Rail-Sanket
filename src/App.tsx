@@ -21,9 +21,11 @@ import JunctionManagement from "./pages/controller/JunctionManagement"
 import CascadeAnalysis from "./pages/controller/CascadeAnalysis"
 import Reports from "./pages/controller/Reports"
 import ControllerSettings from "./pages/controller/ControllerSettings"
+import ControllerDispatches from "./pages/controller/Dispatches"
 import AdminDashboard from "./pages/admin/Dashboard"
 
 import EmployeeDashboard from "./pages/employee/Dashboard"
+import EmployeeMail from "./pages/employee/Mail"
 import EmployeeDuty from "./pages/employee/Duty"
 import EmployeeAssignment from "./pages/employee/Assignment"
 import EmployeeAlerts from "./pages/employee/Alerts"
@@ -201,6 +203,14 @@ function App() {
             path="/controller/settings"
             element={<ControllerSettings />}
           />
+          <Route
+            path="/controller/dispatches"
+            element={<ControllerDispatches />}
+          />
+          <Route
+            path="/controller/mail"
+            element={<ControllerDispatches />}
+          />
         </Route>
 
         <Route
@@ -253,6 +263,15 @@ function App() {
           element={
             <EmployeeProtectedRoute>
               <EmployeeReport />
+            </EmployeeProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/employee/mail"
+          element={
+            <EmployeeProtectedRoute>
+              <EmployeeMail />
             </EmployeeProtectedRoute>
           }
         />

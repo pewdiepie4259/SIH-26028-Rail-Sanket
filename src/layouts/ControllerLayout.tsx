@@ -7,6 +7,7 @@ import {
   GitBranch,
   LayoutDashboard,
   LogOut,
+  Mail,
   Menu,
   Settings,
   TrainFront,
@@ -25,6 +26,11 @@ const navOperations = [
     label: "Train Operations",
     path: "/controller/trains",
     icon: TrainFront,
+  },
+  {
+    label: "Dispatches & Directives",
+    path: "/controller/dispatches",
+    icon: Mail,
   },
   {
     label: "Weather Impact",

@@ -1165,17 +1165,24 @@ export interface EmployeeApplicationRecord {
   department: string;
   requested_role: string;
   status: "pending" | "approved" | "rejected";
-  submitted_at?: string;
+  submitted_at: string;
   reviewed_at?: string;
   reviewed_by?: string;
 }
 
 export async function fetchPendingApplications(): Promise<EmployeeApplicationRecord[]> {
   try {
-    const res = await fetch(`${AUTH_API_URL}/admin/applications`);
-    if (res.ok) {
+    const res = await fetch(`${AUTH_API_URL}/admin/applications`).catch(() =>
+      fetch("http://localhost:5000/api/admin/applications")
+    );
+    if (res && res.ok) {
       const data = await res.json();
-      return data.applications || [];
+      if (data.success && Array.isArray(data.applications)) {
+        return data.applications;
+      }
+      if (Array.isArray(data.applications)) {
+        return data.applications;
+      }
     }
   } catch {
     // fallback
@@ -1217,39 +1224,69 @@ export async function fetchPendingApplications(): Promise<EmployeeApplicationRec
   ];
 }
 
-export async function approveEmployeeApplication(id: string, reviewerName: string): Promise<{ success: boolean; message?: string }> {
+export async function approveEmployeeApplication(id: string, reviewedBy: string): Promise<{ success: boolean; message?: string }> {
   try {
     const res = await fetch(`${AUTH_API_URL}/admin/applications/${id}/approve`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reviewer: reviewerName }),
-    });
-    if (res.ok) return await res.json();
-  } catch {}
+      body: JSON.stringify({ reviewer: reviewedBy, reviewedBy }),
+    }).catch(() =>
+      fetch(`http://localhost:5000/api/admin/applications/${id}/approve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reviewer: reviewedBy, reviewedBy }),
+      })
+    );
+    if (res && res.ok) {
+      return await res.json();
+    }
+  } catch {
+    // fallback
+  }
   return { success: true, message: "Application approved successfully." };
 }
 
-export async function rejectEmployeeApplication(id: string, reviewerName: string): Promise<{ success: boolean; message?: string }> {
+export async function rejectEmployeeApplication(id: string, reviewedBy: string): Promise<{ success: boolean; message?: string }> {
   try {
     const res = await fetch(`${AUTH_API_URL}/admin/applications/${id}/reject`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reviewer: reviewerName }),
-    });
-    if (res.ok) return await res.json();
-  } catch {}
+      body: JSON.stringify({ reviewer: reviewedBy, reviewedBy }),
+    }).catch(() =>
+      fetch(`http://localhost:5000/api/admin/applications/${id}/reject`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reviewer: reviewedBy, reviewedBy }),
+      })
+    );
+    if (res && res.ok) {
+      return await res.json();
+    }
+  } catch {
+    // fallback
+  }
   return { success: true, message: "Application rejected." };
 }
 
 export async function fetchStaffDirectory(): Promise<any[]> {
   try {
-    const res = await fetch(`${AUTH_API_URL}/admin/staff`);
-    if (res.ok) {
+    const res = await fetch("http://localhost:5000/api/mail/directory").catch(() =>
+      fetch(`${AUTH_API_URL}/admin/staff`)
+    );
+    if (res && res.ok) {
       const data = await res.json();
-      return data.staff || [];
+      if (data.success && Array.isArray(data.directory)) {
+        return data.directory;
+      }
+      if (Array.isArray(data.staff)) {
+        return data.staff;
+      }
     }
-  } catch {}
+  } catch {
+    // fallback
+  }
   return DEMO_TEAM_CREDENTIALS;
 }
+
 
 

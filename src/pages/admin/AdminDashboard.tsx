@@ -5,18 +5,18 @@ import {
   Users,
   Sliders,
   Briefcase,
+  Building,
+  Shield,
   CheckCircle2,
   XCircle,
   Clock,
   LogOut,
-  Building,
   Mail,
   RefreshCw,
   Search,
   Check,
   X,
   ExternalLink,
-  Shield,
 } from "lucide-react";
 import {
   getCurrentUser,
@@ -100,7 +100,6 @@ export default function AdminDashboard() {
   };
 
   const pendingCount = applications.filter((a) => a.status === "pending").length;
-  const approvedCount = applications.filter((a) => a.status === "approved").length;
 
   const filteredStaff = staffList.filter((s) => {
     const matchesSearch =
@@ -170,7 +169,7 @@ export default function AdminDashboard() {
             </div>
             <div className="mt-2 flex items-baseline gap-2">
               <span className="text-2xl font-black text-amber-400">{pendingCount}</span>
-              <span className="text-xs text-slate-400">awaiting admin review ({approvedCount} approved)</span>
+              <span className="text-xs text-slate-400">awaiting admin review</span>
             </div>
           </div>
 
@@ -223,11 +222,10 @@ export default function AdminDashboard() {
         {/* Action Alert Banner */}
         {actionMessage && (
           <div
-            className={`mb-6 flex items-start gap-3 rounded-xl p-3.5 text-sm ${
-              actionMessage.type === "success"
+            className={`mb-6 flex items-start gap-3 rounded-xl p-3.5 text-sm ${actionMessage.type === "success"
                 ? "border border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
                 : "border border-red-500/30 bg-red-500/10 text-red-200"
-            }`}
+              }`}
           >
             {actionMessage.type === "success" ? (
               <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
@@ -243,11 +241,10 @@ export default function AdminDashboard() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setActiveTab("pending")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === "pending"
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${activeTab === "pending"
                   ? "bg-gradient-to-r from-[#F59E0B] to-[#D97706] text-[#071A33] shadow-md shadow-amber-500/20"
                   : "text-slate-300 hover:bg-[#06283B] hover:text-white"
-              }`}
+                }`}
             >
               <Clock className="w-4 h-4" />
               <span>Pending Registrations Queue</span>
@@ -260,11 +257,10 @@ export default function AdminDashboard() {
 
             <button
               onClick={() => setActiveTab("staff")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === "staff"
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${activeTab === "staff"
                   ? "bg-gradient-to-r from-[#F59E0B] to-[#D97706] text-[#071A33] shadow-md shadow-amber-500/20"
                   : "text-slate-300 hover:bg-[#06283B] hover:text-white"
-              }`}
+                }`}
             >
               <Users className="w-4 h-4" />
               <span>Authorized Staff Directory</span>
@@ -313,24 +309,22 @@ export default function AdminDashboard() {
                 {applications.map((app) => (
                   <div
                     key={app.id}
-                    className={`rounded-2xl border p-4 transition-all ${
-                      app.status === "pending"
+                    className={`rounded-2xl border p-4 transition-all ${app.status === "pending"
                         ? "border-amber-500/40 bg-gradient-to-r from-[#06283B] via-[#071A33] to-[#06283B]"
                         : app.status === "approved"
-                        ? "border-emerald-500/30 bg-emerald-950/20 opacity-80"
-                        : "border-red-500/30 bg-red-950/20 opacity-60"
-                    }`}
+                          ? "border-emerald-500/30 bg-emerald-950/20 opacity-80"
+                          : "border-red-500/30 bg-red-950/20 opacity-60"
+                      }`}
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div className="flex items-start gap-3">
                         <div
-                          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl font-bold text-base ${
-                            app.status === "pending"
+                          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl font-bold text-base ${app.status === "pending"
                               ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
                               : app.status === "approved"
-                              ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                              : "bg-red-500/20 text-red-300 border border-red-500/30"
-                          }`}
+                                ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                                : "bg-red-500/20 text-red-300 border border-red-500/30"
+                            }`}
                         >
                           {app.full_name?.charAt(0) || "E"}
                         </div>
@@ -342,13 +336,12 @@ export default function AdminDashboard() {
                               {app.employee_id}
                             </span>
                             <span
-                              className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-                                app.status === "pending"
+                              className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${app.status === "pending"
                                   ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
                                   : app.status === "approved"
-                                  ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                                  : "bg-red-500/20 text-red-300 border border-red-500/30"
-                              }`}
+                                    ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                                    : "bg-red-500/20 text-red-300 border border-red-500/30"
+                                }`}
                             >
                               {app.status}
                             </span>
@@ -393,9 +386,8 @@ export default function AdminDashboard() {
                         ) : (
                           <div className="text-right text-xs">
                             <span
-                              className={`font-semibold ${
-                                app.status === "approved" ? "text-emerald-400" : "text-red-400"
-                              }`}
+                              className={`font-semibold ${app.status === "approved" ? "text-emerald-400" : "text-red-400"
+                                }`}
                             >
                               {app.status === "approved" ? "Approved by Admin" : "Rejected"}
                             </span>
@@ -471,15 +463,14 @@ export default function AdminDashboard() {
                       </td>
                       <td className="py-3 px-4">
                         <span
-                          className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-                            person.role === "admin"
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${person.role === "admin"
                               ? "bg-purple-500/20 text-purple-300 border border-purple-500/30"
                               : person.role === "controller"
-                              ? "bg-blue-500/20 text-blue-300 border border-blue-500/30"
-                              : person.role === "employee"
-                              ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                              : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
-                          }`}
+                                ? "bg-blue-500/20 text-blue-300 border border-blue-500/30"
+                                : person.role === "employee"
+                                  ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                                  : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                            }`}
                         >
                           {person.role}
                         </span>
