@@ -366,7 +366,7 @@ export const LiveMap: React.FC = () => {
             <span className="h-2 w-2 rounded-full bg-rose-500 animate-ping" />
             <strong>ST-GNN Cascading Delay Alert:</strong>
             <span>
-              Delayed Train {activeAlerts[0].delayed_train} (+{activeAlerts[0].cascade_risk || 12}m) impacting corridor headway.
+              Delayed Train {activeAlerts[0].delayed_train} (+{String(activeAlerts[0].cascade_risk || 12)}m) impacting corridor headway.
             </span>
           </div>
           <span className="text-rose-400 bg-rose-900/40 px-2 py-0.5 rounded border border-rose-800">
@@ -434,6 +434,14 @@ export const LiveMap: React.FC = () => {
               <span className={`h-2 w-2 rounded-full ${followTrain ? 'bg-white animate-pulse' : 'bg-slate-500'}`} />
               {followTrain ? 'FOLLOWING' : 'FOLLOW TRAIN'}
             </button>
+
+            <div className="h-4 w-px bg-slate-700 mx-1" />
+
+            {/* Connection Indicator */}
+            <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-800/80 rounded border border-slate-700 text-xs font-mono">
+              <span className={`h-2 w-2 rounded-full ${isConnected ? 'bg-emerald-400 animate-pulse' : 'bg-cyan-400'}`} />
+              <span className="text-slate-300">{isConnected ? 'LIVE WS' : 'ACTIVE SIM'}</span>
+            </div>
           </div>
 
           {/* Leaflet Map */}
