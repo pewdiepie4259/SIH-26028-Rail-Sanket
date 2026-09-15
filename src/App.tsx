@@ -46,6 +46,16 @@ function UserProtectedRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to={`/login?redirect=${encodeURIComponent(redirectUrl)}`} replace />;
   }
 
+  if (user.role === "employee") {
+    return <Navigate to="/employee/dashboard" replace />;
+  }
+  if (user.role === "controller") {
+    return <Navigate to="/controller/dashboard" replace />;
+  }
+  if (user.role === "admin") {
+    return <Navigate to="/admin" replace />;
+  }
+
   return <>{children}</>;
 }
 
@@ -54,8 +64,14 @@ function EmployeeProtectedRoute({ children }: { children: React.ReactNode }) {
   if (!user) {
     return <Navigate to="/employee/login" replace />;
   }
+  if (user.role === "user") {
+    return <Navigate to="/" replace />;
+  }
   if (user.role === "controller") {
     return <Navigate to="/controller/dashboard" replace />;
+  }
+  if (user.role === "admin") {
+    return <Navigate to="/admin" replace />;
   }
   return <>{children}</>;
 }
@@ -85,13 +101,27 @@ function ControllerProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function PassengerDashboardRoute() {
+  const user = getCurrentUser();
+  if (user?.role === "employee") {
+    return <Navigate to="/employee/dashboard" replace />;
+  }
+  if (user?.role === "controller") {
+    return <Navigate to="/controller/dashboard" replace />;
+  }
+  if (user?.role === "admin") {
+    return <Navigate to="/admin" replace />;
+  }
+  return <PublicDashboard />;
+}
+
 function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route element={<PublicLayout />}>
-          <Route path="/" element={<PublicDashboard />} />
-          <Route path="/user/dashboard" element={<Navigate to="/" replace />} />
+          <Route path="/" element={<PassengerDashboardRoute />} />
+          <Route path="/user/dashboard" element={<PassengerDashboardRoute />} />
           <Route path="/live" element={<LiveTrainStatus />} />
 
           <Route

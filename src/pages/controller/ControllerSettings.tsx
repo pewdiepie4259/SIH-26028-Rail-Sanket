@@ -11,9 +11,11 @@ import {
   ShieldCheck,
   User,
 } from "lucide-react"
+import { getCurrentUser, logout } from "../../services/auth"
 
 function ControllerSettings() {
   const navigate = useNavigate()
+  const currentUser = getCurrentUser()
 
   // Dynamic Toggles State
   const [toggles, setToggles] = useState<Record<string, boolean>>({
@@ -48,7 +50,8 @@ function ControllerSettings() {
   }
 
   function handleSignOut() {
-    navigate("/login")
+    logout()
+    navigate("/login", { replace: true })
   }
 
   return (
@@ -92,35 +95,35 @@ function ControllerSettings() {
                 <label className="text-[10px] font-bold uppercase tracking-wide text-[#718F96]">
                   Name
                 </label>
-                <div className="mt-2 rounded-md border border-[#145158] bg-[#031A1F] px-3 py-2.5 text-sm text-white">
-                  Control Room Operator
+                <div className="mt-2 rounded-md border border-[#145158] bg-[#031A1F] px-3 py-2.5 text-sm font-semibold text-white">
+                  {currentUser?.name || "Shriya M"}
                 </div>
               </div>
 
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-wide text-[#718F96]">
-                  Role
+                  Official Controller ID
                 </label>
-                <div className="mt-2 rounded-md border border-[#145158] bg-[#031A1F] px-3 py-2.5 text-sm text-white">
-                  Traffic Controller
+                <div className="mt-2 rounded-md border border-[#145158] bg-[#031A1F] px-3 py-2.5 text-sm font-semibold text-[#F59E0B]">
+                  {currentUser?.controllerId || "CTRL-SBC-01"}
                 </div>
               </div>
 
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-wide text-[#718F96]">
-                  Control Zone
+                  Role & Department
                 </label>
                 <div className="mt-2 rounded-md border border-[#145158] bg-[#031A1F] px-3 py-2.5 text-sm text-white">
-                  Bengaluru Division
+                  Section Controller · {currentUser?.department || "Operations & Traffic Control"}
                 </div>
               </div>
 
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-wide text-[#718F96]">
-                  Shift
+                  Official Email
                 </label>
                 <div className="mt-2 rounded-md border border-[#145158] bg-[#031A1F] px-3 py-2.5 text-sm text-white">
-                  Evening · 14:00 – 22:00
+                  {currentUser?.email || "shriya.m@raildrishti.gov.in"}
                 </div>
               </div>
             </div>

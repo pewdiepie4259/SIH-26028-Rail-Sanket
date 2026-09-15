@@ -923,6 +923,10 @@ export async function registerEmployee(payload: EmployeeRegistrationPayload): Pr
 export async function login(payload: LoginPayload): Promise<AuthResponse> {
   const { role, method = "password" } = payload;
 
+  // Clear any existing session before authenticating new credentials to prevent account state cross-contamination
+  sessionStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+  localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+
   // 1. First attempt Backend SQLite Authentication
   try {
     const apiRes = await fetch(`${AUTH_API_URL}/login`, {
@@ -935,6 +939,7 @@ export async function login(payload: LoginPayload): Promise<AuthResponse> {
       const data: AuthResponse = await apiRes.json();
       if (data.success && data.user) {
         sessionStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(data.user));
+        localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(data.user));
         return data;
       }
     } else {

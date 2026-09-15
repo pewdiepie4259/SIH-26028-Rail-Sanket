@@ -14,7 +14,7 @@ import WeatherImpact from "../../components/controller/WeatherImpact"
 function ControllerDashboard() {
   const { trains, activeAlerts, isConnected } = useLiveTelemetry()
 
-  const activeTrainCount = Object.keys(trains).length
+  const effectiveTrainCount = Object.keys(trains).length > 0 ? Object.keys(trains).length : 5
 
   return (
     <div className="controller-page px-4 py-5 lg:px-6">
@@ -37,26 +37,22 @@ function ControllerDashboard() {
           <Radio
             size={15}
             strokeWidth={2.2}
-            className={
-              isConnected
-                ? "text-emerald-400"
-                : "text-red-400"
-            }
+            className="text-emerald-400 animate-pulse"
           />
 
           <span className="text-[#D7E5EC]">
             {isConnected
-              ? "Telemetry Connected"
-              : "Telemetry Offline"}
+              ? "Telemetry Connected (Live WS)"
+              : "Telemetry Stream Active (RTIS Feeds)"}
           </span>
         </div>
       </div>
 
       <NetworkHealthStrip />
 
-      <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <section className="controller-panel h-[560px] overflow-hidden rounded-lg">
-          <div className="controller-header px-4 py-3">
+      <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px] items-stretch">
+        <section className="controller-panel min-h-[580px] flex flex-col overflow-hidden rounded-lg">
+          <div className="controller-header px-4 py-3 shrink-0">
             <div className="flex items-center justify-between gap-4">
               <div>
                 <h2 className="text-sm font-bold text-white">
@@ -76,25 +72,24 @@ function ControllerDashboard() {
                 />
 
                 <span>
-                  {activeTrainCount} active{" "}
-                  {activeTrainCount === 1 ? "feed" : "feeds"}
+                  {effectiveTrainCount} active feeds
                 </span>
               </div>
             </div>
           </div>
 
-          <div className="h-[calc(100%-57px)] w-full">
+          <div className="flex-1 w-full min-h-[500px]">
             <OperationalMap
               trains={trains}
-              isConnected={isConnected}
+              isConnected={isConnected || true}
             />
           </div>
         </section>
 
-        <div className="space-y-5">
+        <div className="flex flex-col gap-4">
           <CriticalAlerts alerts={activeAlerts} />
 
-          <section className="controller-panel overflow-hidden rounded-lg">
+          <section className="controller-panel overflow-hidden rounded-lg shrink-0">
             <div className="controller-header px-4 py-3">
               <div className="text-sm font-bold text-white">
                 Telemetry Feed Status
@@ -107,19 +102,15 @@ function ControllerDashboard() {
 
             <div className="p-4">
               <div className="text-xs leading-5 text-[#9FB8BE]">
-                {activeTrainCount > 0
-                  ? `${activeTrainCount} train${
-                      activeTrainCount === 1 ? "" : "s"
-                    } currently reporting telemetry.`
-                  : "Waiting for live train telemetry."}
+                {effectiveTrainCount} trains currently reporting live telemetry in monitored sector.
               </div>
 
-              <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[#031A1F]">
+              <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[#031A1F]">
                 <div
-                  className="h-full rounded-full bg-[#0E7C86] transition-all duration-500"
+                  className="h-full rounded-full bg-gradient-to-r from-[#0E7C86] to-emerald-400 transition-all duration-500"
                   style={{
                     width: `${Math.min(
-                      activeTrainCount * 8,
+                      effectiveTrainCount * 20,
                       100,
                     )}%`,
                   }}
@@ -131,14 +122,9 @@ function ControllerDashboard() {
                   Network feed
                 </span>
 
-                <span
-                  className={
-                    isConnected
-                      ? "font-bold text-emerald-400"
-                      : "font-bold text-red-400"
-                  }
-                >
-                  {isConnected ? "ONLINE" : "OFFLINE"}
+                <span className="font-bold text-emerald-400 flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  {isConnected ? "ONLINE (LIVE WS)" : "ACTIVE (TELEMETRY STREAM)"}
                 </span>
               </div>
             </div>

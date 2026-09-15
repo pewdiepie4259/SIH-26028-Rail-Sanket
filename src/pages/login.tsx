@@ -20,7 +20,6 @@ import {
   login,
   requestOTP,
   handleGoogleSignIn,
-  getRoleRedirectPath,
   DEMO_TEAM_CREDENTIALS,
   type UserRole,
   type LoginMethod,
@@ -203,6 +202,33 @@ export default function Login() {
     }
   };
 
+  const resolveRoleDestination = (role: UserRole, redirectUrl?: string | null): string => {
+    if (role === "employee") {
+      // An employee account must ALWAYS open the employee dashboard and never the passenger/PNR dashboard
+      if (redirectUrl && redirectUrl.startsWith("/employee") && redirectUrl !== "/employee/login") {
+        return redirectUrl;
+      }
+      return "/employee/dashboard";
+    }
+    if (role === "controller") {
+      if (redirectUrl && redirectUrl.startsWith("/controller") && redirectUrl !== "/controller/login") {
+        return redirectUrl;
+      }
+      return "/controller/dashboard";
+    }
+    if (role === "admin") {
+      if (redirectUrl && redirectUrl.startsWith("/admin") && redirectUrl !== "/admin/login") {
+        return redirectUrl;
+      }
+      return "/admin";
+    }
+    // Normal User / Passenger
+    if (redirectUrl && !redirectUrl.startsWith("/employee") && !redirectUrl.startsWith("/controller") && !redirectUrl.startsWith("/admin")) {
+      return redirectUrl;
+    }
+    return "/";
+  };
+
   const handleLoginSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
@@ -226,12 +252,9 @@ export default function Login() {
         setSuccessMessage(`Authentication successful! Welcome, ${res.user.name}.`);
         const searchParams = new URLSearchParams(location.search);
         const redirectParam = searchParams.get("redirect");
+        const destination = resolveRoleDestination(res.user.role, redirectParam);
         setTimeout(() => {
-          if (redirectParam) {
-            navigate(redirectParam);
-          } else {
-            navigate(getRoleRedirectPath(res.user!.role));
-          }
+          navigate(destination, { replace: true });
         }, 800);
       } else {
         setErrorMessage(res.message || "Authentication failed. Please verify credentials.");
@@ -253,12 +276,9 @@ export default function Login() {
         setSuccessMessage(`Google verified. Welcome, ${res.user.name}!`);
         const searchParams = new URLSearchParams(location.search);
         const redirectParam = searchParams.get("redirect");
+        const destination = resolveRoleDestination(res.user.role, redirectParam);
         setTimeout(() => {
-          if (redirectParam) {
-            navigate(redirectParam);
-          } else {
-            navigate(getRoleRedirectPath(res.user!.role));
-          }
+          navigate(destination, { replace: true });
         }, 800);
       } else {
         setErrorMessage(res.message || "Google authentication could not be completed.");

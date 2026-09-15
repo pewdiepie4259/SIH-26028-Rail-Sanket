@@ -467,6 +467,7 @@ function OperationalMap({
         center={[12.995, 77.625]}
         zoom={12}
         zoomControl={false}
+        scrollWheelZoom={false}
         attributionControl={true}
         className="h-full w-full"
       >

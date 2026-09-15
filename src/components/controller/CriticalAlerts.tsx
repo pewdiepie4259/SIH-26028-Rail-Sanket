@@ -109,6 +109,12 @@ function CriticalAlerts({ alerts }: CriticalAlertsProps) {
   const displayAlerts = alerts.length > 0 ? alerts.slice(0, 5) : baselineAlerts
   const [acknowledgedIds, setAcknowledgedIds] = useState<Set<string>>(new Set())
 
+  const getAlertId = (alert: CriticalAlert, index: number) => {
+    return (alert.id as string) || (alert.location as string) || (alert.trainNumber ? `TRN-${alert.trainNumber}` : `ALT-${index + 1}`)
+  }
+
+  const unacknowledgedCount = displayAlerts.filter((a, idx) => !acknowledgedIds.has(getAlertId(a, idx))).length
+
   const handleAcknowledge = (alertId: string, alertMessage: string) => {
     setAcknowledgedIds((prev) => new Set([...prev, alertId]))
     recordAuditAction({
@@ -144,19 +150,19 @@ function CriticalAlerts({ alerts }: CriticalAlertsProps) {
         <div className="flex items-center gap-1.5">
           <span
             className={`h-2 w-2 rounded-full ${
-              displayAlerts.length > 0
-                ? "bg-[#F59E0B]"
+              unacknowledgedCount > 0
+                ? "bg-[#F59E0B] animate-pulse"
                 : "bg-emerald-400"
             }`}
           />
 
           <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#AFC0D4]">
-            {displayAlerts.length} active
+            {unacknowledgedCount} active
           </span>
         </div>
       </div>
 
-      <div className="divide-y divide-[#16364A]">
+      <div className="divide-y divide-[#16364A] max-h-[360px] overflow-y-auto">
         {displayAlerts.map((alert, index) => {
           const message =
             typeof alert.message === "string"
