@@ -1,472 +1,718 @@
+import { useState } from "react"
 import {
   Activity,
   AlertTriangle,
-  BrainCircuit,
+  ArrowUpRight,
+  Bell,
+  Clock,
   CloudRain,
-  Database,
-  Gauge,
+  Cpu,
+  FileText,
+  Network,
   Radio,
+  RefreshCw,
   Server,
+  Shield,
   ShieldCheck,
   Users,
+  Wifi,
 } from "lucide-react"
+import { Link } from "react-router-dom"
 
-const services = [
+type ServiceStatus = "Operational" | "Degraded" | "Offline"
+
+interface ServiceItem {
+  id: string
+  name: string
+  category: string
+  status: ServiceStatus
+  lastCheck: string
+  responseTime: string
+  version: string
+  targetRoute?: string
+}
+
+interface IntegrationItem {
+  id: string
+  name: string
+  provider: string
+  status: "Connected" | "Degraded" | "Disconnected"
+  lastSync: string
+  route: string
+}
+
+interface ActivityItem {
+  id: string
+  time: string
+  admin: string
+  action: string
+  resource: string
+  status: "Success" | "Applied" | "Reviewed" | "Pending"
+}
+
+interface SystemEventItem {
+  id: string
+  time: string
+  severity: "INFO" | "WARNING" | "ERROR"
+  source: string
+  message: string
+}
+
+const initialServices: ServiceItem[] = [
   {
-    name: "RTIS Telemetry",
-    description: "Live locomotive telemetry feed",
+    id: "api_gw",
+    name: "API Gateway",
+    category: "Core Gateway",
     status: "Operational",
-    icon: Radio,
+    lastCheck: "Just now",
+    responseTime: "84 ms",
+    version: "v1.4.2",
+    targetRoute: "/admin/integrations",
   },
   {
+    id: "telem_svc",
+    name: "Telemetry Service",
+    category: "Locomotive Feeds",
+    status: "Operational",
+    lastCheck: "Just now",
+    responseTime: "12 ms",
+    version: "v2.1.0",
+    targetRoute: "/admin/integrations",
+  },
+  {
+    id: "pred_svc",
+    name: "Prediction Service (GNN)",
+    category: "Analytics & ETA",
+    status: "Operational",
+    lastCheck: "1 min ago",
+    responseTime: "142 ms",
+    version: "v2.4.0",
+    targetRoute: "/admin/models",
+  },
+  {
+    id: "weather_svc",
     name: "Weather Service",
-    description: "Open-Meteo weather integration",
+    category: "Environmental",
     status: "Operational",
-    icon: CloudRain,
+    lastCheck: "2 mins ago",
+    responseTime: "210 ms",
+    version: "v1.2.0",
+    targetRoute: "/admin/weather",
   },
   {
+    id: "notif_svc",
+    name: "Notification Service",
+    category: "Messaging & Dispatch",
+    status: "Operational",
+    lastCheck: "Just now",
+    responseTime: "65 ms",
+    version: "v1.1.0",
+    targetRoute: "/admin/alerts",
+  },
+  {
+    id: "db_svc",
     name: "Railway Database",
-    description: "Network and train data services",
+    category: "Primary Store",
     status: "Operational",
-    icon: Database,
+    lastCheck: "Just now",
+    responseTime: "18 ms",
+    version: "PostgreSQL 16",
   },
   {
-    name: "Prediction Service",
-    description: "ETA and cascade prediction",
+    id: "ws_svc",
+    name: "WebSocket Service",
+    category: "Live Streaming",
     status: "Operational",
-    icon: BrainCircuit,
+    lastCheck: "Just now",
+    responseTime: "8 ms",
+    version: "v1.0.4",
   },
 ]
 
-const activity = [
+const initialIntegrations: IntegrationItem[] = [
   {
-    time: "18:42",
-    event: "Controller configuration updated",
-    user: "Traffic Control",
-    type: "Configuration",
+    id: "rtis",
+    name: "RTIS / Telemetry Stream",
+    provider: "CRIS Locomotive Feed",
+    status: "Connected",
+    lastSync: "20 seconds ago",
+    route: "/admin/integrations",
   },
   {
-    time: "18:31",
-    event: "Weather integration health check completed",
-    user: "System",
-    type: "System",
+    id: "network_data",
+    name: "Railway Network Data",
+    provider: "National Railway Database (NRDB)",
+    status: "Connected",
+    lastSync: "4 mins ago",
+    route: "/admin/integrations",
   },
   {
-    time: "18:15",
-    event: "New controller account created",
-    user: "Administrator",
-    type: "User",
+    id: "weather_provider",
+    name: "Weather Provider",
+    provider: "Open-Meteo & IMD Radar Feeds",
+    status: "Connected",
+    lastSync: "5 mins ago",
+    route: "/admin/weather",
   },
   {
-    time: "17:58",
-    event: "Prediction service restarted",
-    user: "System",
-    type: "System",
+    id: "notification_gw",
+    name: "Notification Gateway",
+    provider: "Internal SMS & Dispatch Relay",
+    status: "Connected",
+    lastSync: "1 min ago",
+    route: "/admin/alerts",
   },
 ]
 
-function AdminDashboard() {
+const recentActivity: ActivityItem[] = [
+  {
+    id: "act_1",
+    time: "12:42",
+    admin: "Chief Administrator",
+    action: "User role verified",
+    resource: "user_ctrl_2001 (Shriya M)",
+    status: "Success",
+  },
+  {
+    id: "act_2",
+    time: "12:35",
+    admin: "System Automated",
+    action: "Weather threshold verified",
+    resource: "Sector SBC-BYPL Rainfall > 40mm",
+    status: "Applied",
+  },
+  {
+    id: "act_3",
+    time: "12:15",
+    admin: "Chief Administrator",
+    action: "Model configuration inspected",
+    resource: "Dynamic GNN ETA v2.4-prod",
+    status: "Reviewed",
+  },
+  {
+    id: "act_4",
+    time: "11:50",
+    admin: "Senior Dispatcher",
+    action: "Alert rule reviewed",
+    resource: "Rule #4: Junction Convergence",
+    status: "Applied",
+  },
+  {
+    id: "act_5",
+    time: "11:20",
+    admin: "System Automated",
+    action: "Integration config synchronized",
+    resource: "RTIS Telemetry Gateway",
+    status: "Success",
+  },
+]
+
+const systemEvents: SystemEventItem[] = [
+  {
+    id: "evt_1",
+    time: "12:44:10",
+    severity: "INFO",
+    source: "Telemetry Stream",
+    message: "Locomotive RTIS telemetry connection active on Bengaluru Division (5 active feeds).",
+  },
+  {
+    id: "evt_2",
+    time: "12:41:05",
+    severity: "INFO",
+    source: "Database",
+    message: "Primary database connection verified healthy with 18 ms latency.",
+  },
+  {
+    id: "evt_3",
+    time: "12:38:22",
+    severity: "WARNING",
+    source: "Weather Service",
+    message: "Upstream radar feed latency temporarily elevated to 210 ms (within 500 ms SLA).",
+  },
+  {
+    id: "evt_4",
+    time: "12:30:00",
+    severity: "INFO",
+    source: "Prediction Service",
+    message: "Graph Neural Network inference cycles normal across 14 monitored blocks.",
+  },
+]
+
+export default function AdminDashboard() {
+  const [lastChecked, setLastChecked] = useState("Just now")
+  const [isRefreshing, setIsRefreshing] = useState(false)
+
+  const handleRefresh = () => {
+    setIsRefreshing(true)
+    setTimeout(() => {
+      setLastChecked("Just now")
+      setIsRefreshing(false)
+    }, 600)
+  }
+
   return (
-    <div className="min-h-full bg-[#031A1F] px-4 py-5 text-white lg:px-6">
-      {/* Header */}
-      <div className="mb-5 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+    <div className="controller-page px-4 py-5 lg:px-6">
+      {/* ── 1. PAGE HEADER ────────────────────────────────────────── */}
+      <div className="mb-5 flex flex-col justify-between gap-3 md:flex-row md:items-end">
         <div>
           <div className="text-xs font-bold uppercase tracking-[0.16em] text-[#F59E0B]">
-            Administration
+            System Administration
           </div>
 
-          <h1 className="mt-1 text-2xl font-bold tracking-tight">
-            System Overview
+          <h1 className="mt-1 text-2xl font-bold tracking-tight text-white">
+            System Dashboard
           </h1>
 
           <p className="mt-1 text-sm text-[#9FB8BE]">
-            RailDrishti platform health, services and operational
-            administration.
+            Platform health, services, integrations and operational administration.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 rounded-lg border border-[#145158] bg-[#062A2F] px-3 py-2 text-xs font-semibold">
-          <ShieldCheck size={15} className="text-emerald-400" />
-          <span className="text-[#D7E5EC]">
-            System Operational
-          </span>
+        <div className="flex items-center gap-3">
+          <div className="controller-panel hidden rounded-lg px-3 py-2 text-xs text-[#9FB8BE] sm:flex sm:items-center sm:gap-2">
+            <Clock size={13} className="text-[#718F96]" />
+            <span>Checked: <strong className="text-white">{lastChecked}</strong></span>
+          </div>
+
+          <button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="controller-panel inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold text-[#D7E5EC] transition hover:bg-[#08383D] hover:text-white"
+          >
+            <RefreshCw
+              size={14}
+              className={isRefreshing ? "animate-spin text-[#F59E0B]" : "text-[#718F96]"}
+            />
+            <span>{isRefreshing ? "Checking..." : "Refresh"}</span>
+          </button>
         </div>
       </div>
 
-      {/* KPI */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard
-          title="System Health"
-          value="Normal"
-          detail="All critical services operational"
-          icon={Activity}
-          positive
-        />
+      {/* ── 2. SYSTEM STATUS STRIP ─────────────────────────────────── */}
+      <section className="controller-panel rounded-lg p-3.5">
+        <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#9FB8BE]">
+          System Status
+        </div>
 
-        <MetricCard
-          title="Active Users"
-          value="24"
-          detail="Controllers and administrators"
-          icon={Users}
-        />
-
-        <MetricCard
-          title="Live Trains"
-          value="159"
-          detail="Currently reporting telemetry"
-          icon={Radio}
-        />
-
-        <MetricCard
-          title="Active Alerts"
-          value="12"
-          detail="3 require immediate attention"
-          icon={AlertTriangle}
-          warning
-        />
-      </div>
-
-      {/* Services */}
-      <section className="mt-5 overflow-hidden rounded-lg border border-[#145158] bg-[#062A2F]">
-        <div className="border-b border-[#145158] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-4 py-3">
-          <div className="flex items-center gap-2">
-            <Server size={16} className="text-[#F59E0B]" />
-
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+          <div className="flex items-center justify-between rounded-md bg-[#031A1F] px-3 py-2 border border-[#145158]/50">
             <div>
-              <h2 className="text-sm font-bold">
-                Platform Services
-              </h2>
-
-              <p className="mt-0.5 text-[11px] text-[#D7E5EC]/70">
-                Current health of connected RailDrishti services
-              </p>
+              <div className="text-[10px] text-[#718F96]">Platform</div>
+              <div className="text-xs font-bold text-white">Operational</div>
             </div>
+            <span className="h-2 w-2 rounded-full bg-emerald-400" />
+          </div>
+
+          <div className="flex items-center justify-between rounded-md bg-[#031A1F] px-3 py-2 border border-[#145158]/50">
+            <div>
+              <div className="text-[10px] text-[#718F96]">API Gateway</div>
+              <div className="text-xs font-bold text-emerald-300">Online</div>
+            </div>
+            <span className="h-2 w-2 rounded-full bg-emerald-400" />
+          </div>
+
+          <div className="flex items-center justify-between rounded-md bg-[#031A1F] px-3 py-2 border border-[#145158]/50">
+            <div>
+              <div className="text-[10px] text-[#718F96]">Database</div>
+              <div className="text-xs font-bold text-emerald-300">Online</div>
+            </div>
+            <span className="h-2 w-2 rounded-full bg-emerald-400" />
+          </div>
+
+          <div className="flex items-center justify-between rounded-md bg-[#031A1F] px-3 py-2 border border-[#145158]/50">
+            <div>
+              <div className="text-[10px] text-[#718F96]">Telemetry Stream</div>
+              <div className="text-xs font-bold text-emerald-300">Connected</div>
+            </div>
+            <span className="h-2 w-2 rounded-full bg-emerald-400" />
+          </div>
+
+          <div className="flex items-center justify-between rounded-md bg-[#031A1F] px-3 py-2 border border-[#145158]/50">
+            <div>
+              <div className="text-[10px] text-[#718F96]">Weather Service</div>
+              <div className="text-xs font-bold text-emerald-300">Online</div>
+            </div>
+            <span className="h-2 w-2 rounded-full bg-emerald-400" />
+          </div>
+
+          <div className="flex items-center justify-between rounded-md bg-[#031A1F] px-3 py-2 border border-[#145158]/50">
+            <div>
+              <div className="text-[10px] text-[#718F96]">Prediction Service</div>
+              <div className="text-xs font-bold text-emerald-300">Operational</div>
+            </div>
+            <span className="h-2 w-2 rounded-full bg-emerald-400" />
           </div>
         </div>
+      </section>
 
-        <div className="grid gap-px bg-[#145158] md:grid-cols-2">
-          {services.map((service) => {
-            const Icon = service.icon
+      {/* ── 3. PLATFORM OVERVIEW ──────────────────────────────────── */}
+      <section className="mt-5">
+        <div className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-[#9FB8BE]">
+          Platform Overview
+        </div>
 
-            return (
-              <div
-                key={service.name}
-                className="bg-[#062A2F] p-4"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="rounded-md border border-[#145158] bg-[#031A1F] p-2">
-                      <Icon
-                        size={17}
-                        className="text-[#F59E0B]"
-                      />
-                    </div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <div className="controller-panel rounded-lg p-3">
+            <div className="flex items-center justify-between text-xs text-[#9FB8BE]">
+              <span>Active Users</span>
+              <Users size={14} className="text-[#0E7C86]" />
+            </div>
+            <div className="mt-1 text-xl font-bold text-white">4</div>
+            <div className="mt-0.5 text-[10px] text-[#718F96]">System demo sessions</div>
+          </div>
 
+          <div className="controller-panel rounded-lg p-3">
+            <div className="flex items-center justify-between text-xs text-[#9FB8BE]">
+              <span>Controllers Online</span>
+              <Shield size={14} className="text-[#0E7C86]" />
+            </div>
+            <div className="mt-1 text-xl font-bold text-emerald-300">1</div>
+            <div className="mt-0.5 text-[10px] text-[#718F96]">SBC Operations Desk</div>
+          </div>
+
+          <div className="controller-panel rounded-lg p-3">
+            <div className="flex items-center justify-between text-xs text-[#9FB8BE]">
+              <span>Staff Registered</span>
+              <FileText size={14} className="text-[#0E7C86]" />
+            </div>
+            <div className="mt-1 text-xl font-bold text-[#D7E5EC]">12</div>
+            <div className="mt-0.5 text-[10px] text-[#718F96]">Division directory</div>
+          </div>
+
+          <div className="controller-panel rounded-lg p-3">
+            <div className="flex items-center justify-between text-xs text-[#9FB8BE]">
+              <span>Live Telemetry Feeds</span>
+              <Radio size={14} className="text-[#F59E0B]" />
+            </div>
+            <div className="mt-1 text-xl font-bold text-white">5 Active</div>
+            <div className="mt-0.5 text-[10px] text-emerald-400">WebSocket synchronous</div>
+          </div>
+
+          <div className="controller-panel rounded-lg p-3">
+            <div className="flex items-center justify-between text-xs text-[#9FB8BE]">
+              <span>Open Alerts</span>
+              <AlertTriangle size={14} className="text-amber-400" />
+            </div>
+            <div className="mt-1 text-xl font-bold text-amber-300">3</div>
+            <div className="mt-0.5 text-[10px] text-[#718F96]">Sector interventions</div>
+          </div>
+
+          <div className="controller-panel rounded-lg p-3">
+            <div className="flex items-center justify-between text-xs text-[#9FB8BE]">
+              <span>Data Sync</span>
+              <Wifi size={14} className="text-[#0E7C86]" />
+            </div>
+            <div className="mt-1 text-sm font-bold text-white">Synchronous</div>
+            <div className="mt-0.5 text-[10px] text-[#718F96]">Last sync: Just now</div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── 4. SERVICE HEALTH & INTEGRATION STATUS ─────────────────── */}
+      <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
+        {/* Service Health Table */}
+        <section className="controller-panel overflow-hidden rounded-lg">
+          <div className="controller-header px-4 py-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Server size={16} className="text-[#F59E0B]" />
+                <div>
+                  <h2 className="text-sm font-bold text-white">
+                    Service Health
+                  </h2>
+                  <p className="text-[11px] text-[#D7E5EC]/70">
+                    Microservice runtime latency, response SLAs, and versions
+                  </p>
+                </div>
+              </div>
+              <span className="rounded border border-[#145158] bg-[#071A33] px-2 py-0.5 text-[10px] font-semibold text-[#9FB8BE]">
+                {initialServices.length} Monitored
+              </span>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[580px] border-collapse text-left text-xs">
+              <thead>
+                <tr className="border-b border-[#145158] bg-[#071A33] text-[10px] font-bold uppercase tracking-[0.12em] text-[#9FB8BE]">
+                  <th className="px-4 py-2.5">Service</th>
+                  <th className="px-4 py-2.5">Status</th>
+                  <th className="px-4 py-2.5">Last Check</th>
+                  <th className="px-4 py-2.5">Response</th>
+                  <th className="px-4 py-2.5">Version</th>
+                  <th className="px-4 py-2.5 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#145158]/50">
+                {initialServices.map((svc) => (
+                  <tr key={svc.id} className="transition-colors hover:bg-[#08383D]/50">
+                    <td className="px-4 py-3">
+                      <div className="font-semibold text-white">{svc.name}</div>
+                      <div className="text-[10px] text-[#718F96]">{svc.category}</div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="inline-flex items-center gap-1 rounded border border-emerald-500/40 bg-emerald-950/60 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                        {svc.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-[11px] text-[#D7E5EC]">
+                      {svc.lastCheck}
+                    </td>
+                    <td className="px-4 py-3 font-mono text-[11px] text-[#D7E5EC]">
+                      {svc.responseTime}
+                    </td>
+                    <td className="px-4 py-3 font-mono text-[10px] text-[#718F96]">
+                      {svc.version}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      {svc.targetRoute ? (
+                        <Link
+                          to={svc.targetRoute}
+                          className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#0E7C86] hover:text-[#F59E0B]"
+                        >
+                          Configure
+                          <ArrowUpRight size={12} />
+                        </Link>
+                      ) : (
+                        <span className="text-[11px] text-[#718F96]">System</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="border-t border-[#145158] bg-[#062A2F] px-4 py-2.5 text-[11px] text-[#718F96]">
+            Representative system configuration metrics. Latency and health polled continuously.
+          </div>
+        </section>
+
+        {/* Integration Status */}
+        <section className="controller-panel flex flex-col justify-between overflow-hidden rounded-lg">
+          <div>
+            <div className="controller-header px-4 py-3">
+              <div className="flex items-center gap-2">
+                <Network size={16} className="text-[#F59E0B]" />
+                <div>
+                  <h2 className="text-sm font-bold text-white">
+                    External Integrations
+                  </h2>
+                  <p className="text-[11px] text-[#D7E5EC]/70">
+                    Connected railway telemetry and sensor streams
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="divide-y divide-[#145158]/50 p-3">
+              {initialIntegrations.map((item) => (
+                <div key={item.id} className="py-2.5 first:pt-1 last:pb-1">
+                  <div className="flex items-center justify-between">
                     <div>
-                      <div className="text-xs font-bold">
-                        {service.name}
+                      <div className="text-xs font-semibold text-white">
+                        {item.name}
                       </div>
-
-                      <div className="mt-1 text-[10px] text-[#718F96]">
-                        {service.description}
+                      <div className="text-[10px] text-[#718F96]">
+                        {item.provider}
                       </div>
                     </div>
+                    <span className="inline-flex items-center gap-1 rounded border border-emerald-500/40 bg-emerald-950/60 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                      {item.status}
+                    </span>
                   </div>
 
-                  <span className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-400">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                    {service.status}
+                  <div className="mt-1.5 flex items-center justify-between text-[10px]">
+                    <span className="text-[#9FB8BE]">Last sync: {item.lastSync}</span>
+                    <Link
+                      to={item.route}
+                      className="font-semibold text-[#0E7C86] hover:text-[#F59E0B]"
+                    >
+                      Configure Source →
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="border-t border-[#145158] bg-[#031A1F] p-3 text-[11px] text-[#9FB8BE]">
+            All integrations require active API tokens configured under{" "}
+            <Link to="/admin/integrations" className="text-[#F59E0B] underline">
+              Integrations settings
+            </Link>.
+          </div>
+        </section>
+      </div>
+
+      {/* ── 5. RECENT ACTIVITY & SYSTEM EVENTS ────────────────────── */}
+      <div className="mt-5 grid gap-5 xl:grid-cols-2">
+        {/* Recent Admin Activity */}
+        <section className="controller-panel overflow-hidden rounded-lg">
+          <div className="controller-header px-4 py-3">
+            <div className="flex items-center gap-2">
+              <ShieldCheck size={16} className="text-[#F59E0B]" />
+              <div>
+                <h2 className="text-sm font-bold text-white">
+                  Recent Administrative Activity
+                </h2>
+                <p className="text-[11px] text-[#D7E5EC]/70">
+                  Chronological log of administrative actions and rule changes
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[500px] border-collapse text-left text-xs">
+              <thead>
+                <tr className="border-b border-[#145158] bg-[#071A33] text-[10px] font-bold uppercase tracking-[0.12em] text-[#9FB8BE]">
+                  <th className="px-4 py-2.5">Time</th>
+                  <th className="px-4 py-2.5">Administrator</th>
+                  <th className="px-4 py-2.5">Action</th>
+                  <th className="px-4 py-2.5">Resource</th>
+                  <th className="px-4 py-2.5 text-right">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#145158]/50">
+                {recentActivity.map((act) => (
+                  <tr key={act.id} className="transition-colors hover:bg-[#08383D]/50">
+                    <td className="px-4 py-2.5 font-mono text-[11px] text-[#718F96]">
+                      {act.time}
+                    </td>
+                    <td className="px-4 py-2.5 font-semibold text-white">
+                      {act.admin}
+                    </td>
+                    <td className="px-4 py-2.5 text-[#D7E5EC]">{act.action}</td>
+                    <td className="px-4 py-2.5 font-mono text-[11px] text-[#9FB8BE]">
+                      {act.resource}
+                    </td>
+                    <td className="px-4 py-2.5 text-right">
+                      <span className="rounded border border-[#145158] bg-[#071A33] px-1.5 py-0.5 text-[10px] font-semibold text-emerald-300">
+                        {act.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        {/* System Events */}
+        <section className="controller-panel overflow-hidden rounded-lg">
+          <div className="controller-header px-4 py-3">
+            <div className="flex items-center gap-2">
+              <Activity size={16} className="text-[#F59E0B]" />
+              <div>
+                <h2 className="text-sm font-bold text-white">System Events</h2>
+                <p className="text-[11px] text-[#D7E5EC]/70">
+                  Infrastructure runtime warnings, restarts, and sync diagnostics
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="divide-y divide-[#145158]/50 p-4">
+            {systemEvents.map((evt) => (
+              <div key={evt.id} className="py-2.5 first:pt-0 last:pb-0">
+                <div className="flex items-center justify-between text-[11px]">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`rounded px-1.5 py-0.2 text-[9px] font-bold ${
+                        evt.severity === "ERROR"
+                          ? "border border-red-500/40 bg-red-950/60 text-red-300"
+                          : evt.severity === "WARNING"
+                          ? "border border-amber-500/40 bg-amber-950/60 text-amber-300"
+                          : "border border-emerald-500/40 bg-emerald-950/60 text-emerald-300"
+                      }`}
+                    >
+                      {evt.severity}
+                    </span>
+                    <span className="font-semibold text-white">{evt.source}</span>
+                  </div>
+                  <span className="font-mono text-[10px] text-[#718F96]">
+                    {evt.time}
                   </span>
                 </div>
+                <p className="mt-1 text-xs text-[#D7E5EC]">{evt.message}</p>
               </div>
-            )
-          })}
-        </div>
-      </section>
-
-      {/* Model + infrastructure */}
-      <div className="mt-5 grid gap-5 xl:grid-cols-2">
-        <section className="rounded-lg border border-[#145158] bg-[#062A2F] p-4">
-          <div className="flex items-center gap-2">
-            <BrainCircuit size={17} className="text-[#F59E0B]" />
-
-            <div>
-              <h2 className="text-sm font-bold">
-                Prediction Engine
-              </h2>
-
-              <p className="mt-0.5 text-[11px] text-[#9FB8BE]">
-                Current ETA prediction configuration
-              </p>
-            </div>
+            ))}
           </div>
 
-          <div className="mt-5 grid grid-cols-2 gap-3">
-            <InfoBox label="Model" value="GNN" />
-            <InfoBox label="Version" value="v1.0.0" />
-            <InfoBox label="ETA Accuracy" value="86%" />
-            <InfoBox label="Last Updated" value="17:58" />
+          <div className="border-t border-[#145158] bg-[#062A2F] px-4 py-2.5 text-[11px] text-[#718F96]">
+            System logs retained for 90 days. Export available in{" "}
+            <Link to="/admin/audit" className="text-[#0E7C86] underline hover:text-[#F59E0B]">
+              Audit Logs
+            </Link>.
           </div>
-
-          <div className="mt-4 rounded-md border border-[#145158] bg-[#031A1F] p-3">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-wide text-[#718F96]">
-                Model Status
-              </span>
-
-              <span className="text-[10px] font-bold text-emerald-400">
-                ACTIVE
-              </span>
-            </div>
-
-            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#062A2F]">
-              <div className="h-full w-[86%] rounded-full bg-[#0E7C86]" />
-            </div>
-          </div>
-        </section>
-
-        <section className="rounded-lg border border-[#145158] bg-[#062A2F] p-4">
-          <div className="flex items-center gap-2">
-            <Gauge size={17} className="text-[#F59E0B]" />
-
-            <div>
-              <h2 className="text-sm font-bold">
-                Infrastructure
-              </h2>
-
-              <p className="mt-0.5 text-[11px] text-[#9FB8BE]">
-                Platform resource utilisation
-              </p>
-            </div>
-          </div>
-
-          <ResourceBar
-            label="API Server"
-            value="42%"
-          />
-
-          <ResourceBar
-            label="Database"
-            value="36%"
-          />
-
-          <ResourceBar
-            label="Prediction Worker"
-            value="58%"
-          />
-
-          <ResourceBar
-            label="WebSocket Connections"
-            value="31%"
-          />
         </section>
       </div>
 
-      {/* Alerts */}
-      <section className="mt-5 overflow-hidden rounded-lg border border-[#145158] bg-[#062A2F]">
-        <div className="border-b border-[#145158] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-4 py-3">
-          <div className="flex items-center gap-2">
-            <AlertTriangle size={16} className="text-[#F59E0B]" />
-
-            <h2 className="text-sm font-bold">
-              System Alerts
-            </h2>
-          </div>
+      {/* ── 6. QUICK ADMIN ACTIONS ─────────────────────────────────── */}
+      <section className="mt-5 controller-panel rounded-lg p-4">
+        <div className="mb-3 text-xs font-bold uppercase tracking-[0.14em] text-[#9FB8BE]">
+          Administrative Quick Navigation
         </div>
 
-        <div className="grid gap-4 p-4 md:grid-cols-3">
-          <AlertBox
-            title="3 Critical"
-            detail="Immediate administrative attention"
-            severity="critical"
-          />
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <Link
+            to="/admin/users"
+            className="flex flex-col items-center justify-center rounded-lg border border-[#145158] bg-[#071A33] p-3 text-center transition hover:border-[#0E7C86] hover:bg-[#08383D]"
+          >
+            <Users size={20} className="text-[#0E7C86]" />
+            <div className="mt-2 text-xs font-bold text-white">Manage Users</div>
+            <div className="text-[10px] text-[#718F96]">Roles & Permissions</div>
+          </Link>
 
-          <AlertBox
-            title="5 Warnings"
-            detail="Services operating with warnings"
-            severity="warning"
-          />
+          <Link
+            to="/admin/models"
+            className="flex flex-col items-center justify-center rounded-lg border border-[#145158] bg-[#071A33] p-3 text-center transition hover:border-[#0E7C86] hover:bg-[#08383D]"
+          >
+            <Cpu size={20} className="text-[#F59E0B]" />
+            <div className="mt-2 text-xs font-bold text-white">Configure ETA Model</div>
+            <div className="text-[10px] text-[#718F96]">GNN Parameters</div>
+          </Link>
 
-          <AlertBox
-            title="4 Informational"
-            detail="Routine system notifications"
-            severity="info"
-          />
-        </div>
-      </section>
+          <Link
+            to="/admin/weather"
+            className="flex flex-col items-center justify-center rounded-lg border border-[#145158] bg-[#071A33] p-3 text-center transition hover:border-[#0E7C86] hover:bg-[#08383D]"
+          >
+            <CloudRain size={20} className="text-[#0E7C86]" />
+            <div className="mt-2 text-xs font-bold text-white">Configure Weather</div>
+            <div className="text-[10px] text-[#718F96]">Radar & Thresholds</div>
+          </Link>
 
-      {/* Audit */}
-      <section className="mt-5 overflow-hidden rounded-lg border border-[#145158] bg-[#062A2F]">
-        <div className="border-b border-[#145158] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-4 py-3">
-          <h2 className="text-sm font-bold">
-            Recent Administrative Activity
-          </h2>
+          <Link
+            to="/admin/integrations"
+            className="flex flex-col items-center justify-center rounded-lg border border-[#145158] bg-[#071A33] p-3 text-center transition hover:border-[#0E7C86] hover:bg-[#08383D]"
+          >
+            <Network size={20} className="text-[#0E7C86]" />
+            <div className="mt-2 text-xs font-bold text-white">View Integrations</div>
+            <div className="text-[10px] text-[#718F96]">RTIS, NRDB, Feeds</div>
+          </Link>
 
-          <p className="mt-0.5 text-[11px] text-[#D7E5EC]/70">
-            Latest events recorded in the system audit log
-          </p>
-        </div>
+          <Link
+            to="/admin/alerts"
+            className="flex flex-col items-center justify-center rounded-lg border border-[#145158] bg-[#071A33] p-3 text-center transition hover:border-[#0E7C86] hover:bg-[#08383D]"
+          >
+            <Bell size={20} className="text-[#F59E0B]" />
+            <div className="mt-2 text-xs font-bold text-white">Review Alerts</div>
+            <div className="text-[10px] text-[#718F96]">Dispatch Rules</div>
+          </Link>
 
-        <div className="divide-y divide-[#145158]">
-          {activity.map((item) => (
-            <div
-              key={`${item.time}-${item.event}`}
-              className="flex flex-col gap-2 px-4 py-3 md:flex-row md:items-center md:justify-between"
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-[10px] font-bold text-[#718F96]">
-                  {item.time}
-                </span>
-
-                <div>
-                  <div className="text-xs font-semibold text-white">
-                    {item.event}
-                  </div>
-
-                  <div className="mt-0.5 text-[10px] text-[#718F96]">
-                    {item.user}
-                  </div>
-                </div>
-              </div>
-
-              <span className="w-fit rounded-full border border-[#145158] bg-[#031A1F] px-2 py-1 text-[9px] font-bold text-[#9FB8BE]">
-                {item.type}
-              </span>
-            </div>
-          ))}
+          <Link
+            to="/admin/audit"
+            className="flex flex-col items-center justify-center rounded-lg border border-[#145158] bg-[#071A33] p-3 text-center transition hover:border-[#0E7C86] hover:bg-[#08383D]"
+          >
+            <FileText size={20} className="text-[#0E7C86]" />
+            <div className="mt-2 text-xs font-bold text-white">View Audit Logs</div>
+            <div className="text-[10px] text-[#718F96]">Security Trail</div>
+          </Link>
         </div>
       </section>
     </div>
   )
 }
-
-function MetricCard({
-  title,
-  value,
-  detail,
-  icon: Icon,
-  positive,
-  warning,
-}: {
-  title: string
-  value: string
-  detail: string
-  icon: typeof Activity
-  positive?: boolean
-  warning?: boolean
-}) {
-  return (
-    <section className="rounded-lg border border-[#145158] bg-[#062A2F] p-4">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold text-[#9FB8BE]">
-          {title}
-        </span>
-
-        <Icon
-          size={17}
-          className={
-            warning
-              ? "text-[#F59E0B]"
-              : "text-[#F59E0B]"
-          }
-        />
-      </div>
-
-      <div className="mt-3 text-2xl font-bold">
-        {value}
-      </div>
-
-      <div
-        className={
-          positive
-            ? "mt-1 text-[10px] text-emerald-400"
-            : warning
-              ? "mt-1 text-[10px] text-[#F59E0B]"
-              : "mt-1 text-[10px] text-[#718F96]"
-        }
-      >
-        {detail}
-      </div>
-    </section>
-  )
-}
-
-function InfoBox({
-  label,
-  value,
-}: {
-  label: string
-  value: string
-}) {
-  return (
-    <div className="rounded-md border border-[#145158] bg-[#031A1F] p-3">
-      <div className="text-[9px] font-bold uppercase tracking-wide text-[#718F96]">
-        {label}
-      </div>
-
-      <div className="mt-1.5 text-sm font-bold text-white">
-        {value}
-      </div>
-    </div>
-  )
-}
-
-function ResourceBar({
-  label,
-  value,
-}: {
-  label: string
-  value: string
-}) {
-  return (
-    <div className="mt-5">
-      <div className="mb-2 flex items-center justify-between">
-        <span className="text-[11px] font-semibold text-[#D7E5EC]">
-          {label}
-        </span>
-
-        <span className="text-[10px] font-bold text-[#9FB8BE]">
-          {value}
-        </span>
-      </div>
-
-      <div className="h-1.5 overflow-hidden rounded-full bg-[#031A1F]">
-        <div
-          className="h-full rounded-full bg-[#0E7C86]"
-          style={{ width: value }}
-        />
-      </div>
-    </div>
-  )
-}
-
-function AlertBox({
-  title,
-  detail,
-  severity,
-}: {
-  title: string
-  detail: string
-  severity: "critical" | "warning" | "info"
-}) {
-  const textClass =
-    severity === "critical"
-      ? "text-red-400"
-      : severity === "warning"
-        ? "text-[#F59E0B]"
-        : "text-[#0E7C86]"
-
-  return (
-    <div className="rounded-md border border-[#145158] bg-[#031A1F] p-4">
-      <div className={`text-lg font-bold ${textClass}`}>
-        {title}
-      </div>
-
-      <div className="mt-1 text-[10px] leading-5 text-[#718F96]">
-        {detail}
-      </div>
-    </div>
-  )
-}
-
-export default AdminDashboard

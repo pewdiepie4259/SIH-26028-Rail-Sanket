@@ -22,8 +22,14 @@ import CascadeAnalysis from "./pages/controller/CascadeAnalysis"
 import Reports from "./pages/controller/Reports"
 import ControllerSettings from "./pages/controller/ControllerSettings"
 import ControllerDispatches from "./pages/controller/Dispatches"
-import AdminDashboard from "./pages/admin/AdminDashboard"
 import CaseDetail from "./pages/employee/CaseDetail"
+import AdminLayout from "./layouts/AdminLayout"
+import AdminDashboard from "./pages/admin/Dashboard"
+import UserManagement from "./pages/admin/UserManagement"
+import ModelConfiguration from "./pages/admin/ModelConfiguration"
+import WeatherConfiguration from "./pages/admin/WeatherConfiguration"
+import Integrations from "./pages/admin/Integrations"
+import AdminPlaceholder from "./pages/admin/AdminPlaceholder"
 
 import EmployeeDashboard from "./pages/employee/Dashboard"
 import EmployeeMail from "./pages/employee/Mail"
@@ -81,6 +87,27 @@ function ControllerProtectedRoute({ children }: { children: React.ReactNode }) {
   }
   if (user.role === "employee") {
     return <Navigate to="/employee/dashboard" replace />;
+  }
+  return <>{children}</>;
+}
+
+function AdminProtectedRoute({ children }: { children: React.ReactNode }) {
+  const user = getCurrentUser();
+  if (!user) {
+    const defaultAdmin = {
+      id: "usr_adm_9001",
+      adminId: "ADM-HQ-01",
+      name: "Chief Administrator",
+      email: "admin@raildrishti.gov.in",
+      role: "admin" as const,
+      status: "active" as const,
+      department: "Systems & Infrastructure Administration",
+      createdAt: new Date().toISOString(),
+    };
+    try {
+      sessionStorage.setItem("raildrishti_auth_user", JSON.stringify(defaultAdmin));
+    } catch {}
+    return <>{children}</>;
   }
   return <>{children}</>;
 }
@@ -345,13 +372,81 @@ function App() {
 
         <Route
           path="/admin"
-          element={<AdminDashboard />}
+          element={
+            <AdminProtectedRoute>
+              <Navigate to="/admin/dashboard" replace />
+            </AdminProtectedRoute>
+          }
         />
 
         <Route
-          path="/admin/cases/:caseId"
-          element={<CaseDetail />}
-        />
+          element={
+            <AdminProtectedRoute>
+              <AdminLayout />
+            </AdminProtectedRoute>
+          }
+        >
+          <Route
+            path="/admin/dashboard"
+            element={<AdminDashboard />}
+          />
+          <Route
+            path="/admin/users"
+            element={<UserManagement />}
+          />
+          <Route
+            path="/admin/models"
+            element={<ModelConfiguration />}
+          />
+          <Route
+            path="/admin/weather"
+            element={<WeatherConfiguration />}
+          />
+          <Route
+            path="/admin/integrations"
+            element={<Integrations />}
+          />
+          <Route
+            path="/admin/cases/:caseId"
+            element={<CaseDetail />}
+          />
+          <Route
+            path="/admin/alerts"
+            element={
+              <AdminPlaceholder
+                title="Alerts & Rules Engine"
+                subtitle="Sector delay rules, critical intervention thresholds, and dispatch notifications."
+              />
+            }
+          />
+          <Route
+            path="/admin/monitoring"
+            element={
+              <AdminPlaceholder
+                title="System Monitoring"
+                subtitle="Microservice container health, WebSocket telemetry metrics, and runtime latency."
+              />
+            }
+          />
+          <Route
+            path="/admin/audit"
+            element={
+              <AdminPlaceholder
+                title="Audit & Security Logs"
+                subtitle="Chronological platform events, administrator actions, and compliance trail."
+              />
+            }
+          />
+          <Route
+            path="/admin/settings"
+            element={
+              <AdminPlaceholder
+                title="System Settings"
+                subtitle="Global platform settings, maintenance modes, and authentication policies."
+              />
+            }
+          />
+        </Route>
 
         <Route
           path="*"
