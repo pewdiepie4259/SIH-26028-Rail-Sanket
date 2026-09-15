@@ -12,7 +12,7 @@ import RecommendedActions from "../../components/controller/RecommendedActions"
 import WeatherImpact from "../../components/controller/WeatherImpact"
 
 function ControllerDashboard() {
-  const { trains, activeAlerts, isConnected } = useLiveTelemetry()
+  const { trains, activeAlerts, junctions, conflicts, networkMetrics, isConnected } = useLiveTelemetry()
 
   const activeTrainCount = Object.keys(trains).length
 
@@ -52,7 +52,7 @@ function ControllerDashboard() {
         </div>
       </div>
 
-      <NetworkHealthStrip />
+      <NetworkHealthStrip metricsData={networkMetrics} />
 
       <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
         <section className="controller-panel h-[560px] overflow-hidden rounded-lg">
@@ -149,8 +149,8 @@ function ControllerDashboard() {
 
 
       <div className="mt-5 grid gap-5 xl:grid-cols-2">
-        <JunctionStatus />
-        <ConflictPanel />
+        <JunctionStatus junctionsData={junctions} />
+        <ConflictPanel conflictsData={conflicts} />
       </div>
 
       <div className="mt-5 grid gap-5 xl:grid-cols-2">
