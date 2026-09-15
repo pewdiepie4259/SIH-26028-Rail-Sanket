@@ -31,7 +31,8 @@ import WeatherConfiguration from "./pages/admin/WeatherConfiguration"
 import Integrations from "./pages/admin/Integrations"
 import AlertsRules from "./pages/admin/AlertsRules"
 import SystemMonitoring from "./pages/admin/SystemMonitoring"
-import AdminPlaceholder from "./pages/admin/AdminPlaceholder"
+import AuditLogs from "./pages/admin/AuditLogs"
+import AdminSettings from "./pages/admin/Settings"
 
 import EmployeeDashboard from "./pages/employee/Dashboard"
 import EmployeeMail from "./pages/employee/Mail"
@@ -422,21 +423,11 @@ function App() {
           />
           <Route
             path="/admin/audit"
-            element={
-              <AdminPlaceholder
-                title="Audit & Security Logs"
-                subtitle="Chronological platform events, administrator actions, and compliance trail."
-              />
-            }
+            element={<AuditLogs />}
           />
           <Route
             path="/admin/settings"
-            element={
-              <AdminPlaceholder
-                title="System Settings"
-                subtitle="Global platform settings, maintenance modes, and authentication policies."
-              />
-            }
+            element={<AdminSettings />}
           />
         </Route>
 
