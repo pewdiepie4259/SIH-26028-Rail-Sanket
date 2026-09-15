@@ -29,6 +29,7 @@ import UserManagement from "./pages/admin/UserManagement"
 import ModelConfiguration from "./pages/admin/ModelConfiguration"
 import WeatherConfiguration from "./pages/admin/WeatherConfiguration"
 import Integrations from "./pages/admin/Integrations"
+import AlertsRules from "./pages/admin/AlertsRules"
 import AdminPlaceholder from "./pages/admin/AdminPlaceholder"
 
 import EmployeeDashboard from "./pages/employee/Dashboard"
@@ -412,12 +413,7 @@ function App() {
           />
           <Route
             path="/admin/alerts"
-            element={
-              <AdminPlaceholder
-                title="Alerts & Rules Engine"
-                subtitle="Sector delay rules, critical intervention thresholds, and dispatch notifications."
-              />
-            }
+            element={<AlertsRules />}
           />
           <Route
             path="/admin/monitoring"
