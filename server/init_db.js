@@ -2,10 +2,25 @@
 import sqlite3 from 'sqlite3';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import crypto from 'crypto';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 export const DB_PATH = path.resolve(__dirname, './trains.db');
+
+export function hashPassword(password, salt = null) {
+    if (!salt) {
+        salt = crypto.randomBytes(16).toString('hex');
+    }
+    const hash = crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha256').toString('hex');
+    return { hash, salt };
+}
+
+export function verifyPassword(password, hash, salt) {
+    if (!password || !hash || !salt) return false;
+    const computed = crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha256').toString('hex');
+    return computed === hash;
+}
 
 export function initializeDatabase(db, callback) {
     db.serialize(() => {
@@ -70,6 +85,40 @@ export function initializeDatabase(db, callback) {
             delay_departure_minutes INTEGER,
             logged_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )`);
+
+        // 6. Users & Credentials Table (Admin, Controller, Employee, User)
+        db.run(`CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            username TEXT UNIQUE,
+            name TEXT NOT NULL,
+            email TEXT UNIQUE,
+            phone TEXT,
+            password_hash TEXT NOT NULL,
+            salt TEXT NOT NULL,
+            role TEXT NOT NULL,
+            admin_id TEXT,
+            controller_id TEXT,
+            employee_id TEXT,
+            department TEXT,
+            operational_role TEXT,
+            status TEXT DEFAULT 'active',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`);
+
+        // 7. Employee Applications Table (Self-Registration Queue)
+        db.run(`CREATE TABLE IF NOT EXISTS employee_applications (
+            id TEXT PRIMARY KEY,
+            full_name TEXT NOT NULL,
+            employee_id TEXT NOT NULL,
+            official_email TEXT NOT NULL,
+            department TEXT NOT NULL,
+            requested_role TEXT NOT NULL,
+            status TEXT DEFAULT 'pending_review',
+            submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`);
+
+        // Seed users & credentials
+        seedUsers(db);
 
         // Check if data already exists
         db.get("SELECT COUNT(*) as count FROM trains", (err, row) => {
@@ -250,6 +299,191 @@ function seedCoreData(db, callback) {
             else console.log("Database initialized & successfully seeded with trains, stations and schedules!");
             if (callback) callback();
         });
+    });
+}
+
+export const INITIAL_CREDENTIALS = [
+    // 1. Admin: Souvik Saha
+    {
+        id: "usr_adm_1001",
+        username: "ADM-1001",
+        name: "Souvik Saha",
+        email: "souvik.saha@raildrishti.gov.in",
+        phone: "9876543101",
+        password: "Admin@RailDrishti2026",
+        role: "admin",
+        admin_id: "ADM-1001",
+        controller_id: null,
+        employee_id: null,
+        department: "Railway Operations & Safety Directorate",
+        operational_role: "principal_admin",
+        status: "active"
+    },
+    // 2. Admin: Rohit Roy
+    {
+        id: "usr_adm_1002",
+        username: "ADM-1002",
+        name: "Rohit Roy",
+        email: "rohit.roy@raildrishti.gov.in",
+        phone: "9876543102",
+        password: "Admin@RailDrishti2026",
+        role: "admin",
+        admin_id: "ADM-1002",
+        controller_id: null,
+        employee_id: null,
+        department: "Network Safety & Infrastructure Directorate",
+        operational_role: "principal_admin",
+        status: "active"
+    },
+    // 3. Controller: Shriya M
+    {
+        id: "usr_ctrl_2001",
+        username: "CTRL-SBC-01",
+        name: "Shriya M",
+        email: "shriya.m@raildrishti.gov.in",
+        phone: "9876543201",
+        password: "Controller@RailDrishti2026",
+        role: "controller",
+        admin_id: null,
+        controller_id: "CTRL-SBC-01",
+        employee_id: null,
+        department: "Operations & Traffic Control",
+        operational_role: "section_controller",
+        status: "active"
+    },
+    // 4. Controller: Neeraj Singh Gaira
+    {
+        id: "usr_ctrl_2002",
+        username: "CTRL-NDLS-02",
+        name: "Neeraj Singh Gaira",
+        email: "neeraj.gaira@raildrishti.gov.in",
+        phone: "9876543202",
+        password: "Controller@RailDrishti2026",
+        role: "controller",
+        admin_id: null,
+        controller_id: "CTRL-NDLS-02",
+        employee_id: null,
+        department: "Operations & Traffic Control",
+        operational_role: "section_controller",
+        status: "active"
+    },
+    // 5. Employee: Manas Kumar
+    {
+        id: "usr_emp_5001",
+        username: "IR-2024-5001",
+        name: "Manas Kumar",
+        email: "manas.kumar@raildrishti.gov.in",
+        phone: "9876543301",
+        password: "Employee@RailDrishti2026",
+        role: "employee",
+        admin_id: null,
+        controller_id: null,
+        employee_id: "IR-2024-5001",
+        department: "Signal & Telecommunication (S&T)",
+        operational_role: "signal_maintainer",
+        status: "active"
+    },
+    // 6. Employee: Krutika Girennavar
+    {
+        id: "usr_emp_5002",
+        username: "IR-2024-5002",
+        name: "Krutika Girennavar",
+        email: "krutika.g@raildrishti.gov.in",
+        phone: "9876543302",
+        password: "Employee@RailDrishti2026",
+        role: "employee",
+        admin_id: null,
+        controller_id: null,
+        employee_id: "IR-2024-5002",
+        department: "Operations & Traffic Control",
+        operational_role: "station_master",
+        status: "active"
+    },
+    // 7. Baseline Admin: Chief Operations Director
+    {
+        id: "usr_adm_001",
+        username: "ADM-9001",
+        name: "Chief Operations Director",
+        email: "admin@raildrishti.gov.in",
+        phone: "9876543100",
+        password: "Admin@RailDrishti2026",
+        role: "admin",
+        admin_id: "ADM-9001",
+        controller_id: null,
+        employee_id: null,
+        department: "Railway Operations & Safety",
+        operational_role: "chief_director",
+        status: "active"
+    },
+    // 8. Baseline Employee: Ramesh Sharma
+    {
+        id: "usr_emp_001",
+        username: "IR-2024-8841",
+        name: "Ramesh Sharma",
+        email: "employee@raildrishti.gov.in",
+        phone: "9876543300",
+        password: "Employee@RailDrishti2026",
+        role: "employee",
+        admin_id: null,
+        controller_id: null,
+        employee_id: "IR-2024-8841",
+        department: "Signal & Telecommunication",
+        operational_role: "depot_maintenance_technician",
+        status: "active"
+    },
+    // 9. Passenger Demo
+    {
+        id: "usr_pass_001",
+        username: "9876543210",
+        name: "Amit Verma",
+        email: "passenger@raildrishti.gov.in",
+        phone: "9876543210",
+        password: "User@RailDrishti2026",
+        role: "user",
+        admin_id: null,
+        controller_id: null,
+        employee_id: null,
+        department: null,
+        operational_role: "passenger",
+        status: "active"
+    }
+];
+
+export function seedUsers(db, callback) {
+    const insertStmt = db.prepare(`
+        INSERT OR REPLACE INTO users (
+            id, username, name, email, phone, password_hash, salt, role,
+            admin_id, controller_id, employee_id, department, operational_role, status, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    `);
+
+    INITIAL_CREDENTIALS.forEach((cred) => {
+        const { hash, salt } = hashPassword(cred.password);
+        insertStmt.run(
+            cred.id,
+            cred.username,
+            cred.name,
+            cred.email,
+            cred.phone,
+            hash,
+            salt,
+            cred.role,
+            cred.admin_id,
+            cred.controller_id,
+            cred.employee_id,
+            cred.department,
+            cred.operational_role,
+            cred.status
+        );
+    });
+
+    insertStmt.finalize((err) => {
+        if (err) {
+            console.error("Error seeding users:", err.message);
+        } else {
+            console.log("Successfully seeded users and credentials into trains.db.");
+        }
+        if (callback) callback(err);
     });
 }
 

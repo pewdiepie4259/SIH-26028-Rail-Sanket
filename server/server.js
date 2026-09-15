@@ -2,7 +2,7 @@
 import express from 'express';
 import cors from 'cors';
 import sqlite3 from 'sqlite3';
-import { DB_PATH, initializeDatabase } from './init_db.js';
+import { DB_PATH, initializeDatabase, hashPassword, verifyPassword, INITIAL_CREDENTIALS } from './init_db.js';
 
 const app = express();
 app.use(cors());
@@ -18,6 +18,233 @@ const db = new sqlite3.Database(DB_PATH, (err) => {
 
 app.get('/health', (req, res) => {
   res.json({ status: "healthy", service: "RailDrishti Trains & Schedules SQLite API" });
+});
+
+// ==========================================
+// AUTHENTICATION & CREDENTIALS API
+// ==========================================
+
+// Get pre-provisioned demo credentials for frontend ease-of-use
+app.get('/api/auth/credentials', (req, res) => {
+    res.json({
+        success: true,
+        credentials: INITIAL_CREDENTIALS.map(c => ({
+            id: c.id,
+            name: c.name,
+            role: c.role,
+            username: c.username,
+            email: c.email,
+            phone: c.phone,
+            password: c.password,
+            department: c.department,
+            operationalRole: c.operational_role
+        }))
+    });
+});
+
+// User & Staff Login
+app.post('/api/auth/login', (req, res) => {
+    const { role, method = 'password', emailOrPhone, password, otp, employeeId, controllerId, adminId } = req.body;
+    const identifier = (
+        role === 'admin' ? (adminId || emailOrPhone) :
+        role === 'controller' ? (controllerId || emailOrPhone) :
+        role === 'employee' ? (employeeId || emailOrPhone) :
+        emailOrPhone
+    );
+
+    if (!role) {
+        return res.status(400).json({ success: false, message: "User role is required for authentication." });
+    }
+
+    if (!identifier) {
+        return res.status(400).json({ success: false, message: "Please provide your login ID or registered email/phone." });
+    }
+
+    const cleanId = identifier.trim().toLowerCase();
+
+    // Query user by username, email, or phone
+    const sql = `
+        SELECT * FROM users 
+        WHERE (LOWER(username) = ? OR LOWER(email) = ? OR phone = ? OR LOWER(admin_id) = ? OR LOWER(controller_id) = ? OR LOWER(employee_id) = ?)
+        LIMIT 1
+    `;
+
+    db.get(sql, [cleanId, cleanId, cleanId, cleanId, cleanId, cleanId], (err, user) => {
+        if (err) {
+            return res.status(500).json({ success: false, message: "Database error during authentication: " + err.message });
+        }
+
+        // Handle OTP login for Passenger
+        if (role === 'user' && method === 'otp') {
+            if (!otp || (otp !== '123456' && otp.length < 6)) {
+                return res.status(400).json({ success: false, message: "Invalid or expired OTP. Use demo code 123456." });
+            }
+
+            if (user) {
+                const userPayload = {
+                    id: user.id,
+                    name: user.name,
+                    email: user.email,
+                    phone: user.phone,
+                    role: user.role,
+                    status: user.status,
+                    createdAt: user.created_at
+                };
+                return res.json({ success: true, user: userPayload, token: `token_otp_${Date.now()}` });
+            }
+
+            // Create new passenger user record on successful OTP if not existing
+            const newId = `usr_pass_${Date.now()}`;
+            const isPhone = /^[6-9]\d{9}$/.test(cleanId.replace(/\D/g, ''));
+            const name = isPhone ? `Passenger (${cleanId.slice(-4)})` : cleanId.split('@')[0];
+            const email = cleanId.includes('@') ? cleanId : `${cleanId}@passenger.raildrishti.gov.in`;
+            const phone = isPhone ? cleanId : null;
+            const { hash, salt } = hashPassword('User@RailDrishti2026');
+
+            db.run(
+                `INSERT INTO users (id, username, name, email, phone, password_hash, salt, role, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'user', 'active')`,
+                [newId, cleanId, name, email, phone, hash, salt],
+                function (insertErr) {
+                    if (insertErr) {
+                        return res.status(500).json({ success: false, message: "Failed to create user session." });
+                    }
+                    const newUser = { id: newId, name, email, phone, role: 'user', status: 'active', createdAt: new Date().toISOString() };
+                    return res.json({ success: true, user: newUser, token: `token_otp_${Date.now()}` });
+                }
+            );
+            return;
+        }
+
+        if (!user) {
+            return res.status(401).json({ success: false, message: `No registered account found with identifier '${identifier}' for role '${role}'.` });
+        }
+
+        if (user.role !== role) {
+            return res.status(403).json({ success: false, message: `Access denied. This account has role '${user.role}', not '${role}'.` });
+        }
+
+        if (user.status === 'pending_review') {
+            return res.status(403).json({ success: false, message: "Your employee account is currently pending administrative approval." });
+        }
+
+        if (user.status === 'suspended') {
+            return res.status(403).json({ success: false, message: "This account has been suspended. Please contact RailDrishti admin." });
+        }
+
+        // Verify password
+        const isPasswordValid = verifyPassword(password, user.password_hash, user.salt);
+        if (!isPasswordValid) {
+            return res.status(401).json({ success: false, message: "Invalid password. Access denied." });
+        }
+
+        const userPayload = {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            phone: user.phone,
+            role: user.role,
+            adminId: user.admin_id,
+            controllerId: user.controller_id,
+            employeeId: user.employee_id,
+            department: user.department,
+            operationalRole: user.operational_role,
+            status: user.status,
+            createdAt: user.created_at
+        };
+
+        return res.json({
+            success: true,
+            user: userPayload,
+            token: `token_${user.role}_${Date.now()}`
+        });
+    });
+});
+
+// Register Passenger or Submit Employee Application
+app.post('/api/auth/register', (req, res) => {
+    const {
+        role = 'user',
+        // User registration
+        fullName, phoneNumber, email, password,
+        // Employee registration
+        employeeId, officialEmail, department, requestedRole
+    } = req.body;
+
+    if (role === 'user') {
+        const cleanEmail = (email || '').trim().toLowerCase();
+        const cleanPhone = (phoneNumber || '').trim().replace(/\D/g, '');
+
+        if (!fullName || !cleanEmail || !password) {
+            return res.status(400).json({ success: false, message: "Full name, email, and password are required." });
+        }
+
+        // Check if duplicate
+        db.get(`SELECT id FROM users WHERE LOWER(email) = ? OR phone = ?`, [cleanEmail, cleanPhone], (err, existing) => {
+            if (existing) {
+                return res.status(409).json({ success: false, message: "An account with this email or mobile number already exists." });
+            }
+
+            const newId = `usr_pass_${Date.now()}`;
+            const { hash, salt } = hashPassword(password);
+
+            db.run(
+                `INSERT INTO users (id, username, name, email, phone, password_hash, salt, role, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'user', 'active')`,
+                [newId, cleanEmail, fullName.trim(), cleanEmail, cleanPhone || null, hash, salt],
+                function (insertErr) {
+                    if (insertErr) {
+                        return res.status(500).json({ success: false, message: "Database error registering user: " + insertErr.message });
+                    }
+                    const newUser = {
+                        id: newId,
+                        name: fullName.trim(),
+                        email: cleanEmail,
+                        phone: cleanPhone,
+                        role: 'user',
+                        status: 'active',
+                        createdAt: new Date().toISOString()
+                    };
+                    res.status(201).json({
+                        success: true,
+                        user: newUser,
+                        token: `token_user_${Date.now()}`,
+                        message: "Registration completed successfully! You can now sign in."
+                    });
+                }
+            );
+        });
+    } else {
+        // Employee registration application
+        const cleanEmpId = (employeeId || '').trim().toUpperCase();
+        const cleanEmail = (officialEmail || '').trim().toLowerCase();
+
+        if (!fullName || !cleanEmpId || !cleanEmail || !department) {
+            return res.status(400).json({ success: false, message: "Full name, Employee ID, official email, and department are required." });
+        }
+
+        const appId = `app_${Date.now()}`;
+        db.run(
+            `INSERT INTO employee_applications (id, full_name, employee_id, official_email, department, requested_role, status) VALUES (?, ?, ?, ?, ?, ?, 'pending_review')`,
+            [appId, fullName.trim(), cleanEmpId, cleanEmail, department, requestedRole || 'employee'],
+            function (appErr) {
+                if (appErr) {
+                    return res.status(500).json({ success: false, message: "Failed to submit employee application: " + appErr.message });
+                }
+
+                // Also record in users with pending_review
+                const { hash, salt } = hashPassword('Employee@RailDrishti2026');
+                db.run(
+                    `INSERT OR IGNORE INTO users (id, username, name, email, password_hash, salt, role, employee_id, department, status) VALUES (?, ?, ?, ?, ?, ?, 'employee', ?, ?, 'pending_review')`,
+                    [`usr_emp_${Date.now()}`, cleanEmpId.toLowerCase(), fullName.trim(), cleanEmail, hash, salt, cleanEmpId, department]
+                );
+
+                res.status(201).json({
+                    success: true,
+                    requiresReview: true,
+                    message: "Your employee account registration has been submitted and is under review by Railway Administration."
+                });
+            }
+        );
+    }
 });
 
 // ==========================================

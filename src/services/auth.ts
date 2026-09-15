@@ -90,9 +90,263 @@ const STORAGE_KEYS = {
   ACTIVE_OTPS: "raildrishti_active_otps",
 };
 
+// Backend API base URL for Auth (Express server on port 5000)
+export const AUTH_API_URL = "http://localhost:5000/api/auth";
+
+export interface DemoAccount {
+  name: string;
+  role: UserRole;
+  identifier: string;
+  email: string;
+  password: string;
+  department: string;
+  operationalRole?: string;
+  badge?: string;
+}
+
+export const DEMO_TEAM_CREDENTIALS: DemoAccount[] = [
+  {
+    name: "Souvik Saha",
+    role: "admin",
+    identifier: "ADM-1001",
+    email: "souvik.saha@raildrishti.gov.in",
+    password: "Admin@RailDrishti2026",
+    department: "Railway Operations & Safety Directorate",
+    badge: "Admin",
+  },
+  {
+    name: "Rohit Roy",
+    role: "admin",
+    identifier: "ADM-1002",
+    email: "rohit.roy@raildrishti.gov.in",
+    password: "Admin@RailDrishti2026",
+    department: "Network Safety & Infrastructure Directorate",
+    badge: "Admin",
+  },
+  {
+    name: "Shriya M",
+    role: "controller",
+    identifier: "CTRL-SBC-01",
+    email: "shriya.m@raildrishti.gov.in",
+    password: "Controller@RailDrishti2026",
+    department: "Operations & Traffic Control (SBC)",
+    badge: "Controller",
+  },
+  {
+    name: "Neeraj Singh Gaira",
+    role: "controller",
+    identifier: "CTRL-NDLS-02",
+    email: "neeraj.gaira@raildrishti.gov.in",
+    password: "Controller@RailDrishti2026",
+    department: "Operations & Traffic Control (NDLS)",
+    badge: "Controller",
+  },
+  {
+    name: "Manas Kumar",
+    role: "employee",
+    identifier: "IR-2024-5001",
+    email: "manas.kumar@raildrishti.gov.in",
+    password: "Employee@RailDrishti2026",
+    department: "Signal & Telecommunication (S&T)",
+    operationalRole: "signal_maintainer",
+    badge: "Employee",
+  },
+  {
+    name: "Krutika Girennavar",
+    role: "employee",
+    identifier: "IR-2024-5002",
+    email: "krutika.g@raildrishti.gov.in",
+    password: "Employee@RailDrishti2026",
+    department: "Operations & Traffic Control",
+    operationalRole: "station_master",
+    badge: "Employee",
+  },
+  {
+    name: "Amit Verma",
+    role: "user",
+    identifier: "9876543210",
+    email: "passenger@raildrishti.gov.in",
+    password: "User@RailDrishti2026",
+    department: "Passenger",
+    badge: "Passenger",
+  },
+];
+
 // Pre-provisioned Authorized Accounts
 const PROVISIONED_ACCOUNTS: Record<string, { password: string; user: AuthUser }> = {
-  // Admin (Unique Admin ID & Email)
+  // 1. Admin: Souvik Saha
+  "souvik.saha@raildrishti.gov.in": {
+    password: "Admin@RailDrishti2026",
+    user: {
+      id: "usr_adm_1001",
+      adminId: "ADM-1001",
+      name: "Souvik Saha",
+      email: "souvik.saha@raildrishti.gov.in",
+      role: "admin",
+      status: "active",
+      department: "Railway Operations & Safety Directorate",
+      createdAt: new Date().toISOString(),
+    },
+  },
+  "adm-1001": {
+    password: "Admin@RailDrishti2026",
+    user: {
+      id: "usr_adm_1001",
+      adminId: "ADM-1001",
+      name: "Souvik Saha",
+      email: "souvik.saha@raildrishti.gov.in",
+      role: "admin",
+      status: "active",
+      department: "Railway Operations & Safety Directorate",
+      createdAt: new Date().toISOString(),
+    },
+  },
+
+  // 2. Admin: Rohit Roy
+  "rohit.roy@raildrishti.gov.in": {
+    password: "Admin@RailDrishti2026",
+    user: {
+      id: "usr_adm_1002",
+      adminId: "ADM-1002",
+      name: "Rohit Roy",
+      email: "rohit.roy@raildrishti.gov.in",
+      role: "admin",
+      status: "active",
+      department: "Network Safety & Infrastructure Directorate",
+      createdAt: new Date().toISOString(),
+    },
+  },
+  "adm-1002": {
+    password: "Admin@RailDrishti2026",
+    user: {
+      id: "usr_adm_1002",
+      adminId: "ADM-1002",
+      name: "Rohit Roy",
+      email: "rohit.roy@raildrishti.gov.in",
+      role: "admin",
+      status: "active",
+      department: "Network Safety & Infrastructure Directorate",
+      createdAt: new Date().toISOString(),
+    },
+  },
+
+  // 3. Controller: Shriya M
+  "shriya.m@raildrishti.gov.in": {
+    password: "Controller@RailDrishti2026",
+    user: {
+      id: "usr_ctrl_2001",
+      controllerId: "CTRL-SBC-01",
+      name: "Shriya M",
+      email: "shriya.m@raildrishti.gov.in",
+      role: "controller",
+      status: "active",
+      department: "Operations & Traffic Control",
+      createdAt: new Date().toISOString(),
+    },
+  },
+  "ctrl-sbc-01": {
+    password: "Controller@RailDrishti2026",
+    user: {
+      id: "usr_ctrl_2001",
+      controllerId: "CTRL-SBC-01",
+      name: "Shriya M",
+      email: "shriya.m@raildrishti.gov.in",
+      role: "controller",
+      status: "active",
+      department: "Operations & Traffic Control",
+      createdAt: new Date().toISOString(),
+    },
+  },
+
+  // 4. Controller: Neeraj Singh Gaira
+  "neeraj.gaira@raildrishti.gov.in": {
+    password: "Controller@RailDrishti2026",
+    user: {
+      id: "usr_ctrl_2002",
+      controllerId: "CTRL-NDLS-02",
+      name: "Neeraj Singh Gaira",
+      email: "neeraj.gaira@raildrishti.gov.in",
+      role: "controller",
+      status: "active",
+      department: "Operations & Traffic Control",
+      createdAt: new Date().toISOString(),
+    },
+  },
+  "ctrl-ndls-02": {
+    password: "Controller@RailDrishti2026",
+    user: {
+      id: "usr_ctrl_2002",
+      controllerId: "CTRL-NDLS-02",
+      name: "Neeraj Singh Gaira",
+      email: "neeraj.gaira@raildrishti.gov.in",
+      role: "controller",
+      status: "active",
+      department: "Operations & Traffic Control",
+      createdAt: new Date().toISOString(),
+    },
+  },
+
+  // 5. Employee: Manas Kumar
+  "manas.kumar@raildrishti.gov.in": {
+    password: "Employee@RailDrishti2026",
+    user: {
+      id: "usr_emp_5001",
+      employeeId: "IR-2024-5001",
+      name: "Manas Kumar",
+      email: "manas.kumar@raildrishti.gov.in",
+      role: "employee",
+      status: "active",
+      department: "Signal & Telecommunication (S&T)",
+      operationalRole: "signal_maintainer",
+      createdAt: new Date().toISOString(),
+    },
+  },
+  "ir-2024-5001": {
+    password: "Employee@RailDrishti2026",
+    user: {
+      id: "usr_emp_5001",
+      employeeId: "IR-2024-5001",
+      name: "Manas Kumar",
+      email: "manas.kumar@raildrishti.gov.in",
+      role: "employee",
+      status: "active",
+      department: "Signal & Telecommunication (S&T)",
+      operationalRole: "signal_maintainer",
+      createdAt: new Date().toISOString(),
+    },
+  },
+
+  // 6. Employee: Krutika Girennavar
+  "krutika.g@raildrishti.gov.in": {
+    password: "Employee@RailDrishti2026",
+    user: {
+      id: "usr_emp_5002",
+      employeeId: "IR-2024-5002",
+      name: "Krutika Girennavar",
+      email: "krutika.g@raildrishti.gov.in",
+      role: "employee",
+      status: "active",
+      department: "Operations & Traffic Control",
+      operationalRole: "station_master",
+      createdAt: new Date().toISOString(),
+    },
+  },
+  "ir-2024-5002": {
+    password: "Employee@RailDrishti2026",
+    user: {
+      id: "usr_emp_5002",
+      employeeId: "IR-2024-5002",
+      name: "Krutika Girennavar",
+      email: "krutika.g@raildrishti.gov.in",
+      role: "employee",
+      status: "active",
+      department: "Operations & Traffic Control",
+      operationalRole: "station_master",
+      createdAt: new Date().toISOString(),
+    },
+  },
+
+  // Fallback Admin
   "admin@raildrishti.gov.in": {
     password: "Admin@RailDrishti2026",
     user: {
@@ -120,7 +374,7 @@ const PROVISIONED_ACCOUNTS: Record<string, { password: string; user: AuthUser }>
     },
   },
 
-  // Controller (Unique Controller ID & Email)
+  // Fallback Controller
   "controller@raildrishti.gov.in": {
     password: "Controller@RailDrishti2026",
     user: {
@@ -134,21 +388,8 @@ const PROVISIONED_ACCOUNTS: Record<string, { password: string; user: AuthUser }>
       createdAt: new Date().toISOString(),
     },
   },
-  "ctrl-sbc-01": {
-    password: "Controller@RailDrishti2026",
-    user: {
-      id: "usr_ctrl_001",
-      controllerId: "CTRL-SBC-01",
-      name: "Bengaluru Section Controller (SBC-COA)",
-      email: "controller@raildrishti.gov.in",
-      role: "controller",
-      status: "active",
-      department: "Traffic Dispatch & Section Control",
-      createdAt: new Date().toISOString(),
-    },
-  },
 
-  // Employee (Unique Employee ID & Email) - Signal Maintainer (S&T)
+  // Fallback Employee
   "employee@raildrishti.gov.in": {
     password: "Employee@RailDrishti2026",
     user: {
@@ -530,7 +771,37 @@ export async function registerUser(payload: UserRegistrationPayload): Promise<Au
     return { success: false, message: "You must accept the RailDrishti terms & conditions." };
   }
 
-  // Check duplicate
+  // Attempt backend registration in SQLite database
+  try {
+    const apiRes = await fetch(`${AUTH_API_URL}/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        role: "user",
+        fullName: fullName.trim(),
+        phoneNumber: cleanPhone,
+        email: cleanEmail,
+        password,
+      }),
+    });
+    if (apiRes.ok) {
+      const data = await apiRes.json();
+      if (data.success && data.user) {
+        saveRegisteredUser(cleanEmail, password, data.user);
+        saveRegisteredUser(cleanPhone, password, data.user);
+        return data;
+      }
+    } else {
+      const errorData = await apiRes.json().catch(() => null);
+      if (errorData?.message) {
+        return { success: false, message: errorData.message };
+      }
+    }
+  } catch {
+    // Backend offline fallback
+  }
+
+  // Check duplicate in local storage
   const registered = getRegisteredUsers();
   if (registered[cleanEmail] || registered[cleanPhone] || PROVISIONED_ACCOUNTS[cleanEmail] || PROVISIONED_ACCOUNTS[cleanPhone]) {
     return {
@@ -539,7 +810,7 @@ export async function registerUser(payload: UserRegistrationPayload): Promise<Au
     };
   }
 
-  await new Promise((resolve) => setTimeout(resolve, 600));
+  await new Promise((resolve) => setTimeout(resolve, 300));
 
   const newUser: AuthUser = {
     id: `usr_pass_${Date.now()}`,
@@ -595,8 +866,29 @@ export async function registerEmployee(payload: EmployeeRegistrationPayload): Pr
     };
   }
 
-  // Security guardrail: Controller can never self-provision
-  await new Promise((resolve) => setTimeout(resolve, 700));
+  // Attempt backend registration in SQLite database
+  try {
+    const apiRes = await fetch(`${AUTH_API_URL}/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        role: requestedRole,
+        fullName: fullName.trim(),
+        employeeId: cleanEmpId,
+        officialEmail: cleanEmail,
+        department,
+        requestedRole,
+      }),
+    });
+    if (apiRes.ok) {
+      const data = await apiRes.json();
+      return data;
+    }
+  } catch {
+    // Backend offline fallback
+  }
+
+  await new Promise((resolve) => setTimeout(resolve, 400));
 
   const applicationRecord = {
     id: `app_${Date.now()}`,
@@ -631,9 +923,33 @@ export async function registerEmployee(payload: EmployeeRegistrationPayload): Pr
 export async function login(payload: LoginPayload): Promise<AuthResponse> {
   const { role, method = "password" } = payload;
 
-  await new Promise((resolve) => setTimeout(resolve, 500));
+  // 1. First attempt Backend SQLite Authentication
+  try {
+    const apiRes = await fetch(`${AUTH_API_URL}/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
 
-  // 1. ADMIN LOGIN (Admin ID + Password)
+    if (apiRes.ok) {
+      const data: AuthResponse = await apiRes.json();
+      if (data.success && data.user) {
+        sessionStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(data.user));
+        return data;
+      }
+    } else {
+      const errorData = await apiRes.json().catch(() => null);
+      if (errorData?.message) {
+        return { success: false, message: errorData.message };
+      }
+    }
+  } catch {
+    // Backend offline / network fallback to provisioned local accounts
+  }
+
+  await new Promise((resolve) => setTimeout(resolve, 300));
+
+  // 2. ADMIN LOGIN (Admin ID + Password)
   if (role === "admin") {
     const identifier = (payload.adminId || payload.emailOrPhone || "").trim().toLowerCase();
     const password = payload.password || "";

@@ -21,8 +21,10 @@ import {
   requestOTP,
   handleGoogleSignIn,
   getRoleRedirectPath,
+  DEMO_TEAM_CREDENTIALS,
   type UserRole,
   type LoginMethod,
+  type DemoAccount,
 } from "../services/auth";
 
 const BACKGROUND_SLIDES = [
@@ -143,6 +145,38 @@ export default function Login() {
     setPassword("");
     setOtpCode("");
     setOtpSent(false);
+  };
+
+  const handleQuickFill = (acc: DemoAccount) => {
+    setSelectedRole(acc.role);
+    setErrorMessage(null);
+    setOtpSent(false);
+    setOtpCode("");
+
+    if (acc.role === "admin") {
+      setAdminId(acc.identifier);
+      setEmailOrPhone("");
+      setControllerId("");
+      setEmployeeId("");
+    } else if (acc.role === "controller") {
+      setControllerId(acc.identifier);
+      setEmailOrPhone("");
+      setAdminId("");
+      setEmployeeId("");
+    } else if (acc.role === "employee") {
+      setEmployeeId(acc.identifier);
+      setEmailOrPhone("");
+      setAdminId("");
+      setControllerId("");
+    } else {
+      setEmailOrPhone(acc.identifier);
+      setUserLoginMethod("password");
+      setAdminId("");
+      setControllerId("");
+      setEmployeeId("");
+    }
+    setPassword(acc.password);
+    setSuccessMessage(`Loaded ${acc.name} (${acc.badge || acc.role.toUpperCase()}) credentials.`);
   };
 
   // Trigger Send / Resend OTP
@@ -744,6 +778,52 @@ export default function Login() {
                 </div>
               </div>
             )}
+
+            {/* Quick Team Member Credentials Helper for Frontend Teammates */}
+            <div className="mt-5 pt-3 border-t border-[#F59E0B]/25">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#071A33] flex items-center gap-1.5">
+                  <Briefcase className="w-3.5 h-3.5 text-[#F59E0B]" />
+                  Team Quick-Login Fill
+                </span>
+                <span className="text-[10px] text-[#0E5961] font-semibold bg-[#0E5961]/10 px-2 py-0.5 rounded-full">
+                  1-Click Test
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-1.5 max-h-48 overflow-y-auto pr-0.5">
+                {DEMO_TEAM_CREDENTIALS.map((acc) => (
+                  <button
+                    key={acc.name}
+                    type="button"
+                    onClick={() => handleQuickFill(acc)}
+                    className="flex items-center justify-between p-2 text-left rounded-xl border border-slate-200 bg-white/90 hover:bg-amber-50 hover:border-[#F59E0B] transition-all text-xs cursor-pointer shadow-2xs group"
+                    title={`Click to auto-fill: ${acc.identifier} / ${acc.password}`}
+                  >
+                    <div className="truncate mr-1">
+                      <div className="font-semibold text-[11px] text-[#071A33] group-hover:text-[#0E5961] truncate">
+                        {acc.name}
+                      </div>
+                      <div className="text-[10px] text-slate-500 font-mono truncate">
+                        {acc.identifier}
+                      </div>
+                    </div>
+                    <span
+                      className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded shrink-0 ${
+                        acc.role === "admin"
+                          ? "bg-purple-100 text-purple-800"
+                          : acc.role === "controller"
+                          ? "bg-blue-100 text-blue-800"
+                          : acc.role === "employee"
+                          ? "bg-emerald-100 text-emerald-800"
+                          : "bg-amber-100 text-amber-800"
+                      }`}
+                    >
+                      {acc.badge || acc.role}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
 
             {/* Footer Navigation Link */}
             <div className="mt-4 pt-3 border-t border-[#0E5961]/20 text-center text-xs text-[#465B6B]">
