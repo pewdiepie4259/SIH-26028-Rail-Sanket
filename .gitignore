@@ -39,3 +39,11 @@ sih26028-rail-eta/venv/
 *.db
 *.sqlite3
 scratch/
+node_modules
+.env
+dist
+build
+__pycache__/
+*.pyc
+venv/
+.venv/

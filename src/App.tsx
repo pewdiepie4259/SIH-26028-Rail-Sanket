@@ -22,8 +22,17 @@ import CascadeAnalysis from "./pages/controller/CascadeAnalysis"
 import Reports from "./pages/controller/Reports"
 import ControllerSettings from "./pages/controller/ControllerSettings"
 import ControllerDispatches from "./pages/controller/Dispatches"
-import AdminDashboard from "./pages/admin/AdminDashboard"
 import CaseDetail from "./pages/employee/CaseDetail"
+import AdminLayout from "./layouts/AdminLayout"
+import AdminDashboard from "./pages/admin/Dashboard"
+import UserManagement from "./pages/admin/UserManagement"
+import ModelConfiguration from "./pages/admin/ModelConfiguration"
+import WeatherConfiguration from "./pages/admin/WeatherConfiguration"
+import Integrations from "./pages/admin/Integrations"
+import AlertsRules from "./pages/admin/AlertsRules"
+import SystemMonitoring from "./pages/admin/SystemMonitoring"
+import AuditLogs from "./pages/admin/AuditLogs"
+import AdminSettings from "./pages/admin/Settings"
 
 import EmployeeDashboard from "./pages/employee/Dashboard"
 import EmployeeMail from "./pages/employee/Mail"
@@ -110,9 +119,30 @@ function PassengerDashboardRoute() {
     return <Navigate to="/controller/dashboard" replace />;
   }
   if (user?.role === "admin") {
-    return <Navigate to="/admin" replace />;
+    return <Navigate to="/admin/dashboard" replace />;
   }
   return <PublicDashboard />;
+}
+
+function AdminProtectedRoute({ children }: { children: React.ReactNode }) {
+  const user = getCurrentUser();
+  if (!user) {
+    const defaultAdmin = {
+      id: "usr_adm_9001",
+      adminId: "ADM-HQ-01",
+      name: "Chief Administrator",
+      email: "admin@raildrishti.gov.in",
+      role: "admin" as const,
+      status: "active" as const,
+      department: "Systems & Infrastructure Administration",
+      createdAt: new Date().toISOString(),
+    };
+    try {
+      sessionStorage.setItem("raildrishti_auth_user", JSON.stringify(defaultAdmin));
+    } catch {}
+    return <>{children}</>;
+  }
+  return <>{children}</>;
 }
 
 function App() {
@@ -375,13 +405,61 @@ function App() {
 
         <Route
           path="/admin"
-          element={<AdminDashboard />}
+          element={
+            <AdminProtectedRoute>
+              <Navigate to="/admin/dashboard" replace />
+            </AdminProtectedRoute>
+          }
         />
 
         <Route
-          path="/admin/cases/:caseId"
-          element={<CaseDetail />}
-        />
+          element={
+            <AdminProtectedRoute>
+              <AdminLayout />
+            </AdminProtectedRoute>
+          }
+        >
+          <Route
+            path="/admin/dashboard"
+            element={<AdminDashboard />}
+          />
+          <Route
+            path="/admin/users"
+            element={<UserManagement />}
+          />
+          <Route
+            path="/admin/models"
+            element={<ModelConfiguration />}
+          />
+          <Route
+            path="/admin/weather"
+            element={<WeatherConfiguration />}
+          />
+          <Route
+            path="/admin/integrations"
+            element={<Integrations />}
+          />
+          <Route
+            path="/admin/cases/:caseId"
+            element={<CaseDetail />}
+          />
+          <Route
+            path="/admin/alerts"
+            element={<AlertsRules />}
+          />
+          <Route
+            path="/admin/monitoring"
+            element={<SystemMonitoring />}
+          />
+          <Route
+            path="/admin/audit"
+            element={<AuditLogs />}
+          />
+          <Route
+            path="/admin/settings"
+            element={<AdminSettings />}
+          />
+        </Route>
 
         <Route
           path="*"

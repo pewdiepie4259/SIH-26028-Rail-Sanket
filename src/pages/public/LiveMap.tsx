@@ -1,750 +1,665 @@
-import React, { useState, useEffect } from 'react';
-import {
-  TrainFront,
-  Activity,
-  Radio,
-  Play,
-  Pause,
-  RefreshCw,
-  ShieldAlert,
-  ArrowRight,
-} from 'lucide-react';
-import {
-  fetchCorridorTopology,
-  predictCorridorGNN,
-  fetchActiveCopilotAlerts,
-  type CorridorNode,
-  type CopilotBottleneckAlert,
-} from '../../services/api';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
+import { MapContainer, TileLayer, CircleMarker, Marker, Popup, Polyline, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import { useLiveTelemetry } from '../../hooks/useLiveTelemetry';
 
-interface LiveRake {
-  id: string;
+interface StationNode {
+  code: string;
   name: string;
-  number: string;
-  currentStation: string;
-  nextStation: string;
-  progress: number; // 0 to 100 between current and next station
-  speedKmh: number;
-  delayMinutes: number;
-  signalAspect: 'GREEN' | 'YELLOW' | 'DOUBLE_YELLOW' | 'RED';
-  route: string[];
+  lat: number;
+  lon: number;
+  zone?: string;
+  state?: string;
 }
 
-const DEFAULT_STATIONS: CorridorNode[] = [
-  { id: 'SBC', name: 'KSR Bengaluru City', lat: 12.9784, lon: 77.5696, platforms: 10, is_junction: true },
-  { id: 'BNC', name: 'Bengaluru Cantt', lat: 12.9934, lon: 77.5983, platforms: 3 },
-  { id: 'BNCE', name: 'Bengaluru East', lat: 12.9981, lon: 77.6163, platforms: 2 },
-  { id: 'BYPL', name: 'Baiyyappanahalli', lat: 12.9912, lon: 77.6528, platforms: 4, is_junction: true },
-  { id: 'KJM', name: 'Krishnarajapuram', lat: 13.0012, lon: 77.6780, platforms: 4, is_junction: true },
-  { id: 'WFD', name: 'Whitefield', lat: 12.9942, lon: 77.7583, platforms: 4 },
-  { id: 'MLO', name: 'Malur', lat: 13.0039, lon: 77.9392, platforms: 3 },
-  { id: 'BWT', name: 'Bangarapet Jn', lat: 12.9988, lon: 78.1969, platforms: 5, is_junction: true },
-  { id: 'KGI', name: 'Kengeri', lat: 12.9090, lon: 77.4840, platforms: 4 },
-  { id: 'MYA', name: 'Mandya', lat: 12.5234, lon: 76.8986, platforms: 3 },
-  { id: 'MYS', name: 'Mysuru Jn', lat: 12.3160, lon: 76.6450, platforms: 6, is_junction: true },
-  { id: 'YPR', name: 'Yesvantpur Jn', lat: 13.0238, lon: 77.5503, platforms: 6, is_junction: true },
+interface RouteStop {
+  stop_sequence: number;
+  station_code: string;
+  station_name: string;
+  latitude: number;
+  longitude: number;
+  scheduled_arrival?: string;
+  scheduled_departure?: string;
+  actual_time?: string;
+  hasPassed?: boolean;
+}
+
+interface NTESLiveStatus {
+  source?: string;
+  current_station?: string;
+  current_station_name?: string;
+  train_status_message?: string;
+  terminated?: boolean;
+  delay_minutes?: number;
+  speed_kmh?: number;
+  latitude?: number;
+  longitude?: number;
+  stations?: any[];
+}
+
+const DEFAULT_STATIONS: StationNode[] = [
+  { code: 'SBC', name: 'KSR Bengaluru City', lat: 12.9784, lon: 77.5696, zone: 'SWR' },
+  { code: 'BNC', name: 'Bengaluru Cantt', lat: 12.9934, lon: 77.5986, zone: 'SWR' },
+  { code: 'BNCE', name: 'Bengaluru East', lat: 13.0012, lon: 77.6184, zone: 'SWR' },
+  { code: 'BYPL', name: 'Baiyyappanahalli', lat: 12.9926, lon: 77.6521, zone: 'SWR' },
+  { code: 'KJM', name: 'Krishnarajapuram', lat: 13.0004, lon: 77.6888, zone: 'SWR' },
+  { code: 'WFD', name: 'Whitefield', lat: 12.9961, lon: 77.7611, zone: 'SWR' },
+  { code: 'MLO', name: 'Malur', lat: 13.0045, lon: 77.9405, zone: 'SWR' },
+  { code: 'BWT', name: 'Bangarapet Jn', lat: 12.9972, lon: 78.1989, zone: 'SWR' },
+  { code: 'MYS', name: 'Mysuru Junction', lat: 12.3164, lon: 76.6433, zone: 'SWR' },
+  { code: 'SMVB', name: 'SMVT Bengaluru', lat: 13.0076, lon: 77.6542, zone: 'SWR' },
+  { code: 'HWH', name: 'Howrah Jn', lat: 22.5839, lon: 88.3426, zone: 'ER' },
+  { code: 'CNB', name: 'Kanpur Central', lat: 26.4547, lon: 80.3507, zone: 'NCR' },
+  { code: 'NDLS', name: 'New Delhi', lat: 28.6415, lon: 77.2207, zone: 'NR' },
+  { code: 'CSMT', name: 'Mumbai CSMT', lat: 18.9402, lon: 72.8356, zone: 'CR' },
+  { code: 'MAS', name: 'Chennai Central', lat: 13.0827, lon: 80.2707, zone: 'SR' },
 ];
 
-const INITIAL_RAKES: LiveRake[] = [
-  {
-    id: '1',
-    name: 'Vande Bharat Express',
-    number: '20661',
-    currentStation: 'SBC',
-    nextStation: 'BNC',
-    progress: 45,
-    speedKmh: 92,
-    delayMinutes: 0,
-    signalAspect: 'GREEN',
-    route: ['SBC', 'BNC', 'BNCE', 'BYPL', 'KJM', 'WFD'],
-  },
-  {
-    id: '2',
-    name: 'Karnataka Express',
-    number: '12627',
-    currentStation: 'KGI',
-    nextStation: 'SBC',
-    progress: 70,
-    speedKmh: 68,
-    delayMinutes: 18,
-    signalAspect: 'YELLOW',
-    route: ['KGI', 'SBC', 'BNC', 'BYPL'],
-  },
-  {
-    id: '3',
-    name: 'Brindavan Express',
-    number: '12639',
-    currentStation: 'BYPL',
-    nextStation: 'KJM',
-    progress: 25,
-    speedKmh: 42,
-    delayMinutes: 12,
-    signalAspect: 'DOUBLE_YELLOW',
-    route: ['SBC', 'BNC', 'BNCE', 'BYPL', 'KJM', 'WFD', 'BWT'],
-  },
-  {
-    id: '4',
-    name: 'Bengaluru - Mysuru Express',
-    number: '12613',
-    currentStation: 'KGI',
-    nextStation: 'MYA',
-    progress: 55,
-    speedKmh: 85,
-    delayMinutes: 5,
-    signalAspect: 'GREEN',
-    route: ['SBC', 'KGI', 'MYA', 'MYS'],
-  },
-  {
-    id: '5',
-    name: 'Hampi Express',
-    number: '16591',
-    currentStation: 'YPR',
-    nextStation: 'SBC',
-    progress: 60,
-    speedKmh: 50,
-    delayMinutes: 4,
-    signalAspect: 'GREEN',
-    route: ['YPR', 'SBC', 'KGI', 'MYS'],
-  },
-];
+const createMovingTrainIcon = (signal?: string) => {
+  const color =
+    signal === 'GREEN'
+      ? '#10b981'
+      : signal === 'YELLOW'
+        ? '#f59e0b'
+        : signal === 'DOUBLE_YELLOW'
+          ? '#eab308'
+          : '#f43f5e';
 
-// Coordinate layout mapping for 2D schematic projection
-const STATION_POSITIONS: Record<string, { x: number; y: number }> = {
-  YPR: { x: 180, y: 80 },
-  SBC: { x: 220, y: 190 },
-  BNC: { x: 330, y: 170 },
-  BNCE: { x: 430, y: 155 },
-  BYPL: { x: 540, y: 140 },
-  KJM: { x: 650, y: 130 },
-  WFD: { x: 770, y: 145 },
-  MLO: { x: 880, y: 160 },
-  BWT: { x: 970, y: 175 },
-  KGI: { x: 160, y: 300 },
-  MYA: { x: 110, y: 410 },
-  MYS: { x: 70, y: 510 },
+  return L.divIcon({
+    className: 'custom-train-marker',
+    html: `
+      <div style="position: relative; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center;">
+        <div style="
+          position: absolute;
+          width: 38px;
+          height: 38px;
+          border-radius: 50%;
+          background: ${color};
+          opacity: 0.4;
+          animation: ping 1.4s cubic-bezier(0, 0, 0.2, 1) infinite;
+        "></div>
+        <div style="
+          width: 24px;
+          height: 24px;
+          border-radius: 50%;
+          background-color: ${color};
+          border: 2px solid white;
+          box-shadow: 0 0 16px ${color};
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 10;
+        ">
+          <svg style="width: 13px; height: 13px; fill: white;" viewBox="0 0 24 24">
+            <path d="M12 2c-4 0-8 .5-8 4v9.5C4 17.43 5.57 19 7.5 19L6 20.5v.5h12v-.5L16.5 19c1.93 0 3.5-1.57 3.5-3.5V6c0-3.5-4-4-8-4zm0 2c3.71 0 5.13.46 5.8 1H6.2c.67-.54 2.09-1 5.8-1zM6 8h12v4H6V8zm2 8c-.83 0-1.5-.67-1.5-1.5S7.17 13 8 13s1.5.67 1.5 1.5S8.83 16 8 16zm8 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
+          </svg>
+        </div>
+      </div>
+    `,
+    iconSize: [38, 38],
+    iconAnchor: [19, 19],
+  });
+};
+
+const MapFocusController: React.FC<{
+  routeCoords: [number, number][];
+  targetRake: string;
+}> = ({ routeCoords, targetRake }) => {
+  const map = useMap();
+  const lastZoomedRef = useRef<string>('');
+
+  useEffect(() => {
+    if (!targetRake || lastZoomedRef.current === targetRake) return;
+    map.invalidateSize();
+
+    if (routeCoords && routeCoords.length > 1) {
+      const bounds = L.latLngBounds(routeCoords);
+      if (bounds.isValid()) {
+        lastZoomedRef.current = targetRake;
+        map.fitBounds(bounds, {
+          padding: [50, 50],
+          maxZoom: 10,
+          animate: true,
+          duration: 1.2,
+        });
+      }
+    }
+  }, [targetRake, routeCoords, map]);
+
+  return null;
+};
+
+const CameraFollower: React.FC<{
+  pos: [number, number] | null;
+  active: boolean;
+}> = ({ pos, active }) => {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!active || !pos || isNaN(pos[0]) || isNaN(pos[1])) return;
+    map.panTo(pos, { animate: true, duration: 0.6 });
+  }, [pos, active, map]);
+
+  return null;
 };
 
 export const LiveMap: React.FC = () => {
-  const [stations, setStations] = useState<CorridorNode[]>(DEFAULT_STATIONS);
-  const [rakes, setRakes] = useState<LiveRake[]>(INITIAL_RAKES);
-  const [selectedStation, setSelectedStation] = useState<CorridorNode | null>(null);
-  const [selectedRake, setSelectedRake] = useState<LiveRake | null>(INITIAL_RAKES[0]);
-  const [isSimulating, setIsSimulating] = useState<boolean>(true);
-  const [gnnDelays, setGnnDelays] = useState<Record<string, number>>({});
-  const [bottleneckAlerts, setBottleneckAlerts] = useState<CopilotBottleneckAlert[]>([]);
+  const { trains, activeAlerts, isConnected } = useLiveTelemetry();
+  const [stations, setStations] = useState<StationNode[]>(DEFAULT_STATIONS);
+  const [selectedZone, setSelectedZone] = useState<string>('ALL');
+  const [selectedRakeNumber, setSelectedRakeNumber] = useState<string>('12860');
+  const [liveNtesData, setLiveNtesData] = useState<NTESLiveStatus | null>(null);
+  const [routeStops, setRouteStops] = useState<RouteStop[]>([]);
+  const [isLoadingNtes, setIsLoadingNtes] = useState<boolean>(false);
+  const [customSearch, setCustomSearch] = useState<string>('');
+  const [followTrain, setFollowTrain] = useState<boolean>(false);
 
-  // Fetch initial topology and alerts
+  const [animatedPos, setAnimatedPos] = useState<[number, number] | null>(null);
+  const [passedStationIdx, setPassedStationIdx] = useState<number>(0);
+  const progressRef = useRef<number>(0);
+
+  const stationLookup = useMemo(() => {
+    const map = new Map<string, StationNode>();
+    stations.forEach((stn) => map.set(stn.code.toUpperCase(), stn));
+    return map;
+  }, [stations]);
+
+  // 1. Fetch SQLite station registry
   useEffect(() => {
-    fetchCorridorTopology()
+    fetch('http://localhost:5000/api/stations/all')
+      .then((res) => (res.ok ? res.json() : Promise.reject()))
       .then((data) => {
-        if (data.nodes && data.nodes.length > 0) {
-          setStations(data.nodes);
-        }
-      })
-      .catch(() => {
-        // Fallback already pre-populated
-      });
+        const rawList = data?.stations || (Array.isArray(data) ? data : []);
+        if (rawList.length > 0) {
+          const parsed: StationNode[] = rawList
+            .map((item: any) => ({
+              code: item.code,
+              name: item.name,
+              lat: parseFloat(item.latitude),
+              lon: parseFloat(item.longitude),
+              zone: item.zone || 'IR',
+              state: item.state,
+            }))
+            .filter((s: StationNode) => !isNaN(s.lat) && !isNaN(s.lon) && s.lat !== 0 && s.code);
 
-    predictCorridorGNN('12627', { '12627': 18.0, '12639': 12.0 })
-      .then((res) => {
-        if (res.cascading_delays) {
-          setGnnDelays(res.cascading_delays);
+          if (parsed.length > 0) setStations(parsed);
         }
       })
-      .catch(() => {
-        setGnnDelays({
-          SBC: 18.0,
-          BNC: 16.5,
-          BNCE: 14.8,
-          BYPL: 15.2,
-          KJM: 13.5,
-          WFD: 11.2,
-          MLO: 9.4,
-          BWT: 8.1,
-        });
-      });
-
-    fetchActiveCopilotAlerts()
-      .then((res) => {
-        if (res.bottlenecks) {
-          setBottleneckAlerts(res.bottlenecks);
-        }
-      })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
-  // Real-Time WebSocket Telemetry Listener
+  // 2. Fetch train pathway and parse progression
   useEffect(() => {
-    const WS_URL = "ws://127.0.0.1:8000/ws/telemetry";
-    let socket: WebSocket | null = null;
-    let reconnectTimer: any = null;
+    if (!selectedRakeNumber) return;
 
-    function connect() {
-      socket = new WebSocket(WS_URL);
+    const loadLiveTrain = () => {
+      setIsLoadingNtes(true);
 
-      socket.onopen = () => {
-        console.log("RailDrishti Live Telemetry Connected");
-      };
-
-      socket.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-
-          if (data.train_number) {
-            const nextStn = data.forecasts?.[0]?.station || "BWT";
-            const delay = data.forecasts?.[0]?.predicted_delay_min ?? 0;
-
-            setRakes((prevRakes) => {
-              const exists = prevRakes.some((r) => r.number === data.train_number);
-              if (exists) {
-                return prevRakes.map((r) =>
-                  r.number === data.train_number
-                    ? {
-                        ...r,
-                        currentStation: data.current_block,
-                        nextStation: nextStn,
-                        speedKmh: Number(data.telemetry.speed_kmh),
-                        signalAspect: data.telemetry.signal,
-                        delayMinutes: delay,
-                        progress: (r.progress + 15) % 100,
-                      }
-                    : r
-                );
-              }
-              return [
-                ...prevRakes,
-                {
-                  id: String(data.train_number),
-                  name: data.train_name,
-                  number: String(data.train_number),
-                  currentStation: data.current_block,
-                  nextStation: nextStn,
-                  progress: 20,
-                  speedKmh: Number(data.telemetry.speed_kmh),
-                  delayMinutes: delay,
-                  signalAspect: data.telemetry.signal,
-                  route: [data.current_block, nextStn],
-                },
-              ];
-            });
-
-            if (data.forecasts && data.forecasts.length > 0) {
-              setGnnDelays((prev) => ({
-                ...prev,
-                [data.train_number]: delay,
-              }));
-            }
-
-            if (data.copilot_alert) {
-              setBottleneckAlerts((prev) => [data.copilot_alert, ...prev.slice(0, 4)]);
-            }
+      const routePromise = fetch(`http://localhost:5000/api/trains/${selectedRakeNumber}/route`)
+        .then((res) => (res.ok ? res.json() : Promise.reject()))
+        .then((data) => {
+          if (data?.route && Array.isArray(data.route) && data.route.length > 0) {
+            return data.route
+              .map((s: any) => ({
+                stop_sequence: s.stop_sequence,
+                station_code: s.station_code,
+                station_name: s.station_name,
+                latitude: parseFloat(s.latitude),
+                longitude: parseFloat(s.longitude),
+                scheduled_arrival: s.scheduled_arrival,
+                scheduled_departure: s.scheduled_departure,
+              }))
+              .filter((s: RouteStop) => !isNaN(s.latitude) && !isNaN(s.longitude));
           }
-        } catch (err) {
-          console.error("Error parsing telemetry WebSocket frame:", err);
-        }
-      };
-
-      socket.onerror = () => {
-        socket?.close();
-      };
-
-      socket.onclose = () => {
-        reconnectTimer = setTimeout(connect, 3000);
-      };
-    }
-
-    connect();
-
-    return () => {
-      if (reconnectTimer) clearTimeout(reconnectTimer);
-      if (socket) socket.close();
-    };
-  }, []);
-
-  // Live simulation tick (Fallback when backend offline)
-  useEffect(() => {
-    if (!isSimulating) return;
-
-    const interval = setInterval(() => {
-      setRakes((prev) =>
-        prev.map((rake) => {
-          let nextProgress = rake.progress + 4;
-          let curr = rake.currentStation;
-          let next = rake.nextStation;
-
-          if (nextProgress >= 100) {
-            nextProgress = 0;
-            const currIdx = rake.route.indexOf(next);
-            if (currIdx !== -1 && currIdx < rake.route.length - 1) {
-              curr = next;
-              next = rake.route[currIdx + 1];
-            } else {
-              // Loop back
-              curr = rake.route[0];
-              next = rake.route[1] || rake.route[0];
-            }
-          }
-
-          return {
-            ...rake,
-            currentStation: curr,
-            nextStation: next,
-            progress: nextProgress,
-            speedKmh: Math.max(35, Math.min(110, rake.speedKmh + (Math.random() * 6 - 3))),
-          };
+          return [];
         })
-      );
-    }, 1500);
+        .catch(() => []);
 
-    return () => clearInterval(interval);
-  }, [isSimulating]);
-  
-  // Compute interpolated train coordinate
-  const getRakePosition = (rake: LiveRake) => {
-    const posA = STATION_POSITIONS[rake.currentStation] || { x: 220, y: 190 };
-    const posB = STATION_POSITIONS[rake.nextStation] || { x: 330, y: 170 };
-    const t = rake.progress / 100;
-    return {
-      x: posA.x + (posB.x - posA.x) * t,
-      y: posA.y + (posB.y - posA.y) * t,
+      const livePromise = fetch(`http://localhost:5000/api/trains/${selectedRakeNumber}/live-ntes`)
+        .then((res) => res.json())
+        .catch(() => null);
+
+      Promise.all([routePromise, livePromise])
+        .then(([dbRoute, ntesPayload]) => {
+          const body = ntesPayload?.body || ntesPayload;
+          const stationsArray: any[] = body?.stations || [];
+
+          setLiveNtesData({
+            source: ntesPayload?.source || 'RAPIDAPI_NTES_LIVE',
+            current_station: body?.current_station,
+            current_station_name: body?.current_station_name,
+            train_status_message: body?.train_status_message,
+            terminated: body?.terminated ?? false,
+            delay_minutes: body?.delay_minutes ?? 0,
+            speed_kmh: body?.speed_kmh ?? 78,
+            latitude: body?.latitude,
+            longitude: body?.longitude,
+            stations: stationsArray,
+          });
+
+          let cleanStops: RouteStop[] = [];
+
+          if (stationsArray.length > 0) {
+            cleanStops = stationsArray
+              .map((st: any, idx: number) => {
+                const matched = stationLookup.get((st.stationCode || '').toUpperCase());
+                const isPassed =
+                  st.status === 'PASSED' ||
+                  (st.actual_departure_time && st.actual_departure_time !== '--') ||
+                  (st.actual_arrival_time && st.actual_arrival_time !== '--');
+
+                return {
+                  stop_sequence: idx + 1,
+                  station_code: st.stationCode,
+                  station_name: st.stationName || matched?.name || st.stationCode,
+                  latitude: matched?.lat || 0,
+                  longitude: matched?.lon || 0,
+                  scheduled_arrival: st.arrivalTime,
+                  scheduled_departure: st.departureTime,
+                  actual_time: st.actual_departure_time || st.actual_arrival_time,
+                  hasPassed: isPassed,
+                };
+              })
+              .filter((s: RouteStop) => s.latitude !== 0 && s.longitude !== 0);
+          } else {
+            cleanStops = dbRoute;
+          }
+
+          setRouteStops(cleanStops);
+
+          // Find exact last station the train crossed
+          let lastPassed = 0;
+          cleanStops.forEach((st, idx) => {
+            if (st.hasPassed) lastPassed = idx;
+          });
+
+          const curCode = (body?.current_station || '').toUpperCase();
+          if (curCode) {
+            const foundIdx = cleanStops.findIndex((s) => s.station_code.toUpperCase() === curCode);
+            if (foundIdx !== -1) lastPassed = Math.max(lastPassed, foundIdx);
+          }
+
+          setPassedStationIdx(lastPassed);
+          progressRef.current = 0;
+        })
+        .finally(() => setIsLoadingNtes(false));
     };
-  };
 
-  const getSignalColor = (aspect: LiveRake['signalAspect']) => {
-    switch (aspect) {
-      case 'GREEN':
-        return '#10B981';
-      case 'DOUBLE_YELLOW':
-        return '#F59E0B';
-      case 'YELLOW':
-        return '#EAB308';
-      case 'RED':
-        return '#EF4444';
-      default:
-        return '#10B981';
+    loadLiveTrain();
+    const pollInterval = setInterval(loadLiveTrain, 30000);
+    return () => clearInterval(pollInterval);
+  }, [selectedRakeNumber, stationLookup]);
+
+  const rakeList = trains ? Object.values(trains) : [];
+  const telemetryRake = rakeList.find((r) => r.trainNumber === selectedRakeNumber);
+
+  const filteredStations =
+    selectedZone === 'ALL'
+      ? stations
+      : stations.filter((stn) => stn.zone?.toUpperCase() === selectedZone.toUpperCase());
+
+  // Physical Live Movement Loop
+  useEffect(() => {
+    if (!routeStops || routeStops.length === 0) return;
+
+    const fromIdx = Math.min(passedStationIdx, routeStops.length - 1);
+    const toIdx = Math.min(fromIdx + 1, routeStops.length - 1);
+
+    const fromStop = routeStops[fromIdx];
+    const toStop = routeStops[toIdx];
+
+    if (!fromStop || !toStop) return;
+
+    if (fromIdx === toIdx) {
+      setAnimatedPos([fromStop.latitude, fromStop.longitude]);
+      return;
     }
-  };
+
+    let animId: number;
+    let lastTime = performance.now();
+
+    const glideTrain = (now: number) => {
+      const deltaSec = (now - lastTime) / 1000;
+      lastTime = now;
+
+      progressRef.current = (progressRef.current + deltaSec * 0.012) % 1;
+      const t = progressRef.current;
+
+      const lat = fromStop.latitude + t * (toStop.latitude - fromStop.latitude);
+      const lon = fromStop.longitude + t * (toStop.longitude - fromStop.longitude);
+
+      setAnimatedPos([lat, lon]);
+      animId = requestAnimationFrame(glideTrain);
+    };
+
+    animId = requestAnimationFrame(glideTrain);
+    return () => cancelAnimationFrame(animId);
+  }, [routeStops, passedStationIdx]);
+
+  // Current Station Display
+  const currentStationDisplay = useMemo(() => {
+    if (!routeStops || routeStops.length === 0) {
+      return { code: 'EN ROUTE', name: 'In Transit' };
+    }
+    const stop = routeStops[Math.min(passedStationIdx, routeStops.length - 1)];
+    return { code: stop.station_code, name: stop.station_name };
+  }, [routeStops, passedStationIdx]);
+
+  // Next Upcoming Station
+  const nextStationDisplay = useMemo(() => {
+    if (!routeStops || passedStationIdx >= routeStops.length - 1) return null;
+    const nxt = routeStops[passedStationIdx + 1];
+    return { code: nxt.station_code, name: nxt.station_name };
+  }, [routeStops, passedStationIdx]);
+
+  const routePolylineCoords: [number, number][] = useMemo(() => {
+    return routeStops.map((s) => [s.latitude, s.longitude]);
+  }, [routeStops]);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 lg:p-8">
-      {/* Top Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-800 pb-5">
-        <div>
-          <div className="flex items-center gap-3">
-            <span className="p-2 bg-teal-500/10 border border-teal-500/30 rounded-xl text-teal-400">
-              <Radio className="w-6 h-6 animate-pulse" />
+    <div className="h-[calc(100vh-4rem)] flex flex-col bg-[#0a0e17] text-slate-100 font-sans overflow-hidden">
+      {/* Top Banner */}
+      {activeAlerts && activeAlerts.length > 0 && (
+        <div className="bg-rose-950/40 border-b border-rose-900/60 px-6 py-2 flex items-center justify-between text-xs font-mono">
+          <div className="flex items-center gap-2 text-rose-300">
+            <span className="h-2 w-2 rounded-full bg-rose-500 animate-ping" />
+            <strong>ST-GNN Cascading Delay Alert:</strong>
+            <span>
+              Delayed Train {activeAlerts[0].delayed_train} (+{activeAlerts[0].cascade_risk || 12}m) impacting corridor headway.
             </span>
-            <div>
-              <h1 className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
-                Bengaluru Corridor Live Network Map
-              </h1>
-              <p className="text-xs text-slate-400">
-                Real-time train positions, signal states and delay propagation across the Bengaluru corridor.
-              </p>
-            </div>
           </div>
-        </div>
-
-        {/* Controls */}
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setIsSimulating(!isSimulating)}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition border ${
-              isSimulating
-                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20'
-                : 'bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20'
-            }`}
-          >
-            {isSimulating ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-            {isSimulating ? 'Simulation Active' : 'Simulation Paused'}
-          </button>
-
-          <button
-            onClick={() => {
-              predictCorridorGNN('12627', { '12627': 18.0 });
-            }}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold transition border border-slate-700"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-            Sync GNN
-          </button>
-        </div>
-      </div>
-
-      {/* Bottleneck Alert Banner */}
-      {bottleneckAlerts.length > 0 && (
-        <div className="mt-4 p-3.5 bg-red-950/40 border border-red-500/40 rounded-xl flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <ShieldAlert className="w-5 h-5 text-red-400 flex-shrink-0" />
-            <div>
-              <div className="text-xs font-bold text-red-300 flex items-center gap-2">
-                <span>ST-GNN Cascading Delay Detected at {bottleneckAlerts[0].bottleneck_station}</span>
-                <span className="px-2 py-0.5 bg-red-900/60 rounded text-[10px] text-red-200">
-                  Risk: {(bottleneckAlerts[0].downstream_cascade_risk * 100).toFixed(0)}%
-                </span>
-              </div>
-              <p className="text-xs text-red-200/80 mt-0.5">
-                {bottleneckAlerts[0].recommendation ||
-                  `Delayed Train ${bottleneckAlerts[0].delayed_train} (+${bottleneckAlerts[0].predicted_delay_min}m) impacting trailing rakes: ${bottleneckAlerts[0].affected_trains.join(', ')}.`}
-              </p>
-            </div>
-          </div>
-          <span className="text-[10px] uppercase tracking-wider px-2 py-1 bg-red-500/20 text-red-300 rounded border border-red-500/30 whitespace-nowrap">
-            Delay Alert Active
+          <span className="text-rose-400 bg-rose-900/40 px-2 py-0.5 rounded border border-rose-800">
+            SECTION COPILOT ACTIVE
           </span>
         </div>
       )}
 
-      {/* Main Grid: Schematic View + Inspector */}
-      <div className="mt-6 grid grid-cols-1 xl:grid-cols-4 gap-6">
-        {/* Left 3 Cols: Interactive Schematic Network SVG */}
-        <div className="xl:col-span-3 bg-slate-900/80 border border-slate-800 rounded-2xl p-4 overflow-hidden relative shadow-2xl">
-          {/* Schematic Overlay Legend */}
-          <div className="absolute top-4 left-4 z-10 flex flex-wrap gap-2 text-xs">
-            <span className="px-2.5 py-1 bg-slate-950/80 backdrop-blur border border-slate-700 rounded-lg text-slate-300 flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-teal-400" />
-              Trunk SBC ➔ BWT (East)
-            </span>
-            <span className="px-2.5 py-1 bg-slate-950/80 backdrop-blur border border-slate-700 rounded-lg text-slate-300 flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-blue-400" />
-              Branch SBC ➔ MYS (South)
-            </span>
-            <span className="px-2.5 py-1 bg-slate-950/80 backdrop-blur border border-slate-700 rounded-lg text-slate-300 flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
-              Active GNN Choke Point
-            </span>
-          </div>
+      {/* Main Grid View */}
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
+        <div className="flex-1 h-full relative">
+          {/* Top Control Bar */}
+          <div className="absolute top-4 left-4 z-[1000] flex flex-wrap items-center gap-2 bg-[#111622]/90 backdrop-blur border border-slate-800 p-2.5 rounded-xl shadow-xl">
+            <span className="text-xs font-mono text-slate-400">ZONE:</span>
+            {['ALL', 'SWR', 'NR', 'NCR', 'ER', 'SR', 'WR', 'CR'].map((zone) => (
+              <button
+                key={zone}
+                onClick={() => setSelectedZone(zone)}
+                className={`px-2 py-0.5 rounded text-xs font-mono cursor-pointer transition ${selectedZone === zone ? 'bg-indigo-600 text-white font-bold' : 'text-slate-400 bg-slate-800/60 hover:text-white'
+                  }`}
+              >
+                {zone}
+              </button>
+            ))}
 
-          <div className="overflow-x-auto">
-            <svg
-              viewBox="0 0 1050 560"
-              className="w-full min-w-[720px] h-auto select-none"
-              style={{ background: 'radial-gradient(ellipse at 40% 30%, #0f172a 0%, #020617 100%)' }}
+            <div className="h-4 w-px bg-slate-700 mx-1" />
+
+            {/* Train Search Form */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (customSearch.trim()) {
+                  setFollowTrain(false);
+                  setSelectedRakeNumber(customSearch.trim());
+                }
+              }}
+              className="flex items-center gap-1.5"
             >
-              {/* Background Grid Accent */}
-              <defs>
-                <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                  <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(51, 65, 85, 0.15)" strokeWidth="1" />
-                </pattern>
-                <linearGradient id="trunkGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="#14B8A6" />
-                  <stop offset="50%" stopColor="#0EA5E9" />
-                  <stop offset="100%" stopColor="#6366F1" />
-                </linearGradient>
-                <linearGradient id="mysuruGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%" stopColor="#14B8A6" />
-                  <stop offset="100%" stopColor="#3B82F6" />
-                </linearGradient>
-              </defs>
-
-              <rect width="1050" height="560" fill="url(#grid)" />
-
-              {/* 1. Track Lines */}
-              {/* SBC -> YPR (North) */}
-              <line
-                x1={STATION_POSITIONS.SBC.x}
-                y1={STATION_POSITIONS.SBC.y}
-                x2={STATION_POSITIONS.YPR.x}
-                y2={STATION_POSITIONS.YPR.y}
-                stroke="#64748B"
-                strokeWidth="5"
-                strokeDasharray="4,4"
+              <input
+                type="text"
+                placeholder="Enter Train (e.g. 12860, 12627)"
+                value={customSearch}
+                onChange={(e) => setCustomSearch(e.target.value)}
+                className="bg-[#161c2b] border border-slate-700 px-2.5 py-1 rounded text-xs font-mono text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 w-44"
               />
+              <button
+                type="submit"
+                className="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1 rounded text-xs font-mono font-bold cursor-pointer transition shadow-lg shadow-indigo-600/30"
+              >
+                TRACK
+              </button>
+            </form>
 
-              {/* Eastward Trunk: SBC -> BNC -> BNCE -> BYPL -> KJM -> WFD -> MLO -> BWT */}
-              <path
-                d={`M ${STATION_POSITIONS.SBC.x} ${STATION_POSITIONS.SBC.y}
-                    L ${STATION_POSITIONS.BNC.x} ${STATION_POSITIONS.BNC.y}
-                    L ${STATION_POSITIONS.BNCE.x} ${STATION_POSITIONS.BNCE.y}
-                    L ${STATION_POSITIONS.BYPL.x} ${STATION_POSITIONS.BYPL.y}
-                    L ${STATION_POSITIONS.KJM.x} ${STATION_POSITIONS.KJM.y}
-                    L ${STATION_POSITIONS.WFD.x} ${STATION_POSITIONS.WFD.y}
-                    L ${STATION_POSITIONS.MLO.x} ${STATION_POSITIONS.MLO.y}
-                    L ${STATION_POSITIONS.BWT.x} ${STATION_POSITIONS.BWT.y}`}
-                fill="none"
-                stroke="url(#trunkGrad)"
-                strokeWidth="6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
+            <div className="h-4 w-px bg-slate-700 mx-1" />
 
-              {/* Southward Branch: SBC -> KGI -> MYA -> MYS */}
-              <path
-                d={`M ${STATION_POSITIONS.SBC.x} ${STATION_POSITIONS.SBC.y}
-                    L ${STATION_POSITIONS.KGI.x} ${STATION_POSITIONS.KGI.y}
-                    L ${STATION_POSITIONS.MYA.x} ${STATION_POSITIONS.MYA.y}
-                    L ${STATION_POSITIONS.MYS.x} ${STATION_POSITIONS.MYS.y}`}
-                fill="none"
-                stroke="url(#mysuruGrad)"
-                strokeWidth="6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-
-              {/* 2. Station Nodes */}
-              {stations.map((st) => {
-                const pos = STATION_POSITIONS[st.id] || { x: 500, y: 250 };
-                const delay = gnnDelays[st.id] || 0;
-                const isSelected = selectedStation?.id === st.id;
-                const isChoke = st.id === 'BYPL' || st.id === 'SBC';
-
-                return (
-                  <g
-                    key={st.id}
-                    onClick={() => setSelectedStation(st)}
-                    className="cursor-pointer group"
-                  >
-                    {/* Ripple on bottleneck */}
-                    {isChoke && (
-                      <circle
-                        cx={pos.x}
-                        cy={pos.y}
-                        r="20"
-                        fill="rgba(245, 158, 11, 0.2)"
-                        className="animate-ping"
-                      />
-                    )}
-
-                    {/* Outer node circle */}
-                    <circle
-                      cx={pos.x}
-                      cy={pos.y}
-                      r={isSelected ? '12' : '9'}
-                      fill={st.is_junction ? '#38BDF8' : '#0F172A'}
-                      stroke={isSelected ? '#F8FAFC' : isChoke ? '#F59E0B' : '#14B8A6'}
-                      strokeWidth={isSelected ? '3' : '2.5'}
-                      className="transition-all duration-300 group-hover:scale-125"
-                    />
-
-                    {/* Node Center Dot */}
-                    <circle
-                      cx={pos.x}
-                      cy={pos.y}
-                      r="4"
-                      fill={isSelected ? '#0F172A' : '#F8FAFC'}
-                    />
-
-                    {/* Station Name Label */}
-                    <text
-                      x={pos.x}
-                      y={pos.y - 16}
-                      textAnchor="middle"
-                      className={`text-[11px] font-bold transition-colors ${
-                        isSelected ? 'fill-white' : 'fill-slate-300 group-hover:fill-teal-300'
-                      }`}
-                    >
-                      {st.name} ({st.id})
-                    </text>
-
-                    {/* Delay badge */}
-                    {delay > 0 && (
-                      <g transform={`translate(${pos.x - 16}, ${pos.y + 12})`}>
-                        <rect
-                          width="32"
-                          height="14"
-                          rx="3"
-                          fill={delay >= 15 ? '#EF4444' : delay >= 10 ? '#F59E0B' : '#059669'}
-                        />
-                        <text
-                          x="16"
-                          y="10.5"
-                          textAnchor="middle"
-                          fill="#FFFFFF"
-                          className="text-[9px] font-extrabold"
-                        >
-                          +{delay}m
-                        </text>
-                      </g>
-                    )}
-                  </g>
-                );
-              })}
-
-              {/* 3. Moving Trains */}
-              {rakes.map((rake) => {
-                const pos = getRakePosition(rake);
-                const isSelected = selectedRake?.id === rake.id;
-                const signalColor = getSignalColor(rake.signalAspect);
-
-                return (
-                  <g
-                    key={rake.id}
-                    onClick={() => setSelectedRake(rake)}
-                    className="cursor-pointer group"
-                    transform={`translate(${pos.x}, ${pos.y})`}
-                  >
-                    {/* Animated train shadow / glow */}
-                    <circle
-                      cx="0"
-                      cy="0"
-                      r={isSelected ? '18' : '14'}
-                      fill={signalColor}
-                      opacity="0.25"
-                      className="animate-pulse"
-                    />
-
-                    {/* Train Marker */}
-                    <rect
-                      x="-12"
-                      y="-12"
-                      width="24"
-                      height="24"
-                      rx="6"
-                      fill={isSelected ? '#F8FAFC' : '#1E293B'}
-                      stroke={signalColor}
-                      strokeWidth="2.5"
-                      className="transition-transform group-hover:scale-125"
-                    />
-
-                    {/* Icon */}
-                    <g transform="translate(-7, -7)">
-                      <TrainFront
-                        size={14}
-                        color={isSelected ? '#0F172A' : '#F8FAFC'}
-                        strokeWidth={2.5}
-                      />
-                    </g>
-
-                    {/* Train Label */}
-                    <text
-                      x="0"
-                      y="26"
-                      textAnchor="middle"
-                      className="text-[10px] font-black fill-white drop-shadow"
-                    >
-                      {rake.number} ({rake.speedKmh.toFixed(0)} km/h)
-                    </text>
-                  </g>
-                );
-              })}
-            </svg>
+            {/* Follow Train Toggle */}
+            <button
+              type="button"
+              onClick={() => setFollowTrain(!followTrain)}
+              className={`px-2.5 py-1 rounded text-xs font-mono font-bold cursor-pointer transition flex items-center gap-1.5 ${followTrain
+                  ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
+                  : 'bg-slate-800 text-slate-400 hover:text-white'
+                }`}
+            >
+              <span className={`h-2 w-2 rounded-full ${followTrain ? 'bg-white animate-pulse' : 'bg-slate-500'}`} />
+              {followTrain ? 'FOLLOWING' : 'FOLLOW TRAIN'}
+            </button>
           </div>
+
+          {/* Leaflet Map */}
+          <MapContainer
+            center={animatedPos || [20.5937, 78.9629]}
+            zoom={5}
+            style={{ height: '100%', width: '100%', backgroundColor: '#0d1117' }}
+          >
+            <MapFocusController
+              routeCoords={routePolylineCoords}
+              targetRake={selectedRakeNumber}
+            />
+
+            <CameraFollower pos={animatedPos} active={followTrain} />
+
+            <TileLayer
+              attribution='Tiles &copy; Esri &mdash; National Geographic, DeLorme, NAVTEQ'
+              url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
+              maxZoom={16}
+            />
+
+            {/* Glowing Polyline */}
+            {routePolylineCoords.length > 1 && (
+              <>
+                <Polyline
+                  positions={routePolylineCoords}
+                  pathOptions={{
+                    color: '#6366f1',
+                    weight: 6,
+                    opacity: 0.35,
+                  }}
+                />
+                <Polyline
+                  positions={routePolylineCoords}
+                  pathOptions={{
+                    color: '#818cf8',
+                    weight: 2.5,
+                    dashArray: '6, 6',
+                    opacity: 0.95,
+                  }}
+                />
+              </>
+            )}
+
+            {/* Route Stations */}
+            {(routeStops.length > 0 ? routeStops : filteredStations).map((stn: any) => {
+              const code = stn.station_code || stn.code;
+              const name = stn.station_name || stn.name;
+              const lat = stn.latitude || stn.lat;
+              const lon = stn.longitude || stn.lon;
+              const isCurrent = code === currentStationDisplay.code;
+
+              return (
+                <CircleMarker
+                  key={`stn-${code}`}
+                  center={[lat, lon]}
+                  radius={isCurrent ? 7 : 3.5}
+                  pathOptions={{
+                    color: isCurrent ? '#10b981' : '#6366f1',
+                    fillColor: isCurrent ? '#34d399' : '#818cf8',
+                    fillOpacity: 0.9,
+                    weight: isCurrent ? 2.5 : 1,
+                  }}
+                >
+                  <Popup>
+                    <div className="font-sans text-xs text-slate-900">
+                      <strong className="text-sm font-bold">{name}</strong> ({code})
+                      {stn.scheduled_arrival && (
+                        <div className="mt-1 text-slate-600">
+                          Arr: {stn.scheduled_arrival} | Dep: {stn.scheduled_departure}
+                        </div>
+                      )}
+                    </div>
+                  </Popup>
+                </CircleMarker>
+              );
+            })}
+
+            {/* Live Moving Train Marker */}
+            {animatedPos && (
+              <Marker
+                position={animatedPos}
+                icon={createMovingTrainIcon(telemetryRake?.telemetry?.signal || 'GREEN')}
+              >
+                <Popup>
+                  <div className="font-sans text-xs text-slate-900">
+                    <strong className="text-indigo-600 font-bold">Train #{selectedRakeNumber}</strong>
+                    <br />
+                    Last Passed: <strong>{currentStationDisplay.name} ({currentStationDisplay.code})</strong>
+                    {nextStationDisplay && (
+                      <div>Next Station: <strong>{nextStationDisplay.name} ({nextStationDisplay.code})</strong></div>
+                    )}
+                    Speed: <strong>{liveNtesData?.speed_kmh ?? 78} km/h</strong>
+                  </div>
+                </Popup>
+              </Marker>
+            )}
+          </MapContainer>
         </div>
 
-        {/* Right 1 Col: Live Inspector Panel */}
-        <div className="xl:col-span-1 space-y-4">
-          {/* Selected Train / Section Card */}
-          {selectedRake && (
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl">
+        {/* Right Sidebar */}
+        <div className="w-full lg:w-88 bg-[#111622] border-l border-slate-800 p-6 flex flex-col justify-between overflow-y-auto">
+          <div className="space-y-6">
+            <div>
               <div className="flex items-center justify-between">
-                <span className="text-[11px] uppercase font-bold tracking-wider text-teal-400">
-                  Monitored Rake
+                <span className="text-xs font-mono text-slate-400 uppercase tracking-wider">
+                  Live Dispatch Feed
                 </span>
                 <span
-                  className="px-2 py-0.5 rounded text-[10px] font-bold text-white"
-                  style={{ backgroundColor: getSignalColor(selectedRake.signalAspect) }}
-                >
-                  {selectedRake.signalAspect}
-                </span>
-              </div>
-
-              <h3 className="text-lg font-black text-white mt-1">{selectedRake.name}</h3>
-              <p className="text-xs text-slate-400">Train #{selectedRake.number}</p>
-
-              <div className="mt-4 grid grid-cols-2 gap-3 pt-3 border-t border-slate-800">
-                <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800/80">
-                  <span className="text-[10px] uppercase text-slate-500 font-semibold">Speed</span>
-                  <div className="text-lg font-black text-emerald-400">
-                    {selectedRake.speedKmh.toFixed(0)} <span className="text-xs font-normal">km/h</span>
-                  </div>
-                </div>
-
-                <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800/80">
-                  <span className="text-[10px] uppercase text-slate-500 font-semibold">Delay</span>
-                  <div
-                    className={`text-lg font-black ${
-                      selectedRake.delayMinutes > 10 ? 'text-red-400' : 'text-amber-400'
+                  className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono ${liveNtesData?.terminated
+                      ? 'bg-rose-950 text-rose-400 border border-rose-800'
+                      : 'bg-emerald-950 text-emerald-400 border border-emerald-800'
                     }`}
-                  >
-                    +{selectedRake.delayMinutes} <span className="text-xs font-normal">min</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4 bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs space-y-2">
-                <div className="flex justify-between items-center text-slate-300">
-                  <span>Current Block:</span>
-                  <span className="font-bold text-teal-300">{selectedRake.currentStation}</span>
-                </div>
-                <div className="flex justify-between items-center text-slate-300">
-                  <span>Next Signal:</span>
-                  <span className="font-bold text-slate-100 flex items-center gap-1">
-                    {selectedRake.nextStation} <ArrowRight className="w-3 h-3 text-slate-500" />
-                  </span>
-                </div>
-                <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden mt-1">
-                  <div
-                    className="bg-teal-500 h-full rounded-full transition-all duration-500"
-                    style={{ width: `${selectedRake.progress}%` }}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Selected Station Inspector */}
-          {selectedStation && (
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl">
-              <div className="flex justify-between items-center">
-                <span className="text-[11px] uppercase font-bold tracking-wider text-blue-400">
-                  Station Node
-                </span>
-                <span className="text-xs font-mono px-2 py-0.5 bg-blue-950 border border-blue-800 rounded text-blue-300">
-                  {selectedStation.id}
-                </span>
-              </div>
-
-              <h4 className="text-base font-bold text-white mt-1">{selectedStation.name}</h4>
-              <div className="mt-3 text-xs text-slate-300 space-y-1.5">
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Platforms:</span>
-                  <span className="font-semibold">{selectedStation.platforms || 4} Operational</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Predicted GNN Delay:</span>
-                  <span className="font-bold text-amber-400">
-                    +{gnnDelays[selectedStation.id] || 0} mins
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Coordinates:</span>
-                  <span className="font-mono text-[11px]">
-                    {selectedStation.lat.toFixed(3)}, {selectedStation.lon.toFixed(3)}
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Real-time Telemetry Stream Quick Log */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2 mb-3">
-              <Activity className="w-4 h-4 text-teal-400" />
-              Live Corridor Telemetry
-            </h4>
-            <div className="space-y-2 text-xs font-mono">
-              {rakes.map((r) => (
-                <div
-                  key={r.id}
-                  onClick={() => setSelectedRake(r)}
-                  className={`p-2 rounded-lg border cursor-pointer transition flex items-center justify-between ${
-                    selectedRake?.id === r.id
-                      ? 'bg-teal-950/40 border-teal-500/50 text-teal-200'
-                      : 'bg-slate-950 border-slate-800/80 text-slate-400 hover:border-slate-700'
-                  }`}
                 >
-                  <div>
-                    <span className="font-bold text-white">{r.number}</span>
-                    <span className="ml-2 text-[10px] text-slate-500">{r.currentStation}➔{r.nextStation}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] text-emerald-400 font-bold">{r.speedKmh.toFixed(0)} km/h</span>
-                    <span
-                      className="w-2 h-2 rounded-full"
-                      style={{ backgroundColor: getSignalColor(r.signalAspect) }}
-                    />
-                  </div>
+                  {isLoadingNtes ? 'SYNCING...' : liveNtesData?.terminated ? 'TERMINATED' : 'LIVE RUNNING'}
+                </span>
+              </div>
+              <h2 className="text-xl font-bold text-white mt-1">Train #{selectedRakeNumber}</h2>
+
+              <p className="text-xs text-slate-300 font-mono mt-1 flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
+                <span>
+                  Passed {currentStationDisplay.code}
+                  {nextStationDisplay ? ` • Approaching ${nextStationDisplay.name}` : ''}
+                </span>
+              </p>
+            </div>
+
+            {/* Metrics */}
+            <div className="grid grid-cols-2 gap-3 font-mono">
+              <div className="p-3 bg-[#161c2b] border border-slate-800 rounded-xl">
+                <span className="text-[10px] text-slate-500 uppercase">Last Crossed</span>
+                <div className="text-base font-bold text-white mt-0.5 truncate">
+                  {currentStationDisplay.code}
                 </div>
+                <div className="text-[10px] text-slate-400 truncate mt-0.5">
+                  {currentStationDisplay.name}
+                </div>
+              </div>
+
+              <div className="p-3 bg-[#161c2b] border border-slate-800 rounded-xl">
+                <span className="text-[10px] text-slate-500 uppercase">Live Delay</span>
+                <div className="text-lg font-bold text-amber-400 mt-0.5">
+                  +{liveNtesData?.delay_minutes ?? 0} <span className="text-xs font-normal text-slate-400">min</span>
+                </div>
+              </div>
+
+              <div className="p-3 bg-[#161c2b] border border-slate-800 rounded-xl">
+                <span className="text-[10px] text-slate-500 uppercase">Speed</span>
+                <div className="text-lg font-bold text-white mt-0.5">
+                  {liveNtesData?.speed_kmh ?? 78} <span className="text-xs font-normal text-slate-400">km/h</span>
+                </div>
+              </div>
+
+              <div className="p-3 bg-[#161c2b] border border-slate-800 rounded-xl">
+                <span className="text-[10px] text-slate-500 uppercase">Mapped Stops</span>
+                <div className="text-lg font-bold text-indigo-400 mt-0.5">
+                  {routeStops.length || 0}
+                </div>
+              </div>
+            </div>
+
+            {/* Route Stops Pathway Timeline */}
+            <div>
+              <span className="text-[11px] font-mono uppercase text-slate-400 block mb-2">
+                Route Stops Pathway
+              </span>
+              <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
+                {routeStops.map((st: any, idx: number) => {
+                  const isCurrent = idx === passedStationIdx;
+
+                  return (
+                    <div
+                      key={idx}
+                      className={`p-2 rounded text-xs font-mono flex items-center justify-between border ${isCurrent
+                          ? 'bg-indigo-950/80 border-indigo-500 text-white font-bold'
+                          : st.hasPassed
+                            ? 'bg-[#121722] border-slate-900 text-slate-500'
+                            : 'bg-[#161c2b] border-slate-800/80 text-slate-300'
+                        }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`h-1.5 w-1.5 rounded-full ${isCurrent
+                              ? 'bg-emerald-400 animate-ping'
+                              : st.hasPassed
+                                ? 'bg-slate-600'
+                                : 'bg-indigo-400'
+                            }`}
+                        />
+                        <span className={isCurrent ? 'text-white font-bold' : ''}>{st.station_code}</span>
+                        <span className="text-[10px] text-slate-500 truncate max-w-[120px]">{st.station_name}</span>
+                      </div>
+                      <span className="text-[10px]">
+                        {st.actual_time && st.actual_time !== '--'
+                          ? st.actual_time
+                          : st.scheduled_arrival || 'Pass'}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Select Buttons */}
+          <div className="mt-6 pt-4 border-t border-slate-800">
+            <span className="text-[11px] font-mono uppercase text-slate-400 block mb-2">
+              Corridor Hotlist
+            </span>
+            <div className="grid grid-cols-4 gap-1.5">
+              {['12860', '12627', '20608', '12051'].map((no) => (
+                <button
+                  key={no}
+                  onClick={() => {
+                    setFollowTrain(false);
+                    setCustomSearch(no);
+                    setSelectedRakeNumber(no);
+                  }}
+                  className={`py-1.5 rounded border text-xs font-mono text-center transition cursor-pointer ${selectedRakeNumber === no
+                      ? 'bg-indigo-600 text-white font-bold border-indigo-500'
+                      : 'bg-[#161c2b] border-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                >
+                  #{no}
+                </button>
               ))}
             </div>
           </div>

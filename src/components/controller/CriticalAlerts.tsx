@@ -164,37 +164,56 @@ function CriticalAlerts({ alerts }: CriticalAlertsProps) {
 
       <div className="divide-y divide-[#16364A] max-h-[360px] overflow-y-auto">
         {displayAlerts.map((alert, index) => {
-          const message =
-            typeof alert.message === "string"
-              ? alert.message
-              : typeof alert.description === "string"
-                ? alert.description
-                : typeof alert.reason === "string"
-                  ? alert.reason
-                  : "Operational event detected"
+          let message = "Operational headway caution in effect across section"
+          if (
+            typeof alert.message === "string" &&
+            alert.message.trim() &&
+            alert.message !== "Operational event detected"
+          ) {
+            message = alert.message
+          } else if (typeof alert.description === "string" && alert.description.trim()) {
+            message = alert.description
+          } else if (typeof alert.reason === "string" && alert.reason.trim()) {
+            message = alert.reason
+          } else if ((alert as any).dispatcher_precedence_action?.advisory_directive) {
+            message = (alert as any).dispatcher_precedence_action.advisory_directive
+          } else if ((alert as any).delayed_train) {
+            const stn = (alert as any).bottleneck_station || "Section Junction"
+            const tName = (alert as any).delayed_train_name || `Train ${(alert as any).delayed_train}`
+            const dMin = (alert as any).predicted_delay_min || 5
+            message = `Convergence alert at ${stn}: ${tName} delayed by +${dMin} min creating downstream cascade risk.`
+          }
 
           const type =
             typeof alert.type === "string"
               ? alert.type
               : typeof alert.severity === "string"
                 ? alert.severity
-                : "warning"
+                : (alert as any).delayed_train
+                  ? "Junction Precedence"
+                  : "Operational Warning"
 
           const trainNumber =
             typeof alert.train_number === "string"
               ? alert.train_number
               : typeof alert.trainNumber === "string"
                 ? alert.trainNumber
-                : null
+                : (alert as any).delayed_train
+                  ? String((alert as any).delayed_train)
+                  : null
 
           const timestamp =
-            typeof alert.time === "string"
-              ? alert.time
-              : typeof alert.timestamp === "string"
-                ? alert.timestamp
+            typeof alert.timestamp === "string"
+              ? alert.timestamp
+              : typeof alert.time === "string"
+                ? alert.time
                 : "Just now"
 
-          const alertId = (alert.id as string) || (alert.location as string) || (trainNumber ? `TRN-${trainNumber}` : `ALT-${index + 1}`)
+          const alertId =
+            (alert.id as string) ||
+            ((alert as any).bottleneck_station ? `ALT-${(alert as any).bottleneck_station}-${index + 1}` : null) ||
+            (trainNumber ? `TRN-${trainNumber}` : `ALT-${index + 1}`)
+
           const isCritical =
             type.toLowerCase() === "critical" ||
             type.toLowerCase() === "error" ||

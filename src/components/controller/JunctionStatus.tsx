@@ -5,17 +5,13 @@ import {
   TrainFront,
 } from "lucide-react"
 import { Link } from "react-router-dom"
+import type { JunctionTelemetry } from "../../services/telemetryEngine"
 
-interface Junction {
-  name: string
-  code: string
-  load: number
-  approaching: number
-  activeRoutes: number
-  status: "Normal" | "Busy" | "Congested"
+interface JunctionStatusProps {
+  junctionsData?: JunctionTelemetry[]
 }
 
-const junctions: Junction[] = [
+const baselineJunctions: JunctionTelemetry[] = [
   {
     name: "Krishnarajapuram",
     code: "KJM",
@@ -42,24 +38,33 @@ const junctions: Junction[] = [
   },
 ]
 
-function JunctionStatus() {
+function JunctionStatus({ junctionsData }: JunctionStatusProps) {
+  const junctions = junctionsData && junctionsData.length > 0 ? junctionsData : baselineJunctions
+
   return (
     <section className="overflow-hidden rounded-xl border border-[#16364A] bg-[#0A2036]">
       <div className="border-b border-[#16364A] px-5 py-4">
-        <div className="flex items-center gap-2">
-          <GitBranch
-            size={17}
-            className="text-[#F59E0B]"
-          />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <GitBranch
+              size={17}
+              className="text-[#F59E0B]"
+            />
 
-          <div>
-            <h3 className="text-sm font-bold text-white">
-              Junction Status
-            </h3>
+            <div>
+              <h3 className="text-sm font-bold text-white">
+                Junction Status
+              </h3>
 
-            <p className="mt-1 text-xs text-[#71899C]">
-              Current traffic pressure across monitored junctions.
-            </p>
+              <p className="mt-1 text-xs text-[#71899C]">
+                Current traffic pressure across monitored junctions.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 text-[10px] font-bold text-emerald-400">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span>LIVE SENSORS</span>
           </div>
         </div>
       </div>
@@ -88,7 +93,7 @@ function JunctionStatus() {
                       size={12}
                       className="text-[#0E7C86]"
                     />
-                    {junction.approaching} approaching
+                    <span className="font-semibold text-white">{junction.approaching}</span> approaching
                   </div>
 
                   <div className="flex items-center gap-1.5 text-[10px] text-[#AFC0D4]">
@@ -96,13 +101,13 @@ function JunctionStatus() {
                       size={12}
                       className="text-[#0E7C86]"
                     />
-                    {junction.activeRoutes} active routes
+                    <span className="font-semibold text-white">{junction.activeRoutes}</span> active routes
                   </div>
                 </div>
               </div>
 
               <span
-                className={`shrink-0 rounded-md border px-2 py-1 text-[9px] font-bold uppercase tracking-wide ${
+                className={`shrink-0 rounded-md border px-2 py-1 text-[9px] font-bold uppercase tracking-wide transition-colors duration-300 ${
                   junction.status === "Congested"
                     ? "border-red-500/40 bg-red-500/10 text-red-300"
                     : junction.status === "Busy"
@@ -127,14 +132,14 @@ function JunctionStatus() {
                   </span>
                 </div>
 
-                <span className="text-[10px] font-bold text-[#D7E5EC]">
+                <span className="text-[10px] font-bold text-[#D7E5EC] transition-all">
                   {junction.load}%
                 </span>
               </div>
 
               <div className="h-1.5 overflow-hidden rounded-full bg-[#071A33]">
                 <div
-                  className={`h-full rounded-full ${
+                  className={`h-full rounded-full transition-all duration-700 ${
                     junction.load >= 80
                       ? "bg-red-500"
                       : junction.load >= 65
