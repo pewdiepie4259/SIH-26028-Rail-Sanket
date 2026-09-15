@@ -101,9 +101,30 @@ export function initializeDatabase(db, callback) {
             employee_id TEXT,
             department TEXT,
             operational_role TEXT,
+            emergency_contact_name TEXT,
+            emergency_contact_phone TEXT,
+            emergency_relationship TEXT,
+            blood_group TEXT,
+            address TEXT,
+            dob TEXT,
+            gender TEXT,
             status TEXT DEFAULT 'active',
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )`);
+
+        // Safe migration for existing users table
+        const userCols = [
+            'emergency_contact_name TEXT',
+            'emergency_contact_phone TEXT',
+            'emergency_relationship TEXT',
+            'blood_group TEXT',
+            'address TEXT',
+            'dob TEXT',
+            'gender TEXT'
+        ];
+        userCols.forEach(col => {
+            db.run(`ALTER TABLE users ADD COLUMN ${col}`, () => {});
+        });
 
         // 7. Employee Applications Table (Self-Registration Queue)
         db.run(`CREATE TABLE IF NOT EXISTS employee_applications (

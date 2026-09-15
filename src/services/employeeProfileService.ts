@@ -306,9 +306,11 @@ export function getRoleProfileViewData(user: AuthUser | null): RoleProfileViewDa
   const email = user?.email || (isController ? "controller@raildrishti.gov.in" : "employee@raildrishti.gov.in");
   const phone = user?.phone || "+91 98450 22104";
   const emergencyContact = user?.emergencyContactPhone
-    ? `${user.emergencyContactName || "Spouse"} (${user.emergencyContactPhone})`
-    : "S. Sharma (Spouse) - +91 98450 99812";
-  const bloodGroup = user?.dob || "O+ Positive";
+    ? `${user.emergencyContactName ? `${user.emergencyContactName} (${user.emergencyRelationship || "Spouse"})` : (user.emergencyRelationship || "Spouse")} - ${user.emergencyContactPhone}`
+    : user?.emergencyContactName
+    ? `${user.emergencyContactName} (${user.emergencyRelationship || "Spouse"})`
+    : "Not Registered (Click Edit to Add)";
+  const bloodGroup = user?.bloodGroup || user?.dob || "O+ Positive";
   const residentialAddress =
     user?.address || "Type-IV Qtr #42B, Railway Colony, New Delhi Junction (NDLS)";
 

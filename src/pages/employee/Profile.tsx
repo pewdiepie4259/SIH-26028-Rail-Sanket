@@ -39,7 +39,7 @@ import {
   Lock,
   ShieldAlert,
 } from "lucide-react";
-import { getCurrentUser, logout, updateCurrentUser, type AuthUser } from "../../services/auth";
+import { getCurrentUser, logout, updateCurrentUser, fetchLatestUserProfile, type AuthUser } from "../../services/auth";
 import {
   getRoleProfileViewData,
   type RoleProfileViewData,
@@ -67,13 +67,15 @@ export default function EmployeeProfile() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
 
-  // Edit Profile Form State (Only personal contact fields editable; system/role fields locked)
+  // Edit Profile Form State (Personal and emergency/spouse contact fields editable)
   const [editForm, setEditForm] = useState({
-    name: profileData.name,
-    phone: profileData.phone,
-    emergencyContact: profileData.emergencyContact,
-    residentialAddress: profileData.residentialAddress,
-    bloodGroup: profileData.bloodGroup,
+    name: currentUser?.name || profileData.name,
+    phone: currentUser?.phone || profileData.phone,
+    emergencyContactName: currentUser?.emergencyContactName || "",
+    emergencyRelationship: currentUser?.emergencyRelationship || "Spouse",
+    emergencyContactPhone: currentUser?.emergencyContactPhone || "",
+    residentialAddress: currentUser?.address || profileData.residentialAddress,
+    bloodGroup: currentUser?.bloodGroup || profileData.bloodGroup || "O+ Positive",
   });
 
   // Change Password Form State
@@ -85,16 +87,55 @@ export default function EmployeeProfile() {
   const [showPassword, setShowPassword] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
 
-  // Sync edit form with profile data when updated
+  // Sync edit form with profile data and currentUser when updated
   useEffect(() => {
     setEditForm({
-      name: profileData.name,
-      phone: profileData.phone,
-      emergencyContact: profileData.emergencyContact,
-      residentialAddress: profileData.residentialAddress,
-      bloodGroup: profileData.bloodGroup,
+      name: currentUser?.name || profileData.name,
+      phone: currentUser?.phone || profileData.phone,
+      emergencyContactName: currentUser?.emergencyContactName || "",
+      emergencyRelationship: currentUser?.emergencyRelationship || "Spouse",
+      emergencyContactPhone: currentUser?.emergencyContactPhone || "",
+      residentialAddress: currentUser?.address || profileData.residentialAddress,
+      bloodGroup: currentUser?.bloodGroup || profileData.bloodGroup || "O+ Positive",
     });
-  }, [profileData]);
+  }, [currentUser, profileData]);
+
+  // Fetch latest database profile on load to ensure cross-session persistence
+  useEffect(() => {
+    if (currentUser?.id || currentUser?.email) {
+      fetchLatestUserProfile(currentUser.id || currentUser.email).then((fresh) => {
+        if (fresh) {
+          setCurrentUser(fresh);
+        }
+      });
+    }
+  }, []);
+
+  // Listen to external auth updates & BroadcastChannel across tabs
+  useEffect(() => {
+    const handleAuthChange = () => {
+      const u = getCurrentUser();
+      if (u) setCurrentUser(u);
+    };
+    window.addEventListener("raildrishti_auth_changed", handleAuthChange);
+
+    let bc: BroadcastChannel | null = null;
+    try {
+      bc = new BroadcastChannel("raildrishti_auth_channel");
+      bc.onmessage = (ev) => {
+        if (ev.data?.type === "PROFILE_UPDATED" && ev.data?.user) {
+          if (ev.data.user.id === currentUser?.id || ev.data.user.email === currentUser?.email) {
+            setCurrentUser(ev.data.user);
+          }
+        }
+      };
+    } catch {}
+
+    return () => {
+      window.removeEventListener("raildrishti_auth_changed", handleAuthChange);
+      if (bc) bc.close();
+    };
+  }, [currentUser?.id, currentUser?.email]);
 
   // Live IST Clock
   useEffect(() => {
@@ -124,7 +165,7 @@ export default function EmployeeProfile() {
     navigate("/employee/login", { replace: true });
   };
 
-  // Handle Edit Profile Submission (Persists to auth storage)
+  // Handle Edit Profile Submission (Persists to auth storage and SQLite DB)
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser) return;
@@ -134,14 +175,16 @@ export default function EmployeeProfile() {
       name: editForm.name.trim() || currentUser.name,
       phone: editForm.phone.trim() || currentUser.phone,
       address: editForm.residentialAddress.trim() || currentUser.address,
-      emergencyContactPhone: editForm.emergencyContact.trim(),
-      dob: editForm.bloodGroup.trim(),
+      emergencyContactName: editForm.emergencyContactName.trim(),
+      emergencyRelationship: editForm.emergencyRelationship.trim() || "Spouse",
+      emergencyContactPhone: editForm.emergencyContactPhone.trim(),
+      bloodGroup: editForm.bloodGroup.trim(),
     };
 
     updateCurrentUser(updatedUser);
     setCurrentUser(updatedUser);
     setIsEditModalOpen(false);
-    showToast("Profile records updated and saved successfully.");
+    showToast("Profile & emergency contact records saved to database successfully.");
   };
 
   // Handle Change Password Submission
@@ -923,26 +966,72 @@ export default function EmployeeProfile() {
                 />
               </div>
 
-              {/* Emergency Contact */}
-              <div>
-                <label className="block text-slate-300 font-semibold mb-1">Emergency Contact</label>
-                <input
-                  type="text"
-                  value={editForm.emergencyContact}
-                  onChange={(e) => setEditForm({ ...editForm, emergencyContact: e.target.value })}
-                  className="w-full bg-[#0A2036] border border-[#16364A] rounded-xl px-3.5 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-teal-400"
-                />
+              {/* Spouse / Emergency Contact Name */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">
+                    Spouse / Emergency Contact Name
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Priya Sharma"
+                    value={editForm.emergencyContactName}
+                    onChange={(e) => setEditForm({ ...editForm, emergencyContactName: e.target.value })}
+                    className="w-full bg-[#0A2036] border border-[#16364A] rounded-xl px-3.5 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-teal-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">
+                    Relationship
+                  </label>
+                  <select
+                    value={editForm.emergencyRelationship}
+                    onChange={(e) => setEditForm({ ...editForm, emergencyRelationship: e.target.value })}
+                    className="w-full bg-[#0A2036] border border-[#16364A] rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-teal-400"
+                  >
+                    <option value="Spouse">Spouse</option>
+                    <option value="Parent">Parent</option>
+                    <option value="Sibling">Sibling</option>
+                    <option value="Child">Child</option>
+                    <option value="Guardian">Guardian</option>
+                    <option value="Other">Other Family / Next of Kin</option>
+                  </select>
+                </div>
               </div>
 
-              {/* Blood Group */}
-              <div>
-                <label className="block text-slate-300 font-semibold mb-1">Blood Group</label>
-                <input
-                  type="text"
-                  value={editForm.bloodGroup}
-                  onChange={(e) => setEditForm({ ...editForm, bloodGroup: e.target.value })}
-                  className="w-full bg-[#0A2036] border border-[#16364A] rounded-xl px-3.5 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-teal-400"
-                />
+              {/* Emergency Contact Phone & Blood Group */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">
+                    Emergency Contact Mobile
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="+91 98450 XXXXX"
+                    value={editForm.emergencyContactPhone}
+                    onChange={(e) => setEditForm({ ...editForm, emergencyContactPhone: e.target.value })}
+                    className="w-full bg-[#0A2036] border border-[#16364A] rounded-xl px-3.5 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-teal-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Blood Group</label>
+                  <select
+                    value={editForm.bloodGroup}
+                    onChange={(e) => setEditForm({ ...editForm, bloodGroup: e.target.value })}
+                    className="w-full bg-[#0A2036] border border-[#16364A] rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-teal-400"
+                  >
+                    <option value="O+ Positive">O+ Positive</option>
+                    <option value="O- Negative">O- Negative</option>
+                    <option value="A+ Positive">A+ Positive</option>
+                    <option value="A- Negative">A- Negative</option>
+                    <option value="B+ Positive">B+ Positive</option>
+                    <option value="B- Negative">B- Negative</option>
+                    <option value="AB+ Positive">AB+ Positive</option>
+                    <option value="AB- Negative">AB- Negative</option>
+                  </select>
+                </div>
               </div>
 
               {/* Residential Quarters / Address */}

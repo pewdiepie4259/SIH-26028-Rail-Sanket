@@ -34,6 +34,7 @@ export interface AuthUser {
   emergencyContactName?: string;
   emergencyContactPhone?: string;
   emergencyRelationship?: string;
+  bloodGroup?: string;
   preferredLanguage?: string;
   accessibilityNeeds?: string;
 }
@@ -1134,9 +1135,212 @@ export function updateCurrentUser(updatedUser: AuthUser): void {
   }
   localStorage.setItem(STORAGE_KEYS.REGISTERED_USERS, JSON.stringify(registered));
 
+  // Asynchronously persist to SQLite DB backend (Express API on port 5000)
+  try {
+    fetch("http://localhost:5000/api/user/profile", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: updatedUser.id,
+        userId: updatedUser.id,
+        name: updatedUser.name,
+        phone: updatedUser.phone,
+        emergencyContactName: updatedUser.emergencyContactName,
+        emergencyContactPhone: updatedUser.emergencyContactPhone,
+        emergencyRelationship: updatedUser.emergencyRelationship,
+        bloodGroup: updatedUser.bloodGroup,
+        address: updatedUser.address,
+        dob: updatedUser.dob,
+        gender: updatedUser.gender,
+      }),
+    }).catch(() => {});
+  } catch {}
+
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("raildrishti_auth_changed"));
+    // Also notify across tabs
+    try {
+      const channel = new BroadcastChannel("raildrishti_auth_channel");
+      channel.postMessage({ type: "PROFILE_UPDATED", user: updatedUser });
+      channel.close();
+    } catch {}
   }
+}
+
+// Fetch latest profile from SQLite DB to ensure fresh data across refreshes
+export async function fetchLatestUserProfile(userIdOrEmail: string): Promise<AuthUser | null> {
+  try {
+    const res = await fetch(`http://localhost:5000/api/user/profile/${encodeURIComponent(userIdOrEmail)}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success && data.user) {
+        return data.user as AuthUser;
+      }
+    }
+  } catch {}
+  return null;
+}
+
+// Controller function to assign operational role to an employee
+export async function assignEmployeeOperationalRole(
+  employeeId: string,
+  operationalRole: string,
+  department?: string
+): Promise<{ success: boolean; message: string; user?: any }> {
+  try {
+    const res = await fetch("http://localhost:5000/api/controller/assign-role", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        employeeId,
+        operationalRole,
+        department,
+        assignedBy: "Section Controller",
+      }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+
+      // Broadcast the role change to all open tabs and windows in real-time
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("raildrishti_role_assigned", {
+            detail: { employeeId, operationalRole, department },
+          })
+        );
+        window.dispatchEvent(new Event("raildrishti_auth_changed"));
+
+        try {
+          const channel = new BroadcastChannel("raildrishti_role_channel");
+          channel.postMessage({
+            type: "ROLE_ASSIGNED",
+            employeeId,
+            operationalRole,
+            department,
+            timestamp: Date.now(),
+          });
+          channel.close();
+        } catch {}
+
+        // If the currently logged in user matches this employee, update current session immediately
+        const current = getCurrentUser();
+        if (
+          current &&
+          (current.id === employeeId ||
+            current.employeeId === employeeId ||
+            current.email?.toLowerCase() === employeeId.toLowerCase())
+        ) {
+          const updated: AuthUser = {
+            ...current,
+            operationalRole,
+            department: department || current.department,
+          };
+          sessionStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(updated));
+          localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(updated));
+        }
+      }
+
+      return data;
+    }
+  } catch (err: any) {
+    console.error("Failed to assign role via API:", err.message);
+  }
+
+  // Fallback for offline mode: broadcast locally
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(
+      new CustomEvent("raildrishti_role_assigned", {
+        detail: { employeeId, operationalRole, department },
+      })
+    );
+    window.dispatchEvent(new Event("raildrishti_auth_changed"));
+    try {
+      const channel = new BroadcastChannel("raildrishti_role_channel");
+      channel.postMessage({
+        type: "ROLE_ASSIGNED",
+        employeeId,
+        operationalRole,
+        department,
+        timestamp: Date.now(),
+      });
+      channel.close();
+    } catch {}
+
+    const current = getCurrentUser();
+    if (
+      current &&
+      (current.id === employeeId ||
+        current.employeeId === employeeId ||
+        current.email?.toLowerCase() === employeeId.toLowerCase())
+    ) {
+      const updated: AuthUser = {
+        ...current,
+        operationalRole,
+        department: department || current.department,
+      };
+      sessionStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(updated));
+      localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(updated));
+    }
+  }
+
+  return {
+    success: true,
+    message: `Operational role '${operationalRole}' assigned and broadcasted.`,
+  };
+}
+
+// Controller function to fetch all division staff & operational assignments
+export async function fetchStaffForController(): Promise<any[]> {
+  try {
+    const res = await fetch("http://localhost:5000/api/controller/staff");
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success && Array.isArray(data.staff)) {
+        return data.staff;
+      }
+    }
+  } catch {}
+
+  // Fallback demo staff list
+  return [
+    {
+      id: "usr_emp_001",
+      employee_id: "IR-2024-8841",
+      name: "Ramesh Sharma",
+      email: "employee@raildrishti.gov.in",
+      department: "Signal & Telecommunication",
+      operational_role: "unassigned",
+      status: "active",
+    },
+    {
+      id: "usr_emp_5001",
+      employee_id: "IR-2024-5001",
+      name: "Manas Kumar",
+      email: "manas.kumar@raildrishti.gov.in",
+      department: "Signal & Telecommunication (S&T)",
+      operational_role: "signal_maintainer",
+      status: "active",
+    },
+    {
+      id: "usr_emp_5002",
+      employee_id: "IR-2024-5002",
+      name: "Krutika Girennavar",
+      email: "krutika.g@raildrishti.gov.in",
+      department: "Operations & Traffic Control",
+      operational_role: "station_master",
+      status: "active",
+    },
+    {
+      id: "usr_emp_6001",
+      employee_id: "IR-2024-6001",
+      name: "Sunil Verma",
+      email: "sunil.verma@raildrishti.gov.in",
+      department: "Civil & Track Engineering",
+      operational_role: "unassigned",
+      status: "active",
+    },
+  ];
 }
 
 export function logout(): void {

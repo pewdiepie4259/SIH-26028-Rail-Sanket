@@ -10,6 +10,7 @@ import OperationalAudit from "../../components/controller/OperationalAudit"
 import OperationalMap from "../../components/controller/OperationalMap"
 import RecommendedActions from "../../components/controller/RecommendedActions"
 import WeatherImpact from "../../components/controller/WeatherImpact"
+import StaffRosterAllotment from "../../components/controller/StaffRosterAllotment"
 
 function ControllerDashboard() {
   const { trains, activeAlerts, junctions, conflicts, networkMetrics, isConnected } = useLiveTelemetry()
@@ -146,6 +147,10 @@ function ControllerDashboard() {
 
       <div className="mt-5">
         <RecommendedActions />
+      </div>
+
+      <div className="mt-5">
+        <StaffRosterAllotment />
       </div>
 
       <div className="mt-5">

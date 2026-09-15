@@ -64,6 +64,96 @@ export default function EmployeeDashboard() {
     }
   }, [navigate]);
 
+  // Real-time synchronization with Section Controller role allotment
+  useEffect(() => {
+    const handleAuthChange = () => {
+      const u = getCurrentUser();
+      if (u) setCurrentUser(u);
+    };
+
+    const handleRoleAssigned = (e: any) => {
+      const detail = e.detail;
+      const current = getCurrentUser();
+      if (
+        current &&
+        detail &&
+        (detail.employeeId === current.id ||
+          detail.employeeId === current.employeeId ||
+          detail.employeeId?.toLowerCase() === current.email?.toLowerCase())
+      ) {
+        const updated = {
+          ...current,
+          operationalRole: detail.operationalRole,
+          department: detail.department || current.department,
+        };
+        setCurrentUser(updated);
+        setToastMessage(`Operational Role updated to ${detail.operationalRole.replace(/_/g, " ").toUpperCase()} by Section Controller`);
+      }
+    };
+
+    window.addEventListener("raildrishti_auth_changed", handleAuthChange);
+    window.addEventListener("raildrishti_role_assigned", handleRoleAssigned);
+
+    let bc: BroadcastChannel | null = null;
+    try {
+      bc = new BroadcastChannel("raildrishti_role_channel");
+      bc.onmessage = (ev) => {
+        if (ev.data?.type === "ROLE_ASSIGNED") {
+          const detail = ev.data;
+          const current = getCurrentUser();
+          if (
+            current &&
+            (detail.employeeId === current.id ||
+              detail.employeeId === current.employeeId ||
+              detail.employeeId?.toLowerCase() === current.email?.toLowerCase())
+          ) {
+            const updated = {
+              ...current,
+              operationalRole: detail.operationalRole,
+              department: detail.department || current.department,
+            };
+            setCurrentUser(updated);
+            setToastMessage(`Real-time Alert: Operational Role assigned as ${detail.operationalRole.replace(/_/g, " ").toUpperCase()}`);
+          }
+        }
+      };
+    } catch {}
+
+    // Polling fallback every 8 seconds for backend database updates
+    const pollInterval = setInterval(async () => {
+      const current = getCurrentUser();
+      const identifier = current?.id || current?.employeeId || current?.email;
+      if (!identifier) return;
+
+      try {
+        const res = await fetch(`http://localhost:5000/api/employee/status/${encodeURIComponent(identifier)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.operational_role) {
+            if (current.operationalRole !== data.operational_role) {
+              const updated = {
+                ...current,
+                operationalRole: data.operational_role,
+                department: data.department || current.department,
+              };
+              localStorage.setItem("raildrishti_auth_user", JSON.stringify(updated));
+              sessionStorage.setItem("raildrishti_auth_user", JSON.stringify(updated));
+              setCurrentUser(updated);
+              setToastMessage(`Operational Role synchronized: ${data.operational_role.replace(/_/g, " ").toUpperCase()}`);
+            }
+          }
+        }
+      } catch {}
+    }, 8000);
+
+    return () => {
+      window.removeEventListener("raildrishti_auth_changed", handleAuthChange);
+      window.removeEventListener("raildrishti_role_assigned", handleRoleAssigned);
+      if (bc) bc.close();
+      clearInterval(pollInterval);
+    };
+  }, []);
+
   // Live IST Clock
   useEffect(() => {
     const timer = setInterval(() => {

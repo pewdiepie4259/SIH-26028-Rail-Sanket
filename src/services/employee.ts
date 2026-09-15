@@ -167,7 +167,7 @@ export const demoEmployeeProfile: EmployeeProfileDemo = {
   residentialQuarters: "Type-IV Qtr #42B, SWR Colony, Majestic, Bengaluru",
   email: "employee@raildrishti.gov.in",
   phone: "+91 98450 23145",
-  emergencyContact: "+91 98450 99881 (Spouse - Sunita Sharma)",
+  emergencyContact: "+91 98450 99881 (Spouse / Emergency Contact)",
   department: "Signal & Telecommunication",
   departmentId: "signal_telecommunication",
   operationalRole: "Signal Maintainer",

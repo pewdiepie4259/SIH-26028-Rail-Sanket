@@ -8,6 +8,7 @@ import {
   FileText,
   LayoutDashboard,
   LogOut,
+  Mail,
   Menu,
   Network,
   Settings,
@@ -29,6 +30,11 @@ const navOverview: NavItem[] = [
     label: "System Dashboard",
     path: "/admin/dashboard",
     icon: LayoutDashboard,
+  },
+  {
+    label: "Official Memos & Mail",
+    path: "/admin/mail",
+    icon: Mail,
   },
 ]
 

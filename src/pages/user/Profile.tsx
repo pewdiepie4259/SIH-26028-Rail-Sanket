@@ -17,7 +17,7 @@ import {
   Globe,
   IdCard
 } from "lucide-react";
-import { getCurrentUser, updateCurrentUser, isValidEmail, isValidIndianPhone, type AuthUser } from "../../services/auth";
+import { getCurrentUser, updateCurrentUser, fetchLatestUserProfile, isValidEmail, isValidIndianPhone, type AuthUser } from "../../services/auth";
 
 export default function UserProfile() {
   const navigate = useNavigate();
@@ -55,7 +55,7 @@ export default function UserProfile() {
   // Validation Errors State
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Sync state with authenticated user
+  // Sync state with authenticated user & load latest from DB
   useEffect(() => {
     const user = getCurrentUser();
     if (!user) {
@@ -64,6 +64,16 @@ export default function UserProfile() {
     }
     setCurrentUser(user);
     initFormData(user);
+
+    // Fetch fresh database record if available
+    if (user.id || user.email) {
+      fetchLatestUserProfile(user.id || user.email).then((fresh) => {
+        if (fresh) {
+          setCurrentUser(fresh);
+          initFormData(fresh);
+        }
+      });
+    }
   }, [navigate]);
 
   // Listen to external auth events

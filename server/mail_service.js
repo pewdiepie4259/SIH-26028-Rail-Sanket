@@ -112,7 +112,56 @@ const SEED_DISPATCHES = [
     acknowledged_at: new Date(Date.now() - 900000).toISOString(),
     smtp_status: 'delivered',
     smtp_preview_url: null,
+    approval_status: 'approved',
     created_at: new Date(Date.now() - 3600000).toISOString(),
+  },
+  {
+    id: 'disp_2026_004',
+    sender_id: 'usr_emp_5001',
+    sender_name: 'Manas Kumar',
+    sender_role: 'employee',
+    sender_email: 'manas.kumar@raildrishti.gov.in',
+    recipient_id: 'usr_adm_1001',
+    recipient_name: 'Souvik Saha (Admin)',
+    recipient_role: 'admin',
+    recipient_email: 'admin@raildrishti.gov.in',
+    category: 'work_completion',
+    priority: 'high',
+    subject: 'Work Approval Request: Electronic Interlocking Relay Cabin Overhaul at SBC',
+    body: 'Phase-2 overhaul of the Electronic Interlocking (EI) Siemens Grade-4 relay cabin at KSR Bengaluru (SBC) has completed full diagnostic sweep. All 14 point motors and 22 track circuits are verified. Requesting formal Administrative Approval to certify and recommission mainline operations.',
+    train_number: null,
+    section: 'Bengaluru Eastern Division',
+    station_code: 'SBC',
+    status: 'delivered',
+    acknowledged_at: null,
+    smtp_status: 'delivered',
+    smtp_preview_url: null,
+    approval_status: 'pending_review',
+    created_at: new Date(Date.now() - 2400000).toISOString(),
+  },
+  {
+    id: 'disp_2026_005',
+    sender_id: 'usr_ctrl_2001',
+    sender_name: 'Shriya M',
+    sender_role: 'controller',
+    sender_email: 'shriya.m@raildrishti.gov.in',
+    recipient_id: 'usr_adm_1001',
+    recipient_name: 'Souvik Saha (Admin)',
+    recipient_role: 'admin',
+    recipient_email: 'admin@raildrishti.gov.in',
+    category: 'speed_restriction',
+    priority: 'urgent',
+    subject: 'Operational Approval Request: TSR 45 km/h Relaxation for High-Density Chord',
+    body: 'Due to completion of ballast tamping between BYPL KM 342/10 and KJM KM 343/00, section control recommends lifting TSR 45 km/h restriction and restoring standard line speed of 80 km/h for Vande Bharat (20608) and Karnataka Express (12628). Controller desk requires Director/Admin sign-off.',
+    train_number: '20608',
+    section: 'BYPL - KJM Corridor Section',
+    station_code: 'BYPL',
+    status: 'delivered',
+    acknowledged_at: null,
+    smtp_status: 'delivered',
+    smtp_preview_url: null,
+    approval_status: 'pending_review',
+    created_at: new Date(Date.now() - 1200000).toISOString(),
   },
 ];
 
@@ -201,9 +250,26 @@ export function initializeMailService(db) {
         acknowledged_at DATETIME,
         smtp_status TEXT DEFAULT 'simulated',
         smtp_preview_url TEXT,
+        approval_status TEXT DEFAULT 'pending_review',
+        reviewed_by TEXT,
+        reviewed_at DATETIME,
+        reviewer_notes TEXT,
+        return_dispatch_id TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
+
+    // Safe migration columns for existing tables
+    const extraCols = [
+      "approval_status TEXT DEFAULT 'pending_review'",
+      "reviewed_by TEXT",
+      "reviewed_at DATETIME",
+      "reviewer_notes TEXT",
+      "return_dispatch_id TEXT"
+    ];
+    extraCols.forEach(col => {
+      db.run(`ALTER TABLE official_dispatches ADD COLUMN ${col}`, () => {});
+    });
 
     db.get(`SELECT COUNT(*) as count FROM official_dispatches`, (err, row) => {
       if (!err && (!row || row.count === 0)) {
@@ -212,8 +278,9 @@ export function initializeMailService(db) {
             id, sender_id, sender_name, sender_role, sender_email,
             recipient_id, recipient_name, recipient_role, recipient_email,
             category, priority, subject, body, train_number, section, station_code,
-            status, acknowledged_at, smtp_status, smtp_preview_url, created_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            status, acknowledged_at, smtp_status, smtp_preview_url,
+            approval_status, reviewed_by, reviewed_at, reviewer_notes, created_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
         SEED_DISPATCHES.forEach((d) => {
@@ -238,6 +305,10 @@ export function initializeMailService(db) {
             d.acknowledged_at,
             d.smtp_status,
             d.smtp_preview_url,
+            d.approval_status || 'pending_review',
+            d.reviewed_by || null,
+            d.reviewed_at || null,
+            d.reviewer_notes || null,
             d.created_at
           );
         });
@@ -589,3 +660,123 @@ export function getMailStats(db, { email, role, userId }) {
     });
   });
 }
+
+// Fetch all dispatches for Admin with optional sender_role & approval_status filtering
+export function getAllDispatchesForAdmin(db, { senderRole, approvalStatus, category, limit = 150 } = {}) {
+  return new Promise((resolve, reject) => {
+    let sql = `SELECT * FROM official_dispatches WHERE 1=1`;
+    const params = [];
+
+    if (senderRole && senderRole !== 'all') {
+      sql += ` AND LOWER(sender_role) = ?`;
+      params.push(senderRole.trim().toLowerCase());
+    }
+
+    if (approvalStatus && approvalStatus !== 'all') {
+      sql += ` AND approval_status = ?`;
+      params.push(approvalStatus.trim().toLowerCase());
+    }
+
+    if (category && category !== 'all') {
+      sql += ` AND category = ?`;
+      params.push(category.trim().toLowerCase());
+    }
+
+    sql += ` ORDER BY created_at DESC LIMIT ?`;
+    params.push(limit);
+
+    db.all(sql, params, (err, rows) => {
+      if (err) return reject(err);
+      resolve(rows || []);
+    });
+  });
+}
+
+// Review a dispatch (Approve / Reject) and automatically send an official Return Mail
+export async function reviewDispatch(db, {
+  dispatchId,
+  decision, // 'approved' | 'rejected'
+  reviewerNotes,
+  reviewerName = 'Railway Operations Administrator',
+  reviewerEmail = 'admin@raildrishti.gov.in',
+  reviewerId = 'usr_adm_1001',
+}) {
+  if (!dispatchId || !decision) {
+    throw new Error('Dispatch ID and decision (approved/rejected) are mandatory.');
+  }
+
+  const cleanDecision = decision.toLowerCase() === 'approved' ? 'approved' : 'rejected';
+  const now = new Date().toISOString();
+
+  // 1. Fetch original dispatch
+  const orig = await new Promise((resolve, reject) => {
+    db.get(`SELECT * FROM official_dispatches WHERE id = ?`, [dispatchId], (err, row) => {
+      if (err) return reject(err);
+      if (!row) return reject(new Error(`Dispatch ${dispatchId} not found.`));
+      resolve(row);
+    });
+  });
+
+  // 2. Formulate return memo
+  const returnSubject = `[${cleanDecision.toUpperCase()}] Official Decision: ${orig.subject}`;
+  const defaultNotes = cleanDecision === 'approved'
+    ? 'The work memo / operational update has been verified and approved by Railway Administration. Execution authorized.'
+    : 'The requested action has been reviewed and rejected by Railway Administration. Please review requirements and resubmit.';
+
+  const finalNotes = (reviewerNotes && reviewerNotes.trim()) ? reviewerNotes.trim() : defaultNotes;
+
+  const returnBody = `OFFICIAL ADMINISTRATIVE REVIEW NOTICE\n\n` +
+    `Reference Original Dispatch: ${orig.id}\n` +
+    `Submitted By: ${orig.sender_name} (${(orig.sender_role || 'STAFF').toUpperCase()}) <${orig.sender_email}>\n` +
+    `Subject: ${orig.subject}\n` +
+    `Decision: ${cleanDecision.toUpperCase()}\n` +
+    `Reviewed At: ${now}\n` +
+    `Reviewed By: ${reviewerName} (${reviewerEmail})\n\n` +
+    `Directorate Remarks / Operational Directives:\n` +
+    `${finalNotes}\n\n` +
+    `This is an automated administrative record generated by RailDrishti Control Command.`;
+
+  // 3. Send official return mail
+  const returnDispatch = await sendDispatch(db, {
+    senderId: reviewerId,
+    senderName: reviewerName,
+    senderRole: 'admin',
+    senderEmail: reviewerEmail,
+    recipientId: orig.sender_id,
+    recipientName: orig.sender_name,
+    recipientRole: orig.sender_role,
+    recipientEmail: orig.sender_email,
+    category: 'operational_directive',
+    priority: cleanDecision === 'rejected' ? 'urgent' : 'high',
+    subject: returnSubject,
+    body: returnBody,
+    trainNumber: orig.train_number,
+    section: orig.section,
+    stationCode: orig.station_code,
+  });
+
+  // 4. Update original dispatch with approval status, reviewer details, and return_dispatch_id
+  await new Promise((resolve, reject) => {
+    db.run(
+      `UPDATE official_dispatches 
+       SET approval_status = ?, reviewed_by = ?, reviewed_at = ?, reviewer_notes = ?, return_dispatch_id = ?
+       WHERE id = ?`,
+      [cleanDecision, `${reviewerName} (${reviewerEmail})`, now, finalNotes, returnDispatch.id, dispatchId],
+      (err) => {
+        if (err) return reject(err);
+        resolve();
+      }
+    );
+  });
+
+  // 5. Fetch and return updated original
+  const updatedOrig = await new Promise((resolve, reject) => {
+    db.get(`SELECT * FROM official_dispatches WHERE id = ?`, [dispatchId], (err, row) => {
+      if (err) return reject(err);
+      resolve(row);
+    });
+  });
+
+  return { original: updatedOrig, returnDispatch };
+}
+

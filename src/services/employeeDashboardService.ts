@@ -823,8 +823,14 @@ export function getRoleSpecificDashboardData(user: AuthUser | null): RoleDashboa
   const operationalRoleId = user?.operationalRole as OperationalRoleId | undefined;
   const department = user?.department as EmployeeDepartment | undefined;
 
-  const isRoleAssigned = Boolean(operationalRoleId && operationalRoleId in getRoleConfig(operationalRoleId));
-  const roleConfig = getRoleConfig(operationalRoleId || DEFAULT_OPERATIONAL_ROLE);
+  const isRoleAssigned = Boolean(
+    operationalRoleId &&
+      (operationalRoleId as string) !== "unassigned" &&
+      getRoleConfig(operationalRoleId)
+  );
+  const roleConfig = (isRoleAssigned && operationalRoleId)
+    ? getRoleConfig(operationalRoleId)
+    : getRoleConfig(DEFAULT_OPERATIONAL_ROLE);
 
   // Department mismatch validation
   let isDepartmentValid = true;

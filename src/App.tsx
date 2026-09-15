@@ -33,6 +33,7 @@ import AlertsRules from "./pages/admin/AlertsRules"
 import SystemMonitoring from "./pages/admin/SystemMonitoring"
 import AuditLogs from "./pages/admin/AuditLogs"
 import AdminSettings from "./pages/admin/Settings"
+import AdminMail from "./pages/admin/Mail"
 
 import EmployeeDashboard from "./pages/employee/Dashboard"
 import EmployeeMail from "./pages/employee/Mail"
@@ -425,6 +426,10 @@ function App() {
           <Route
             path="/admin/dashboard"
             element={<AdminDashboard />}
+          />
+          <Route
+            path="/admin/mail"
+            element={<AdminMail />}
           />
           <Route
             path="/admin/users"

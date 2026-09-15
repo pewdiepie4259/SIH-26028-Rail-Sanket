@@ -10,7 +10,9 @@ import {
   getSent,
   acknowledgeDispatch,
   getMailStats,
-  STAFF_DIRECTORY
+  STAFF_DIRECTORY,
+  getAllDispatchesForAdmin,
+  reviewDispatch
 } from './mail_service.js';
 import {
   initializeCaseService,
@@ -174,6 +176,13 @@ app.post('/api/auth/login', (req, res) => {
       employeeId: user.employee_id,
       department: user.department,
       operationalRole: user.operational_role,
+      emergencyContactName: user.emergency_contact_name,
+      emergencyContactPhone: user.emergency_contact_phone,
+      emergencyRelationship: user.emergency_relationship,
+      bloodGroup: user.blood_group,
+      address: user.address,
+      dob: user.dob,
+      gender: user.gender,
       status: user.status,
       createdAt: user.created_at
     };
@@ -585,6 +594,267 @@ app.get('/api/mail/stats', async (req, res) => {
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
+});
+
+// Admin fetch all dispatches across the organization (Employee & Controller)
+app.get('/api/mail/all', async (req, res) => {
+  try {
+    const { senderRole, approvalStatus, category, limit } = req.query;
+    const items = await getAllDispatchesForAdmin(db, {
+      senderRole,
+      approvalStatus,
+      category,
+      limit: limit ? parseInt(limit, 10) : 150,
+    });
+    res.json({ success: true, items });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Admin review dispatch (Approve / Reject) and automatically send Return Mail
+app.post('/api/mail/:id/review', async (req, res) => {
+  try {
+    const { decision, reviewerNotes, reviewerName, reviewerEmail, reviewerId } = req.body;
+    const result = await reviewDispatch(db, {
+      dispatchId: req.params.id,
+      decision,
+      reviewerNotes,
+      reviewerName,
+      reviewerEmail,
+      reviewerId,
+    });
+    res.json({
+      success: true,
+      message: `Dispatch ${decision === 'approved' ? 'approved' : 'rejected'} and official return mail dispatched.`,
+      original: result.original,
+      returnDispatch: result.returnDispatch,
+    });
+  } catch (err) {
+    console.error('[RailMail Review Error]:', err.message);
+    res.status(400).json({ success: false, message: err.message });
+  }
+});
+
+// ==========================================
+// USER & EMPLOYEE PROFILE PERSISTENCE API
+// ==========================================
+
+// Update user/employee personal & emergency profile details
+app.put('/api/user/profile', (req, res) => {
+  const {
+    id,
+    userId,
+    name,
+    phone,
+    emergencyContactName,
+    emergencyContactPhone,
+    emergencyRelationship,
+    bloodGroup,
+    address,
+    dob,
+    gender,
+  } = req.body;
+
+  const targetId = id || userId;
+  if (!targetId) {
+    return res.status(400).json({ success: false, message: 'User ID is required to update profile.' });
+  }
+
+  const sql = `
+    UPDATE users SET
+      name = COALESCE(?, name),
+      phone = COALESCE(?, phone),
+      emergency_contact_name = ?,
+      emergency_contact_phone = ?,
+      emergency_relationship = ?,
+      blood_group = ?,
+      address = ?,
+      dob = COALESCE(?, dob),
+      gender = COALESCE(?, gender)
+    WHERE id = ? OR LOWER(email) = LOWER(?) OR employee_id = ?
+  `;
+
+  db.run(
+    sql,
+    [
+      name || null,
+      phone || null,
+      emergencyContactName || null,
+      emergencyContactPhone || null,
+      emergencyRelationship || null,
+      bloodGroup || null,
+      address || null,
+      dob || null,
+      gender || null,
+      targetId,
+      targetId,
+      targetId,
+    ],
+    function (err) {
+      if (err) {
+        return res.status(500).json({ success: false, message: 'Database error updating profile: ' + err.message });
+      }
+
+      db.get(
+        `SELECT id, username, name, email, phone, role, employee_id, controller_id, admin_id,
+                department, operational_role, emergency_contact_name, emergency_contact_phone,
+                emergency_relationship, blood_group, address, dob, gender, status
+         FROM users WHERE id = ? OR LOWER(email) = LOWER(?) OR employee_id = ?`,
+        [targetId, targetId, targetId],
+        (err2, user) => {
+          if (err2 || !user) {
+            return res.json({ success: true, message: 'Profile updated in database.' });
+          }
+          res.json({
+            success: true,
+            message: 'Profile records updated and saved to database successfully.',
+            user: {
+              id: user.id,
+              name: user.name,
+              email: user.email,
+              phone: user.phone,
+              role: user.role,
+              employeeId: user.employee_id,
+              controllerId: user.controller_id,
+              adminId: user.admin_id,
+              department: user.department,
+              operationalRole: user.operational_role,
+              emergencyContactName: user.emergency_contact_name,
+              emergencyContactPhone: user.emergency_contact_phone,
+              emergencyRelationship: user.emergency_relationship,
+              bloodGroup: user.blood_group,
+              address: user.address,
+              dob: user.dob,
+              gender: user.gender,
+              status: user.status,
+            },
+          });
+        }
+      );
+    }
+  );
+});
+
+// Fetch user profile from DB
+app.get('/api/user/profile/:id', (req, res) => {
+  const targetId = req.params.id;
+  db.get(
+    `SELECT id, username, name, email, phone, role, employee_id, controller_id, admin_id,
+            department, operational_role, emergency_contact_name, emergency_contact_phone,
+            emergency_relationship, blood_group, address, dob, gender, status
+     FROM users WHERE id = ? OR LOWER(email) = LOWER(?) OR employee_id = ?`,
+    [targetId, targetId, targetId],
+    (err, user) => {
+      if (err || !user) {
+        return res.status(404).json({ success: false, message: 'User not found in database.' });
+      }
+      res.json({
+        success: true,
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+          role: user.role,
+          employeeId: user.employee_id,
+          controllerId: user.controller_id,
+          adminId: user.admin_id,
+          department: user.department,
+          operationalRole: user.operational_role,
+          emergencyContactName: user.emergency_contact_name,
+          emergencyContactPhone: user.emergency_contact_phone,
+          emergencyRelationship: user.emergency_relationship,
+          bloodGroup: user.blood_group,
+          address: user.address,
+          dob: user.dob,
+          gender: user.gender,
+          status: user.status,
+        },
+      });
+    }
+  );
+});
+
+// ==========================================
+// CONTROLLER OPERATIONAL ROLE ALLOTMENT API
+// ==========================================
+
+// Controller assign / update employee operational role
+app.post('/api/controller/assign-role', (req, res) => {
+  const { employeeId, operationalRole, department, assignedBy = 'Section Controller' } = req.body;
+
+  if (!employeeId || !operationalRole) {
+    return res.status(400).json({ success: false, message: 'Employee identifier and operational role are required.' });
+  }
+
+  const sql = `
+    UPDATE users SET
+      operational_role = ?,
+      department = COALESCE(?, department)
+    WHERE id = ? OR employee_id = ? OR LOWER(email) = LOWER(?)
+  `;
+
+  db.run(sql, [operationalRole, department || null, employeeId, employeeId, employeeId], function (err) {
+    if (err) {
+      return res.status(500).json({ success: false, message: 'Database error updating role: ' + err.message });
+    }
+
+    db.get(
+      `SELECT id, name, email, employee_id, department, operational_role FROM users
+       WHERE id = ? OR employee_id = ? OR LOWER(email) = LOWER(?)`,
+      [employeeId, employeeId, employeeId],
+      (err2, user) => {
+        if (err2 || !user) {
+          return res.json({ success: true, message: `Operational role assigned: ${operationalRole}` });
+        }
+
+        console.log(`[Role Assignment] Controller ${assignedBy} assigned role '${operationalRole}' to ${user.name} (${user.employee_id})`);
+        res.json({
+          success: true,
+          message: `Operational role for ${user.name} updated to '${operationalRole}' successfully.`,
+          user,
+        });
+      }
+    );
+  });
+});
+
+// Controller fetch all division staff & operational assignments
+app.get('/api/controller/staff', (req, res) => {
+  db.all(
+    `SELECT id, name, email, phone, role, employee_id, department, operational_role, emergency_contact_name, emergency_relationship, status, created_at
+     FROM users WHERE role = 'employee' OR role = 'controller'
+     ORDER BY role ASC, name ASC`,
+    [],
+    (err, rows) => {
+      if (err) return res.status(500).json({ success: false, message: err.message });
+      res.json({ success: true, staff: rows || [] });
+    }
+  );
+});
+
+// Employee poll live operational role status
+app.get('/api/employee/status/:id', (req, res) => {
+  const targetId = req.params.id;
+  db.get(
+    `SELECT id, name, email, employee_id, department, operational_role, status
+     FROM users WHERE id = ? OR employee_id = ? OR LOWER(email) = LOWER(?)`,
+    [targetId, targetId, targetId],
+    (err, row) => {
+      if (err || !row) {
+        return res.status(404).json({ success: false, message: 'Employee not found.' });
+      }
+      res.json({
+        success: true,
+        operationalRole: row.operational_role,
+        department: row.department,
+        status: row.status,
+        employeeId: row.employee_id,
+        name: row.name,
+      });
+    }
+  );
 });
 
 // ==========================================

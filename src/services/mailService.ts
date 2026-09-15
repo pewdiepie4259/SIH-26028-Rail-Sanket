@@ -35,6 +35,11 @@ export interface DispatchItem {
   acknowledged_at?: string | null;
   smtp_status?: "delivered" | "ethereal_preview" | "simulated" | "failed";
   smtp_preview_url?: string | null;
+  approval_status?: "approved" | "rejected" | "pending_review" | "not_applicable";
+  reviewed_by?: string | null;
+  reviewed_at?: string | null;
+  reviewer_notes?: string | null;
+  return_dispatch_id?: string | null;
   created_at: string;
 }
 
@@ -418,3 +423,105 @@ export async function fetchMailStats(
     urgentCount: inbox.filter((i) => i.priority === "urgent" && i.status !== "acknowledged").length,
   };
 }
+
+// Admin: Fetch all dispatches across the entire railway organization
+export async function fetchAllDispatchesForAdmin(
+  senderRole?: string,
+  approvalStatus?: string,
+  category?: string
+): Promise<DispatchItem[]> {
+  try {
+    const params = new URLSearchParams();
+    if (senderRole && senderRole !== "all") params.append("senderRole", senderRole);
+    if (approvalStatus && approvalStatus !== "all") params.append("approvalStatus", approvalStatus);
+    if (category && category !== "all") params.append("category", category);
+
+    const res = await fetch(`${API_BASE}/all?${params.toString()}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success && Array.isArray(data.items)) {
+        return data.items;
+      }
+    }
+  } catch {
+    // local fallback
+  }
+
+  const local = getLocalDispatches();
+  return local.filter((d) => {
+    const matchesRole = !senderRole || senderRole === "all" || d.sender_role?.toLowerCase() === senderRole.toLowerCase();
+    const matchesStatus = !approvalStatus || approvalStatus === "all" || d.approval_status === approvalStatus;
+    const matchesCategory = !category || category === "all" || d.category === category;
+    return matchesRole && matchesStatus && matchesCategory;
+  });
+}
+
+// Admin: Review a work dispatch / memo (Approve / Reject) and automatically dispatch an official Return Mail
+export async function reviewDispatchAndSendReturn(
+  dispatchId: string,
+  decision: "approved" | "rejected",
+  reviewerNotes?: string,
+  reviewerName = "Chief Operations Administrator",
+  reviewerEmail = "admin@raildrishti.gov.in"
+): Promise<{ success: boolean; message: string; original?: DispatchItem; returnDispatch?: DispatchItem }> {
+  try {
+    const res = await fetch(`${API_BASE}/${dispatchId}/review`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        decision,
+        reviewerNotes,
+        reviewerName,
+        reviewerEmail,
+      }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      return data;
+    }
+  } catch (err: any) {
+    console.error("Failed to review dispatch via API:", err.message);
+  }
+
+  // Local fallback
+  const local = getLocalDispatches();
+  const found = local.find((i) => i.id === dispatchId);
+  if (found) {
+    found.approval_status = decision;
+    found.reviewed_by = `${reviewerName} (${reviewerEmail})`;
+    found.reviewed_at = new Date().toISOString();
+    found.reviewer_notes = reviewerNotes || (decision === "approved" ? "Approved by Administration." : "Rejected by Administration.");
+
+    // Create return mail
+    const returnItem: DispatchItem = {
+      id: `disp_ret_${Date.now()}`,
+      sender_id: "usr_adm_1001",
+      sender_name: reviewerName,
+      sender_role: "admin",
+      sender_email: reviewerEmail,
+      recipient_id: found.sender_id,
+      recipient_name: found.sender_name,
+      recipient_role: found.sender_role,
+      recipient_email: found.sender_email,
+      category: "operational_directive",
+      priority: decision === "rejected" ? "urgent" : "high",
+      subject: `[${decision.toUpperCase()}] Official Decision: ${found.subject}`,
+      body: `Official Administrative Review Notice\n\nDecision: ${decision.toUpperCase()}\nReviewed By: ${reviewerName}\n\nRemarks:\n${found.reviewer_notes}`,
+      status: "delivered",
+      approval_status: "not_applicable",
+      created_at: new Date().toISOString(),
+    };
+
+    saveLocalDispatches([returnItem, ...local]);
+    return {
+      success: true,
+      message: `Dispatch ${decision} and return mail sent.`,
+      original: found,
+      returnDispatch: returnItem,
+    };
+  }
+
+  return { success: false, message: "Dispatch record not found." };
+}
+
