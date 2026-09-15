@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   ShieldCheck,
@@ -11,15 +11,12 @@ import {
   LogOut,
   Building,
   Mail,
-  Phone,
   RefreshCw,
   Search,
   Check,
   X,
   ExternalLink,
-  ChevronRight,
   Shield,
-  Layers,
 } from "lucide-react";
 import {
   getCurrentUser,
@@ -103,7 +100,6 @@ export default function AdminDashboard() {
   };
 
   const pendingCount = applications.filter((a) => a.status === "pending").length;
-  const approvedCount = applications.filter((a) => a.status === "approved").length;
 
   const filteredStaff = staffList.filter((s) => {
     const matchesSearch =

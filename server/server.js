@@ -3,6 +3,15 @@ import express from 'express';
 import cors from 'cors';
 import sqlite3 from 'sqlite3';
 import { DB_PATH, initializeDatabase, hashPassword, verifyPassword, INITIAL_CREDENTIALS } from './init_db.js';
+import {
+  initializeMailService,
+  sendDispatch,
+  getInbox,
+  getSent,
+  acknowledgeDispatch,
+  getMailStats,
+  STAFF_DIRECTORY
+} from './mail_service.js';
 
 const app = express();
 app.use(cors());
@@ -13,6 +22,7 @@ const db = new sqlite3.Database(DB_PATH, (err) => {
   else {
     console.log(`Connected to trains.db SQLite database at: ${DB_PATH}`);
     initializeDatabase(db);
+    initializeMailService(db);
   }
 });
 
@@ -498,6 +508,69 @@ app.get('/api/stations/all', (req, res) => {
       res.json({ stations: rows || [] });
     }
   );
+});
+
+// ==========================================
+// 6. OFFICIAL DISPATCHES & RAILMAIL API
+// ==========================================
+
+// Staff & Controller Directory for recipient selection
+app.get('/api/mail/directory', (req, res) => {
+  res.json({ success: true, directory: STAFF_DIRECTORY });
+});
+
+// Send an official email and log dispatch
+app.post('/api/mail/send', async (req, res) => {
+  try {
+    const record = await sendDispatch(db, req.body);
+    res.json({ success: true, message: 'Official dispatch sent successfully.', dispatch: record });
+  } catch (err) {
+    console.error('[RailMail API Error]:', err.message);
+    res.status(400).json({ success: false, message: err.message });
+  }
+});
+
+// Get user inbox
+app.get('/api/mail/inbox', async (req, res) => {
+  try {
+    const { email, role, userId } = req.query;
+    const items = await getInbox(db, { email, role, userId });
+    res.json({ success: true, items });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Get sent dispatches
+app.get('/api/mail/sent', async (req, res) => {
+  try {
+    const { email, userId } = req.query;
+    const items = await getSent(db, { email, userId });
+    res.json({ success: true, items });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Acknowledge receipt of a directive or memo
+app.patch('/api/mail/:id/acknowledge', async (req, res) => {
+  try {
+    const record = await acknowledgeDispatch(db, req.params.id, req.body.acknowledgedBy);
+    res.json({ success: true, message: 'Dispatch marked as acknowledged.', dispatch: record });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Mail stats / badge counters
+app.get('/api/mail/stats', async (req, res) => {
+  try {
+    const { email, role, userId } = req.query;
+    const stats = await getMailStats(db, { email, role, userId });
+    res.json({ success: true, stats });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
 
 // Server Listen

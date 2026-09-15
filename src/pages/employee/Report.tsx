@@ -33,6 +33,7 @@ import {
   ShieldCheck,
   UserCircle,
   Sparkles,
+  Mail,
 } from "lucide-react";
 import { getCurrentUser, logout } from "../../services/auth";
 import {
@@ -298,6 +299,7 @@ export default function EmployeeReport() {
     { id: "alerts", label: "Operational Alerts", icon: AlertTriangle, path: "/employee/alerts", active: true },
     { id: "tasks", label: "Tasks", icon: CheckSquare, path: "/employee/tasks", active: true },
     { id: "report_issue", label: "Report Issue", icon: FileWarning, path: "/employee/report", active: true },
+    { id: "mail", label: "Official Mail & Directives", icon: Mail, path: "/employee/mail", active: true },
     { id: "incident", label: "Incident Reporting", icon: Flame, path: "/employee/incidents", active: true },
     { id: "notifications", label: "Notifications", icon: Bell, path: "/employee/notifications", active: true },
     { id: "history", label: "Activity / History", icon: History, path: "/employee/history", active: true },

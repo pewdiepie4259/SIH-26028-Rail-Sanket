@@ -7,9 +7,9 @@ import {
   GitBranch,
   LayoutDashboard,
   LogOut,
+  Mail,
   Menu,
   Settings,
-  TrainFront,
   UserRound,
   X,
 } from "lucide-react"
@@ -22,9 +22,9 @@ const navOperations = [
     icon: LayoutDashboard,
   },
   {
-    label: "Train Operations",
-    path: "/controller/dashboard",
-    icon: TrainFront,
+    label: "Dispatches & Directives",
+    path: "/controller/dispatches",
+    icon: Mail,
   },
   {
     label: "Weather Impact",
