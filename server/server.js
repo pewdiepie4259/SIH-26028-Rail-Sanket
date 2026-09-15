@@ -32,6 +32,8 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+const RAILRADAR_API_KEY = process.env.RAILRADAR_API_KEY || 'rg_e5d566785ee841099a832f6182e216b8';
+
 const db = new sqlite3.Database(DB_PATH, (err) => {
   if (err) console.error("Database connection error:", err.message);
   else {
@@ -190,9 +192,7 @@ app.post('/api/auth/login', (req, res) => {
 app.post('/api/auth/register', (req, res) => {
   const {
     role = 'user',
-    // User registration
     fullName, phoneNumber, email, password,
-    // Employee registration
     employeeId, officialEmail, department, requestedRole
   } = req.body;
 
@@ -204,7 +204,6 @@ app.post('/api/auth/register', (req, res) => {
       return res.status(400).json({ success: false, message: "Full name, email, and password are required." });
     }
 
-    // Check if duplicate
     db.get(`SELECT id FROM users WHERE LOWER(email) = ? OR phone = ?`, [cleanEmail, cleanPhone], (err, existing) => {
       if (existing) {
         return res.status(409).json({ success: false, message: "An account with this email or mobile number already exists." });
@@ -239,7 +238,6 @@ app.post('/api/auth/register', (req, res) => {
       );
     });
   } else {
-    // Employee registration application
     const cleanEmpId = (employeeId || '').trim().toUpperCase();
     const cleanEmail = (officialEmail || '').trim().toLowerCase();
 
@@ -256,7 +254,6 @@ app.post('/api/auth/register', (req, res) => {
           return res.status(500).json({ success: false, message: "Failed to submit employee application: " + appErr.message });
         }
 
-        // Also record in users with pending_review
         const { hash, salt } = hashPassword('Employee@RailDrishti2026');
         db.run(
           `INSERT OR IGNORE INTO users (id, username, name, email, password_hash, salt, role, employee_id, department, status) VALUES (?, ?, ?, ?, ?, ?, 'employee', ?, ?, 'pending_review')`,
@@ -281,7 +278,6 @@ app.get('/api/trains/search', (req, res) => {
   const limit = parseInt(req.query.limit) || 100;
 
   if (!query) {
-    // Return active corridor rakes first, followed by general database trains
     const sql = `
         SELECT 
           t.train_number, 
@@ -356,15 +352,14 @@ app.get('/api/trains/search', (req, res) => {
 });
 
 // ==========================================
-// 2. TRAIN ROUTE & COORDINATES (For Leaflet Map)
+// 2. TRAIN ROUTE & COORDINATES (Sequential & Clean)
 // ==========================================
 app.get('/api/trains/:trainNo/route', (req, res) => {
   const trainNo = req.params.trainNo.trim();
 
-  // Query station stops from train_schedules joined with stations
   const scheduleSql = `
     SELECT 
-      ts.stop_sequence, 
+      MIN(ts.stop_sequence) as stop_sequence,
       ts.station_code, 
       ts.scheduled_arrival, 
       ts.scheduled_departure, 
@@ -374,16 +369,20 @@ app.get('/api/trains/:trainNo/route', (req, res) => {
       s.latitude, 
       s.longitude 
     FROM train_schedules ts 
-    LEFT JOIN stations s ON ts.station_code = s.code 
+    JOIN stations s ON ts.station_code = s.code 
     WHERE ts.train_number = ? 
-    ORDER BY ts.stop_sequence ASC
+      AND s.latitude IS NOT NULL 
+      AND s.longitude IS NOT NULL 
+      AND s.latitude BETWEEN 8.0 AND 36.0 
+      AND s.longitude BETWEEN 68.0 AND 97.0
+    GROUP BY ts.station_code
+    ORDER BY MIN(ts.stop_sequence) ASC
   `;
 
   db.all(scheduleSql, [trainNo], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
 
-    // Agar schedule table me stops mil gaye toh return karo
-    if (rows && rows.length > 0) {
+    if (rows && rows.length >= 2) {
       return res.json({
         train_number: trainNo,
         total_stops: rows.length,
@@ -391,7 +390,6 @@ app.get('/api/trains/:trainNo/route', (req, res) => {
       });
     }
 
-    // Fallback: Agar schedule table abhi empty hai, toh train ke source & dest stations return karo
     const fallbackSql = `
       SELECT 
         t.train_number, t.train_name,
@@ -426,17 +424,15 @@ app.get('/api/trains/:trainNo/route', (req, res) => {
 });
 
 // ==========================================
-// 3. REAL-TIME LIVE RUNNING STATUS (Local DB / Sim)
+// 3. REAL-TIME LIVE RUNNING STATUS (Local DB)
 // ==========================================
 app.get('/api/trains/:trainNo/live', (req, res) => {
   const trainNo = req.params.trainNo.trim();
 
-  // 1. Pehle database se check karo
   db.get(`SELECT * FROM live_train_status WHERE train_number = ?`, [trainNo], (err, row) => {
     if (err) return res.status(500).json({ error: err.message });
     if (row) return res.json(row);
 
-    // 2. Fallback / Live simulation generator (Demo ke liye taaki map pe real-time motion dikhe)
     const sql = `
       SELECT 
         t.train_number, t.train_name,
@@ -452,13 +448,12 @@ app.get('/api/trains/:trainNo/live', (req, res) => {
         return res.status(404).json({ error: "Train not found" });
       }
 
-      // Demo Live Status Payload
       res.json({
         train_number: trainNo,
         train_name: trainInfo.train_name,
         journey_date: new Date().toISOString().slice(0, 10),
         status: "RUNNING",
-        delay_minutes: 12, // Example delay
+        delay_minutes: 0,
         current_station_code: trainInfo.source_station_code,
         current_station_name: trainInfo.current_station_name,
         current_lat: trainInfo.latitude || 28.6139,
@@ -515,7 +510,12 @@ app.get('/api/stations/search', (req, res) => {
 // ==========================================
 app.get('/api/stations/all', (req, res) => {
   db.all(
-    `SELECT code, name, state, zone, latitude, longitude FROM stations WHERE latitude IS NOT NULL LIMIT 5000`,
+    `SELECT code, name, state, zone, latitude, longitude 
+     FROM stations 
+     WHERE latitude IS NOT NULL 
+       AND latitude BETWEEN 8.0 AND 36.0 
+       AND longitude BETWEEN 68.0 AND 97.0 
+     LIMIT 5000`,
     [],
     (err, rows) => {
       if (err) return res.status(500).json({ error: err.message });
@@ -528,12 +528,10 @@ app.get('/api/stations/all', (req, res) => {
 // 6. OFFICIAL DISPATCHES & RAILMAIL API
 // ==========================================
 
-// Staff & Controller Directory for recipient selection
 app.get('/api/mail/directory', (req, res) => {
   res.json({ success: true, directory: STAFF_DIRECTORY });
 });
 
-// Send an official email and log dispatch
 app.post('/api/mail/send', async (req, res) => {
   try {
     const record = await sendDispatch(db, req.body);
@@ -544,7 +542,6 @@ app.post('/api/mail/send', async (req, res) => {
   }
 });
 
-// Get user inbox
 app.get('/api/mail/inbox', async (req, res) => {
   try {
     const { email, role, userId } = req.query;
@@ -555,7 +552,6 @@ app.get('/api/mail/inbox', async (req, res) => {
   }
 });
 
-// Get sent dispatches
 app.get('/api/mail/sent', async (req, res) => {
   try {
     const { email, userId } = req.query;
@@ -566,7 +562,6 @@ app.get('/api/mail/sent', async (req, res) => {
   }
 });
 
-// Acknowledge receipt of a directive or memo
 app.patch('/api/mail/:id/acknowledge', async (req, res) => {
   try {
     const record = await acknowledgeDispatch(db, req.params.id, req.body.acknowledgedBy);
@@ -576,7 +571,6 @@ app.patch('/api/mail/:id/acknowledge', async (req, res) => {
   }
 });
 
-// Mail stats / badge counters
 app.get('/api/mail/stats', async (req, res) => {
   try {
     const { email, role, userId } = req.query;
@@ -591,7 +585,6 @@ app.get('/api/mail/stats', async (req, res) => {
 // 7. OPERATIONAL CASES & INCIDENTS WORKFLOW API
 // ==========================================
 
-// Create a new issue or incident
 app.post('/api/cases', async (req, res) => {
   try {
     const newCase = await createCase(db, req.body);
@@ -602,7 +595,6 @@ app.post('/api/cases', async (req, res) => {
   }
 });
 
-// Query cases with filtering
 app.get('/api/cases', async (req, res) => {
   try {
     const cases = await getCases(db, req.query);
@@ -612,7 +604,6 @@ app.get('/api/cases', async (req, res) => {
   }
 });
 
-// Query case notifications
 app.get('/api/cases/notifications', async (req, res) => {
   try {
     const notifications = await getNotifications(db, req.query);
@@ -622,7 +613,6 @@ app.get('/api/cases/notifications', async (req, res) => {
   }
 });
 
-// Mark single notification as read
 app.patch('/api/cases/notifications/:id/read', async (req, res) => {
   try {
     const result = await markNotificationRead(db, req.params.id);
@@ -632,7 +622,6 @@ app.patch('/api/cases/notifications/:id/read', async (req, res) => {
   }
 });
 
-// Mark all notifications as read
 app.patch('/api/cases/notifications/mark-all-read', async (req, res) => {
   try {
     const result = await markAllNotificationsRead(db, req.body);
@@ -642,7 +631,6 @@ app.patch('/api/cases/notifications/mark-all-read', async (req, res) => {
   }
 });
 
-// Get single case details including audit trail and comments
 app.get('/api/cases/:id', async (req, res) => {
   try {
     const caseData = await getCaseById(db, req.params.id);
@@ -655,7 +643,6 @@ app.get('/api/cases/:id', async (req, res) => {
   }
 });
 
-// Controller acknowledge
 app.patch('/api/cases/:id/acknowledge', async (req, res) => {
   try {
     const result = await acknowledgeCase(db, req.params.id, req.body.actor || {});
@@ -665,7 +652,6 @@ app.patch('/api/cases/:id/acknowledge', async (req, res) => {
   }
 });
 
-// Controller operational review
 app.patch('/api/cases/:id/review', async (req, res) => {
   try {
     const result = await reviewCase(db, req.params.id, req.body.actor || {}, req.body.notes);
@@ -675,7 +661,6 @@ app.patch('/api/cases/:id/review', async (req, res) => {
   }
 });
 
-// Controller / Admin assign
 app.patch('/api/cases/:id/assign', async (req, res) => {
   try {
     const result = await assignCase(db, req.params.id, req.body.actor || {}, req.body);
@@ -685,7 +670,6 @@ app.patch('/api/cases/:id/assign', async (req, res) => {
   }
 });
 
-// Responsible Team / Controller / Admin update status
 app.patch('/api/cases/:id/status', async (req, res) => {
   try {
     const { status, remarks, actor } = req.body;
@@ -696,7 +680,6 @@ app.patch('/api/cases/:id/status', async (req, res) => {
   }
 });
 
-// Controller verify and close
 app.patch('/api/cases/:id/verify', async (req, res) => {
   try {
     const result = await verifyCase(db, req.params.id, req.body.actor || {}, req.body.notes);
@@ -706,7 +689,6 @@ app.patch('/api/cases/:id/verify', async (req, res) => {
   }
 });
 
-// Add case comment / note
 app.post('/api/cases/:id/comments', async (req, res) => {
   try {
     const comment = await addCaseComment(db, req.params.id, req.body);
@@ -717,29 +699,105 @@ app.post('/api/cases/:id/comments', async (req, res) => {
 });
 
 // ==========================================
-// 8. LIVE NTES STATUS PROXY (RapidAPI + Resilient Fallback)
+// 8. LIVE NTES STATUS PROXY (RailRadar API + Resilient Dynamic Schedule Fallback)
 // ==========================================
 app.get('/api/trains/:trainNo/live-ntes', async (req, res) => {
   const { trainNo } = req.params;
 
-  // Format today's date in IST (YYYYMMDD)
-  const now = new Date();
-  const istString = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
-  const departureDate = req.query.date || istString.replace(/-/g, '');
+  // Clock-Synchronized IST Fallback Engine
+  const fallbackToSchedule = () => {
+    const scheduleSql = `
+      SELECT 
+        MIN(ts.stop_sequence) as stop_sequence,
+        ts.station_code, 
+        ts.scheduled_arrival, 
+        ts.scheduled_departure, 
+        COALESCE(s.name, ts.station_code) as station_name, 
+        s.latitude, 
+        s.longitude 
+      FROM train_schedules ts 
+      JOIN stations s ON ts.station_code = s.code 
+      WHERE ts.train_number = ? 
+        AND s.latitude BETWEEN 8.0 AND 36.0 
+        AND s.longitude BETWEEN 68.0 AND 97.0
+      GROUP BY ts.station_code
+      ORDER BY MIN(ts.stop_sequence) ASC
+    `;
 
-  const url = `https://indian-railway-irctc.p.rapidapi.com/api/trains/v1/train/status?departure_date=${departureDate}&isH5=true&client=web&deviceIdentifier=Mozilla%2520Firefox-138.0.0.0&train_number=${trainNo}`;
+    db.all(scheduleSql, [trainNo], (err, stops) => {
+      if (err || !stops || stops.length === 0) {
+        return res.json({
+          source: 'ANUGAMAN_TELEMETRY_ENGINE',
+          body: {
+            current_station: 'HWH',
+            current_station_name: 'Howrah Junction',
+            train_status_message: 'Train in transit',
+            terminated: false,
+            delay_minutes: 0,
+            speed_kmh: 75,
+            stations: []
+          }
+        });
+      }
+
+      const now = new Date();
+      const istStr = now.toLocaleTimeString('en-GB', { timeZone: 'Asia/Kolkata' });
+      const [nowH, nowM] = istStr.split(':').map(Number);
+      const nowTotalMins = nowH * 60 + nowM;
+
+      let activeIdx = 0;
+      for (let i = 0; i < stops.length; i++) {
+        const timeStr = stops[i].scheduled_departure || stops[i].scheduled_arrival;
+        if (timeStr && timeStr.includes(':')) {
+          const [h, m] = timeStr.split(':').map(Number);
+          if (nowTotalMins >= (h * 60 + m)) {
+            activeIdx = i;
+          } else {
+            break;
+          }
+        }
+      }
+
+      const curr = stops[activeIdx] || stops[0];
+      const nxt = stops[Math.min(activeIdx + 1, stops.length - 1)];
+
+      return res.json({
+        source: 'ANUGAMAN_SCHEDULE_SYNCHRONIZED',
+        body: {
+          current_station: curr.station_code,
+          current_station_name: curr.station_name,
+          next_station: nxt.station_code,
+          next_station_name: nxt.station_name,
+          train_status_message: `Running on schedule near ${curr.station_name}`,
+          terminated: activeIdx >= stops.length - 1,
+          delay_minutes: 0,
+          speed_kmh: 76,
+          latitude: curr.latitude,
+          longitude: curr.longitude,
+          stations: stops.map((st, idx) => ({
+            stationCode: st.station_code,
+            stationName: st.station_name,
+            arrivalTime: st.scheduled_arrival,
+            departureTime: st.scheduled_departure,
+            status: idx <= activeIdx ? 'PASSED' : 'UPCOMING',
+            actual_departure_time: idx <= activeIdx ? st.scheduled_departure : '--'
+          }))
+        }
+      });
+    });
+  };
 
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 4000);
+    const railRadarUrl = `https://api.railradar.in/v1/legacy/trains/${trainNo}?dataType=live`;
 
-    const apiResponse = await fetch(url, {
+    const apiResponse = await fetch(railRadarUrl, {
       method: 'GET',
       headers: {
-        'Content-Type': 'application/json',
-        'x-rapid-api': 'rapid-api-database',
-        'x-rapidapi-host': 'indian-railway-irctc.p.rapidapi.com',
-        'x-rapidapi-key': '8e8af4c6dcmsh0a2fdef47558022p1ae25ajsnf8dbb663adfd'
+        'Authorization': `Bearer ${RAILRADAR_API_KEY}`,
+        'x-api-key': RAILRADAR_API_KEY,
+        'Content-Type': 'application/json'
       },
       signal: controller.signal
     });
@@ -747,79 +805,40 @@ app.get('/api/trains/:trainNo/live-ntes', async (req, res) => {
     clearTimeout(timeoutId);
 
     if (apiResponse.ok) {
-      const data = await apiResponse.json();
-      if (data && (data.body?.stations || data.current_station || data.status?.result === 'success')) {
+      const result = await apiResponse.json();
+      const payload = result?.data || result?.body || result;
+
+      if (payload && (payload.current_station || payload.stations || payload.route)) {
+        const rawStations = payload.stations || payload.route || [];
+        const normalizedStations = rawStations.map((st) => ({
+          stationCode: st.station_code || st.stationCode || st.code,
+          stationName: st.station_name || st.stationName || st.name,
+          arrivalTime: st.scheduled_arrival || st.arrivalTime,
+          departureTime: st.scheduled_departure || st.departureTime,
+          status: st.has_departed || st.status === 'PASSED' ? 'PASSED' : 'UPCOMING',
+          actual_departure_time: st.actual_departure || st.actual_departure_time || '--'
+        }));
+
         return res.json({
-          source: 'RAPIDAPI_NTES_LIVE',
-          ...data
+          source: 'RAILRADAR_LIVE_API',
+          body: {
+            current_station: payload.current_station_code || payload.current_station || payload.last_passed_station,
+            current_station_name: payload.current_station_name || payload.station_name,
+            train_status_message: payload.status_message || payload.train_status_message || 'In Transit',
+            terminated: payload.is_terminated ?? false,
+            delay_minutes: payload.delay_in_minutes ?? payload.delay_minutes ?? 0,
+            speed_kmh: payload.current_speed ?? payload.speed_kmh ?? 75,
+            latitude: payload.current_latitude ?? payload.latitude,
+            longitude: payload.current_longitude ?? payload.longitude,
+            stations: normalizedStations
+          }
         });
       }
     }
+    fallbackToSchedule();
   } catch (err) {
-    console.warn(`[NTES Proxy] RapidAPI failed (${err.message}). Activating local DB fallback.`);
+    fallbackToSchedule();
   }
-
-  // Fallback: Compute real-time schedule & position from trains.db
-  const scheduleSql = `
-    SELECT
-      ts.stop_sequence,
-      ts.station_code,
-      ts.scheduled_arrival,
-      ts.scheduled_departure,
-      COALESCE(s.name, ts.station_code) as station_name,
-      s.latitude,
-      s.longitude
-    FROM train_schedules ts
-    LEFT JOIN stations s ON ts.station_code = s.code
-    WHERE ts.train_number = ?
-    ORDER BY ts.stop_sequence ASC
-  `;
-
-  db.all(scheduleSql, [trainNo], (err, stops) => {
-    if (err || !stops || stops.length === 0) {
-      return res.json({
-        source: 'ANUGAMAN_TELEMETRY_ENGINE',
-        train_number: trainNo,
-        train_status_message: 'Train in transit',
-        current_station: 'SBC',
-        current_station_name: 'KSR Bengaluru City',
-        next_station: 'BNC',
-        next_station_name: 'Bengaluru Cantt',
-        delay_minutes: 4,
-        speed_kmh: 68.5,
-        latitude: 12.9784,
-        longitude: 77.5696,
-        last_updated: new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' })
-      });
-    }
-
-    const midIdx = Math.min(2, stops.length - 1);
-    const nextIdx = Math.min(midIdx + 1, stops.length - 1);
-    const curr = stops[midIdx];
-    const nxt = stops[nextIdx];
-
-    res.json({
-      source: 'ANUGAMAN_SCHEDULE_SYNCHRONIZED',
-      train_number: trainNo,
-      train_status_message: 'Train in transit',
-      current_station: curr.station_code,
-      current_station_name: curr.station_name,
-      next_station: nxt.station_code,
-      next_station_name: nxt.station_name,
-      delay_minutes: 7,
-      speed_kmh: 74.0,
-      latitude: curr.latitude || 12.9784,
-      longitude: curr.longitude || 77.5696,
-      total_stops: stops.length,
-      stations: stops.map((st) => ({
-        stationCode: st.station_code,
-        stationName: st.station_name,
-        arrivalTime: st.scheduled_arrival,
-        departureTime: st.scheduled_departure
-      })),
-      last_updated: new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' })
-    });
-  });
 });
 
 // Server Listen
