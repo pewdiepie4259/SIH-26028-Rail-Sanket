@@ -185,11 +185,11 @@ export default function AdminMail() {
   const pendingReviewCount = dispatches.filter((d) => d.approval_status === "pending_review").length;
 
   return (
-    <div className="min-h-screen bg-[#031426] text-slate-100 p-4 lg:p-8 space-y-6 font-sans">
+    <div className="controller-page px-4 py-5 lg:px-6 space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#16364A] pb-5">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#CBD5E1] pb-5">
         <div className="flex items-center gap-3">
-          <div className="h-12 w-12 rounded-2xl bg-[#0E7C86]/20 border border-[#0E7C86]/40 flex items-center justify-center text-teal-400 shadow-inner">
+          <div className="h-12 w-12 rounded-2xl bg-teal-50 border border-teal-200 flex items-center justify-center text-[#0E5961] shadow-xs">
             <Mail size={24} />
           </div>
           <div>
@@ -197,14 +197,14 @@ export default function AdminMail() {
               <span className="text-xs font-bold uppercase tracking-[0.18em] text-[#F59E0B]">
                 RailDrishti Directorate Desk
               </span>
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-500/20 text-teal-300 border border-teal-500/30">
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-50 text-[#0E5961] border border-teal-200">
                 Official Oversight
               </span>
             </div>
-            <h1 className="text-xl sm:text-2xl font-black text-white tracking-wide">
+            <h1 className="text-xl sm:text-2xl font-black text-[#071A33] tracking-wide">
               Official Memos & Communications
             </h1>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-600">
               Review and approve work completion memos, defect reports, and operational dispatches from Employees and Controllers
             </p>
           </div>

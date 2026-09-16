@@ -159,7 +159,7 @@ export default function StaffRosterAllotment() {
   const getRoleBadge = (roleId?: string) => {
     if (!roleId || roleId === "unassigned" || roleId === "none") {
       return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
           <Clock size={12} />
           Unassigned [PENDING]
         </span>
@@ -170,7 +170,7 @@ export default function StaffRosterAllotment() {
     const label = config ? config.displayName : roleId.replace(/_/g, " ");
 
     return (
-      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold bg-[#0E7C86]/25 text-teal-300 border border-[#0E7C86]/50">
+      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold bg-teal-50 text-[#0E5961] border border-teal-200">
         <Award size={12} className="text-[#F59E0B]" />
         {label}
       </span>
@@ -180,11 +180,11 @@ export default function StaffRosterAllotment() {
   const roleEntries = Object.entries(EMPLOYEE_ROLES) as [OperationalRoleId, EmployeeRoleConfig][];
 
   return (
-    <section className="controller-panel rounded-lg overflow-hidden border border-[#16364A] bg-[#071A33]">
+    <section className="controller-panel rounded-xl overflow-hidden">
       {/* Header */}
-      <div className="controller-header px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#16364A] bg-[#0A2036]">
+      <div className="controller-header px-5 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-lg bg-[#0E7C86]/20 border border-[#0E7C86]/40 flex items-center justify-center text-teal-300">
+          <div className="h-9 w-9 rounded-lg bg-teal-500/20 border border-teal-400/40 flex items-center justify-center text-teal-200">
             <Users size={18} />
           </div>
           <div>
@@ -192,11 +192,11 @@ export default function StaffRosterAllotment() {
               <h2 className="text-sm font-bold text-white tracking-wide">
                 Staff Operational Roster & Role Allotment
               </h2>
-              <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/20 text-emerald-200 border border-emerald-400/40">
                 Live Broadcast
               </span>
             </div>
-            <p className="text-xs text-[#9FB8BE]">
+            <p className="mt-0.5 text-xs text-[#D7E5EC]/80">
               Section Controller authority to assign and real-time synchronize employee operational roles
             </p>
           </div>
@@ -207,7 +207,7 @@ export default function StaffRosterAllotment() {
             type="button"
             onClick={loadStaff}
             disabled={loading}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#16364A] hover:bg-[#1E455E] text-slate-200 text-xs font-semibold transition border border-[#294665]"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition border border-white/20"
             title="Refresh Staff Roster"
           >
             <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
@@ -221,14 +221,14 @@ export default function StaffRosterAllotment() {
         <div
           className={`px-5 py-3 text-xs flex items-center gap-2 border-b ${
             alertBanner.type === "success"
-              ? "bg-emerald-950/60 border-emerald-500/40 text-emerald-200"
-              : "bg-red-950/60 border-red-500/40 text-red-200"
+              ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+              : "bg-red-50 border-red-200 text-red-800"
           }`}
         >
           {alertBanner.type === "success" ? (
-            <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
+            <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
           ) : (
-            <AlertCircle size={16} className="text-red-400 shrink-0" />
+            <AlertCircle size={16} className="text-red-600 shrink-0" />
           )}
           <span>{alertBanner.message}</span>
         </div>
@@ -238,7 +238,7 @@ export default function StaffRosterAllotment() {
       <div className="overflow-x-auto">
         <table className="w-full text-left text-xs border-collapse">
           <thead>
-            <tr className="border-b border-[#16364A] bg-[#051322] text-[#718F96] uppercase text-[10px] tracking-wider">
+            <tr className="border-b border-slate-200 bg-slate-50 text-slate-500 uppercase text-[10px] tracking-wider">
               <th className="py-3 px-4 font-bold">Employee Name & ID</th>
               <th className="py-3 px-4 font-bold">Official Email</th>
               <th className="py-3 px-4 font-bold">Department</th>
@@ -246,19 +246,19 @@ export default function StaffRosterAllotment() {
               <th className="py-3 px-4 font-bold text-right">Controller Action</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#16364A]/60">
+          <tbody className="divide-y divide-slate-100">
             {loading ? (
               <tr>
-                <td colSpan={5} className="py-8 text-center text-slate-400">
+                <td colSpan={5} className="py-8 text-center text-slate-500">
                   <div className="flex items-center justify-center gap-2 text-xs">
-                    <RefreshCw size={14} className="animate-spin text-teal-400" />
+                    <RefreshCw size={14} className="animate-spin text-[#0E5961]" />
                     <span>Loading staff personnel records...</span>
                   </div>
                 </td>
               </tr>
             ) : staff.length === 0 ? (
               <tr>
-                <td colSpan={5} className="py-8 text-center text-slate-400 text-xs">
+                <td colSpan={5} className="py-8 text-center text-slate-500 text-xs">
                   No staff members found in this division sector.
                 </td>
               </tr>
@@ -270,20 +270,20 @@ export default function StaffRosterAllotment() {
                 return (
                   <tr
                     key={emp.id || idx}
-                    className="hover:bg-[#0A2036]/70 transition-colors"
+                    className="hover:bg-slate-50/70 transition-colors"
                   >
                     <td className="py-3 px-4">
-                      <div className="font-bold text-white text-xs">{emp.name}</div>
-                      <div className="text-[10px] text-slate-400 font-mono mt-0.5">
+                      <div className="font-bold text-[#071A33] text-xs">{emp.name}</div>
+                      <div className="text-[10px] text-slate-500 font-mono mt-0.5">
                         {empCode}
                       </div>
                     </td>
 
-                    <td className="py-3 px-4 font-mono text-slate-300 text-[11px]">
+                    <td className="py-3 px-4 font-mono text-slate-600 text-[11px]">
                       {emp.email}
                     </td>
 
-                    <td className="py-3 px-4 text-slate-300">
+                    <td className="py-3 px-4 text-slate-700">
                       <div className="flex items-center gap-1.5">
                         <Building2 size={13} className="text-slate-400" />
                         <span>{emp.department || "Operations & Traffic Control"}</span>
@@ -298,7 +298,7 @@ export default function StaffRosterAllotment() {
                       <button
                         type="button"
                         onClick={() => openAssignModal(emp)}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#0E7C86] hover:bg-[#0E5961] text-white font-semibold transition text-xs shadow-sm"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#0E5961] hover:bg-[#071A33] text-white font-semibold transition text-xs shadow-xs"
                       >
                         <UserCheck size={13} />
                         <span>Assign Role</span>
@@ -314,19 +314,19 @@ export default function StaffRosterAllotment() {
 
       {/* Role Assignment Modal */}
       {isModalOpen && selectedStaff && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-2xl border border-[#16364A] bg-[#071A33] p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200">
             {/* Modal Header */}
-            <div className="flex items-start justify-between border-b border-[#16364A] pb-4">
+            <div className="flex items-start justify-between border-b border-slate-200 pb-4">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#0A2036] border border-[#294665] text-[#F59E0B]">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 border border-amber-200 text-[#F59E0B]">
                   <UserCheck size={20} />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-white">
+                  <h3 className="text-base font-bold text-[#071A33]">
                     Operational Role Allotment
                   </h3>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-slate-500">
                     Real-time operational authority assignment for Division Employees
                   </p>
                 </div>
@@ -334,19 +334,19 @@ export default function StaffRosterAllotment() {
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="rounded-lg p-1.5 text-slate-400 hover:bg-[#0A2036] hover:text-white"
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
               >
                 <X size={20} />
               </button>
             </div>
 
             {/* Employee Preview */}
-            <div className="bg-[#0A2036] p-3.5 rounded-xl border border-[#16364A] flex items-center justify-between">
+            <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex items-center justify-between">
               <div>
-                <span className="font-bold text-white text-sm block">
+                <span className="font-bold text-[#071A33] text-sm block">
                   {selectedStaff.name}
                 </span>
-                <span className="text-[11px] text-slate-400 font-mono">
+                <span className="text-[11px] text-slate-500 font-mono">
                   {selectedStaff.employee_id || selectedStaff.employeeId || "IR-STAFF"} • {selectedStaff.email}
                 </span>
               </div>
@@ -356,13 +356,13 @@ export default function StaffRosterAllotment() {
             <form onSubmit={handleAssignRole} className="space-y-4 text-xs">
               {/* Department Selection */}
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">
+                <label className="block text-slate-700 font-semibold mb-1">
                   Railway Department
                 </label>
                 <select
                   value={selectedDepartment}
                   onChange={(e) => handleDepartmentChange(e.target.value)}
-                  className="w-full bg-[#0A2036] border border-[#16364A] rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-teal-400"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-[#071A33] focus:outline-none focus:border-teal-500"
                 >
                   {EMPLOYEE_DEPARTMENTS.map((dept) => (
                     <option key={dept} value={dept}>
@@ -374,13 +374,13 @@ export default function StaffRosterAllotment() {
 
               {/* Operational Role Selection */}
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">
+                <label className="block text-slate-700 font-semibold mb-1">
                   Assigned Operational Role
                 </label>
                 <select
                   value={selectedRole}
                   onChange={(e) => setSelectedRole(e.target.value as OperationalRoleId)}
-                  className="w-full bg-[#0A2036] border border-[#16364A] rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-teal-400"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-[#071A33] focus:outline-none focus:border-teal-500"
                 >
                   {roleEntries
                     .filter(([, cfg]) => cfg.department === selectedDepartment)
@@ -403,23 +403,23 @@ export default function StaffRosterAllotment() {
 
               {/* Role Scope Details Preview */}
               {EMPLOYEE_ROLES[selectedRole] && (
-                <div className="p-3 bg-[#031426] rounded-xl border border-[#16364A] space-y-1.5 text-[11px]">
-                  <div className="text-teal-300 font-bold flex items-center gap-1.5">
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5 text-[11px]">
+                  <div className="text-[#0E5961] font-bold flex items-center gap-1.5">
                     <Shield size={13} />
                     <span>{EMPLOYEE_ROLES[selectedRole].displayName}</span>
-                    <span className="text-slate-400 font-normal">
+                    <span className="text-slate-500 font-normal">
                       • Duty: {EMPLOYEE_ROLES[selectedRole].dutyType}
                     </span>
                   </div>
-                  <p className="text-slate-300 leading-relaxed">
+                  <p className="text-slate-600 leading-relaxed">
                     {EMPLOYEE_ROLES[selectedRole].primaryResponsibility}
                   </p>
                 </div>
               )}
 
               {/* Real-time Notice */}
-              <div className="flex items-center gap-2 p-2.5 rounded-lg bg-teal-950/40 border border-teal-500/30 text-teal-200 text-[11px]">
-                <Radio size={14} className="text-teal-400 animate-pulse shrink-0" />
+              <div className="flex items-center gap-2 p-2.5 rounded-lg bg-teal-50 border border-teal-200 text-[#0E5961] text-[11px]">
+                <Radio size={14} className="text-teal-600 animate-pulse shrink-0" />
                 <span>
                   Real-time synchronization will update the employee's active dashboard, duty roster, and assignment immediately without requiring logout.
                 </span>
@@ -431,14 +431,14 @@ export default function StaffRosterAllotment() {
                   type="button"
                   onClick={() => setIsModalOpen(false)}
                   disabled={submitting}
-                  className="px-4 py-2 rounded-xl border border-[#294665] bg-[#0A2036] text-slate-300 hover:bg-[#16364A] transition font-semibold"
+                  className="px-4 py-2 rounded-xl border border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200 transition font-semibold"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="flex items-center gap-2 px-5 py-2 rounded-xl bg-[#0E7C86] hover:bg-[#0E5961] text-white font-bold transition shadow-md disabled:opacity-50"
+                  className="flex items-center gap-2 px-5 py-2 rounded-xl bg-[#0E5961] hover:bg-[#071A33] text-white font-bold transition shadow-sm disabled:opacity-50"
                 >
                   {submitting ? (
                     <>

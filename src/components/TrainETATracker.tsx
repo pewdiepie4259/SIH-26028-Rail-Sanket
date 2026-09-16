@@ -4,6 +4,19 @@ import { useSearchParams } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import {
+    TrainFront,
+    Clock,
+    MapPin,
+    Activity,
+    CloudRain,
+    AlertTriangle,
+    ShieldCheck,
+    Search,
+    Gauge,
+    RotateCcw,
+    CheckCircle2,
+} from 'lucide-react';
 
 // Fix Leaflet Default Icons
 try {
@@ -17,12 +30,12 @@ try {
     console.warn(e);
 }
 
-// Custom Pulsing Train Marker
+// Custom Pulsing Train Marker with RailDrishti palette
 const trainIcon = new L.DivIcon({
     html: `
     <div style="position: relative; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; margin-left: -22px; margin-top: -22px;">
-      <div style="position: absolute; width: 40px; height: 40px; border-radius: 50%; background: rgba(220, 38, 38, 0.45); animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
-      <div style="width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, #dc2626, #991b1b); border: 2px solid #ffffff; box-shadow: 0 0 14px rgba(220, 38, 38, 0.9); display: flex; align-items: center; justify-content: center; color: white; font-size: 16px; z-index: 10;">
+      <div style="position: absolute; width: 40px; height: 40px; border-radius: 50%; background: rgba(245, 158, 11, 0.45); animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
+      <div style="width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, #071A33, #0E5961); border: 2px solid #F59E0B; box-shadow: 0 0 12px rgba(245, 158, 11, 0.8); display: flex; align-items: center; justify-content: center; color: white; font-size: 16px; z-index: 10;">
         🚆
       </div>
     </div>
@@ -35,9 +48,9 @@ const trainIcon = new L.DivIcon({
     className: ''
 });
 
-// Station Marker Dot
+// Station Marker Dot with RailDrishti palette
 const createStationIcon = (isSelected: boolean, isCurrent: boolean) => new L.DivIcon({
-    html: `<div style="width: ${isSelected ? '16px' : '11px'}; height: ${isSelected ? '16px' : '11px'}; border-radius: 50%; background: ${isSelected ? '#f59e0b' : isCurrent ? '#dc2626' : '#2563eb'}; border: 2px solid #ffffff; box-shadow: 0 0 ${isSelected ? '12px #f59e0b' : '4px rgba(0,0,0,0.5)'}; margin-left: ${isSelected ? '-8px' : '-5px'}; margin-top: ${isSelected ? '-8px' : '-5px'}; cursor: pointer;"></div>`,
+    html: `<div style="width: ${isSelected ? '16px' : '11px'}; height: ${isSelected ? '16px' : '11px'}; border-radius: 50%; background: ${isSelected ? '#F59E0B' : isCurrent ? '#0E7C86' : '#071A33'}; border: 2px solid #ffffff; box-shadow: 0 0 ${isSelected ? '10px #F59E0B' : '4px rgba(7,26,51,0.5)'}; margin-left: ${isSelected ? '-8px' : '-5px'}; margin-top: ${isSelected ? '-8px' : '-5px'}; cursor: pointer;"></div>`,
     className: ''
 });
 
@@ -331,22 +344,9 @@ function ResetViewButton({ allCoords, onReset }: { allCoords: [number, number][]
             <button
                 type="button"
                 onClick={handleReset}
-                style={{
-                    padding: '8px 16px',
-                    borderRadius: '8px',
-                    border: '1px solid #38bdf8',
-                    background: '#0f172a',
-                    color: '#38bdf8',
-                    fontSize: '12px',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    boxShadow: '0 4px 15px rgba(0,0,0,0.5)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px'
-                }}
+                className="flex items-center gap-2 rounded-xl border border-[#F59E0B] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-3.5 py-2 text-xs font-bold text-white shadow-lg transition-all hover:scale-[1.02] cursor-pointer"
             >
-                🗺️ Reset View (Full India Route)
+                <span>🗺️ Reset View (Full India Route)</span>
             </button>
         </div>
     );
@@ -580,34 +580,75 @@ export default function TrainETATracker() {
         }
     };
 
-    return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 64px)', width: '100%', background: '#0a0f1d', color: '#f1f5f9', fontFamily: 'system-ui, -apple-system, sans-serif', overflow: 'hidden' }}>
+    const journeyProgress = useMemo(() => {
+        if (!validStops || validStops.length === 0) return 0;
+        if (!liveStatus || !liveStatus.current_station_name) return 35;
+        const idx = validStops.findIndex(
+            (s) => s.station_name === liveStatus.current_station_name || s.station_code === liveStatus.current_station_name
+        );
+        if (idx >= 0) {
+            return Math.min(100, Math.max(5, Math.round(((idx + 1) / validStops.length) * 100)));
+        }
+        return 42;
+    }, [validStops, liveStatus]);
 
-            {/* HEADER */}
-            <header style={{ height: '64px', padding: '0 24px', background: '#0f172a', borderBottom: '1px solid #1e293b', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 9999 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ width: '40px', height: '40px', borderRadius: '10px', overflow: 'hidden', border: '1px solid #294665', background: '#071A33', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.3)', flexShrink: 0 }}>
-                        <img src="/logos/raildrishti-dark.png" alt="RailDrishti" style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '2px' }} />
+    return (
+        <div className="flex flex-col h-[calc(100vh-4rem)] w-full bg-gradient-to-br from-[#FFF4E1] via-white to-[#FFF4E1] text-[#071A33] overflow-hidden">
+
+            {/* 1. TOP SUB-CONTROL BAR */}
+            <div className="border-b border-slate-200 bg-white/95 px-4 py-2.5 sm:px-6 shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shrink-0 z-30">
+                <div className="flex items-center gap-3">
+                    <div className="h-9 w-9 rounded-xl bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] border border-[#F59E0B] flex items-center justify-center text-white shrink-0 shadow-xs">
+                        <TrainFront size={18} className="text-[#F59E0B]" />
                     </div>
                     <div>
-                        <h1 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', letterSpacing: '-0.02em' }}>
-                            Rail<span style={{ color: '#F59E0B' }}>Drishti</span> <span style={{ fontSize: '10px', fontWeight: 700, background: 'rgba(245, 158, 11, 0.15)', color: '#F59E0B', padding: '2px 8px', borderRadius: '12px', border: '1px solid rgba(245, 158, 11, 0.35)', marginLeft: '8px' }}>SIH26028</span>
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#0E7C86]">
+                                Spatio-Temporal Tracking
+                            </span>
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.2 text-[10px] font-bold text-emerald-700 border border-emerald-200">
+                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                RTIS Live
+                            </span>
+                        </div>
+                        <h1 className="text-sm sm:text-base font-extrabold text-[#071A33] leading-tight flex items-center gap-2">
+                            <span>Track ETA:</span>
+                            <span className="text-[#0E5961]">#{liveStatus?.train_number || selectedTrain} {liveStatus?.train_name}</span>
                         </h1>
-                        <div style={{ fontSize: '11px', color: '#94a3b8' }}>Click any station to zoom into actual railway tracks & platforms</div>
                     </div>
                 </div>
 
-                {/* SEARCH BAR */}
-                <div style={{ position: 'relative', width: '340px', zIndex: 10000 }}>
-                    <input
-                        type="text"
-                        placeholder="Search Train (e.g. 10111, 04601)..."
-                        value={searchQuery}
-                        onChange={(e) => handleSearch(e.target.value)}
-                        style={{ width: '100%', padding: '10px 16px', borderRadius: '10px', background: '#1e293b', border: '1px solid #334155', color: '#f8fafc', fontSize: '13px', outline: 'none' }}
-                    />
+                {/* SEARCH BAR with RailDrishti gradient button */}
+                <div className="relative w-full sm:w-[360px] z-40">
+                    <form
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            if (searchQuery.trim()) {
+                                loadTrainData(searchQuery.trim());
+                            }
+                        }}
+                        className="flex items-center rounded-xl border border-[#F59E0B] bg-white shadow-xs overflow-hidden"
+                    >
+                        <div className="flex flex-1 items-center gap-2 px-3 py-1.5">
+                            <Search size={16} className="text-[#0E7C86] shrink-0" />
+                            <input
+                                type="text"
+                                placeholder="Search train (e.g. 12627, 12246)..."
+                                value={searchQuery}
+                                onChange={(e) => handleSearch(e.target.value)}
+                                className="w-full text-xs font-semibold text-[#071A33] outline-none placeholder:text-slate-400"
+                            />
+                        </div>
+                        <button
+                            type="submit"
+                            className="flex items-center gap-1 bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] border-l border-[#F59E0B] px-3.5 py-2 text-xs font-bold text-white transition hover:scale-[1.01] cursor-pointer"
+                        >
+                            <span>Search</span>
+                        </button>
+                    </form>
+
                     {searchResults.length > 0 && (
-                        <div style={{ position: 'absolute', top: '48px', left: 0, right: 0, background: '#0f172a', border: '1px solid #334155', borderRadius: '10px', zIndex: 10001, maxHeight: '280px', overflowY: 'auto', boxShadow: '0 10px 25px rgba(0,0,0,0.8)' }}>
+                        <div className="absolute top-11 left-0 right-0 rounded-xl border border-slate-200 bg-white shadow-xl max-h-64 overflow-y-auto z-50 p-1">
                             {searchResults.map((t) => (
                                 <div
                                     key={t.train_number}
@@ -615,148 +656,187 @@ export default function TrainETATracker() {
                                         loadTrainData(t.train_number);
                                         setSearchQuery(t.train_number);
                                     }}
-                                    style={{ padding: '12px 16px', cursor: 'pointer', borderBottom: '1px solid #1e293b', fontSize: '13px' }}
-                                    onMouseEnter={(e) => e.currentTarget.style.background = '#1e293b'}
-                                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                    className="px-3 py-2 text-xs rounded-lg hover:bg-[#FFF4E1] cursor-pointer transition flex items-center justify-between border-b border-slate-100 last:border-0"
                                 >
-                                    <strong style={{ color: '#38bdf8' }}>{t.train_number}</strong> — {t.train_name}
+                                    <span className="font-mono font-bold text-[#071A33]">#{t.train_number}</span>
+                                    <span className="text-slate-700 font-medium truncate max-w-[200px]">{t.train_name}</span>
                                 </div>
                             ))}
                         </div>
                     )}
                 </div>
-            </header>
+            </div>
 
-            {/* DASHBOARD BODY */}
-            <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+            {/* 2. DASHBOARD BODY */}
+            <div className="flex flex-col lg:flex-row flex-1 overflow-hidden">
 
                 {/* LEFT PANEL */}
-                <div style={{ width: '440px', background: '#0f172a', borderRight: '1px solid #1e293b', display: 'flex', flexDirection: 'column', zIndex: 10 }}>
+                <div className="w-full lg:w-[440px] xl:w-[460px] bg-white border-r border-slate-200 flex flex-col shrink-0 shadow-sm z-10 overflow-hidden">
 
                     {/* LIVE STATUS CARD */}
                     {liveStatus && (
-                        <div style={{ margin: '16px', padding: '16px', borderRadius: '16px', background: 'linear-gradient(145deg, #1e293b, #0f172a)', border: '1px solid #334155', boxShadow: '0 8px 20px rgba(0,0,0,0.3)' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div className="m-3 p-4 rounded-2xl border border-slate-200 bg-gradient-to-br from-[#FFFDF9] via-white to-[#FFF6E5] shadow-xs space-y-3">
+                            <div className="flex items-start justify-between gap-3">
                                 <div>
-                                    <div style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Active Train</div>
-                                    <div style={{ fontSize: '17px', fontWeight: 800, color: '#f8fafc', marginTop: '2px' }}>
-                                        #{liveStatus.train_number}
+                                    <div className="text-[10px] font-bold uppercase tracking-wider text-[#0E7C86]">
+                                        Active Coaching Rake
                                     </div>
-                                    <div style={{ fontSize: '13px', color: '#38bdf8', fontWeight: 500 }}>
-                                        {liveStatus.train_name}
-                                    </div>
+                                    <h2 className="text-lg font-black text-[#071A33] mt-0.5">
+                                        #{liveStatus.train_number} {liveStatus.train_name}
+                                    </h2>
                                 </div>
 
-                                <span style={{
-                                    display: 'inline-block',
-                                    padding: '4px 10px',
-                                    borderRadius: '20px',
-                                    fontSize: '12px',
-                                    fontWeight: 700,
-                                    background: liveStatus.delay_minutes > 0 ? 'rgba(239, 68, 68, 0.2)' : 'rgba(34, 197, 94, 0.2)',
-                                    color: liveStatus.delay_minutes > 0 ? '#f87171' : '#4ade80',
-                                    border: `1px solid ${liveStatus.delay_minutes > 0 ? '#ef4444' : '#22c55e'}`
-                                }}>
-                                    {liveStatus.delay_minutes > 0 ? `+${liveStatus.delay_minutes}m Delay` : 'On Time'}
+                                <span
+                                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold border ${
+                                        liveStatus.delay_minutes > 0
+                                            ? 'bg-amber-50 text-amber-800 border-amber-200'
+                                            : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                    }`}
+                                >
+                                    {liveStatus.delay_minutes > 0 ? (
+                                        <>
+                                            <AlertTriangle size={12} className="text-amber-600" />
+                                            <span>+{liveStatus.delay_minutes}m Delay</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <CheckCircle2 size={12} className="text-emerald-600" />
+                                            <span>On-Time</span>
+                                        </>
+                                    )}
                                 </span>
                             </div>
 
-                            {/* TELEMETRY */}
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '14px', paddingTop: '12px', borderTop: '1px solid rgba(148, 163, 184, 0.1)', fontSize: '12px' }}>
-                                <div style={{ background: '#0a0f1d', padding: '8px 10px', borderRadius: '8px' }}>
-                                    <span style={{ color: '#64748b' }}>Current Station:</span>
-                                    <div style={{ color: '#e2e8f0', fontWeight: 600, fontSize: '13px' }}>{liveStatus.current_station_name}</div>
+                            {/* TELEMETRY 4-GRID */}
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                                <div className="rounded-xl border border-slate-200 bg-white p-2.5">
+                                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Current Station</div>
+                                    <div className="text-xs font-bold text-[#071A33] mt-0.5 truncate">{liveStatus.current_station_name || "En Route"}</div>
                                 </div>
-                                <div style={{ background: '#0a0f1d', padding: '8px 10px', borderRadius: '8px' }}>
-                                    <span style={{ color: '#64748b' }}>Live Speed:</span>
-                                    <div style={{ color: '#38bdf8', fontWeight: 600, fontSize: '13px' }}>⚡ {liveStatus.speed_kmh} km/h</div>
+                                <div className="rounded-xl border border-slate-200 bg-white p-2.5">
+                                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Kinematic Speed</div>
+                                    <div className="text-xs font-bold text-[#0E5961] mt-0.5 flex items-center gap-1 font-mono">
+                                        <Gauge size={13} />
+                                        <span>{liveStatus.speed_kmh} km/h</span>
+                                    </div>
                                 </div>
-                                <div style={{ background: '#0a0f1d', padding: '8px 10px', borderRadius: '8px' }}>
-                                    <span style={{ color: '#64748b' }}>Next Station ETA:</span>
-                                    <div style={{ color: '#fbbf24', fontWeight: 600, fontSize: '13px' }}>🕒 {liveStatus.eta_next_station}</div>
+                                <div className="rounded-xl border border-slate-200 bg-white p-2.5">
+                                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Next Station ETA</div>
+                                    <div className="text-xs font-bold text-[#071A33] mt-0.5 flex items-center gap-1 font-mono">
+                                        <Clock size={13} className="text-[#F59E0B]" />
+                                        <span>{liveStatus.eta_next_station || "--"}</span>
+                                    </div>
                                 </div>
-                                <div style={{ background: '#0a0f1d', padding: '8px 10px', borderRadius: '8px' }}>
-                                    <span style={{ color: '#64748b' }}>Prediction Confidence:</span>
-                                    <div style={{ color: '#22c55e', fontWeight: 600, fontSize: '13px' }}>94%</div>
+                                <div className="rounded-xl border border-slate-200 bg-white p-2.5">
+                                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">AI Confidence</div>
+                                    <div className="text-xs font-bold text-emerald-700 mt-0.5 flex items-center gap-1">
+                                        <ShieldCheck size={13} className="text-emerald-600" />
+                                        <span>94% ST-GNN</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* JOURNEY PROGRESS BAR */}
+                            <div>
+                                <div className="flex items-center justify-between text-[11px] font-bold text-slate-600 mb-1">
+                                    <span className="flex items-center gap-1">
+                                        <Activity size={12} className="text-[#0E7C86]" />
+                                        <span>Journey Corridor Progress</span>
+                                    </span>
+                                    <span className="text-[#071A33] font-mono">{journeyProgress}%</span>
+                                </div>
+                                <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden border border-slate-200/80">
+                                    <div
+                                        className="h-full rounded-full bg-gradient-to-r from-[#0E7C86] via-[#0E5961] to-[#F59E0B] transition-all duration-500"
+                                        style={{ width: `${journeyProgress}%` }}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* DELAY / WEATHER FACTOR ADVISORY */}
+                            <div className="rounded-xl bg-amber-50/70 border border-amber-200/80 p-2.5 text-[11px] text-amber-900 flex items-start gap-2">
+                                <CloudRain size={15} className="text-amber-700 shrink-0 mt-0.5" />
+                                <div className="leading-tight">
+                                    <span className="font-bold">Dynamic Track Impact: </span>
+                                    <span>Section weather clearance normal; +{liveStatus.delay_minutes > 0 ? liveStatus.delay_minutes : 0}m buffer integrated into spatio-temporal predictions.</span>
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    {/* STATIONS LIST */}
-                    <div style={{ padding: '0 20px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
-                            Station Route ({validStops.length} Plotted) — <span style={{ color: '#38bdf8' }}>Click to View</span>
+                    {/* STATIONS LIST HEADER */}
+                    <div className="px-4 py-2 border-y border-slate-200 bg-slate-50 flex items-center justify-between text-xs">
+                        <span className="font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
+                            <MapPin size={13} className="text-[#0E7C86]" />
+                            <span>Station Route ({validStops.length} Plotted)</span>
                         </span>
+                        <span className="text-[11px] text-slate-500 font-medium">Click station to focus</span>
                     </div>
 
-                    <div style={{ flex: 1, overflowY: 'auto', padding: '0 16px 20px' }}>
+                    {/* SCROLLABLE STATIONS LIST */}
+                    <div className="flex-1 overflow-y-auto p-3 space-y-1.5 bg-[#F8FAFC]">
                         {loading ? (
-                            <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>Loading route...</div>
+                            <div className="p-8 text-center text-xs font-semibold text-slate-500">
+                                <RotateCcw size={20} className="animate-spin text-[#0E7C86] mx-auto mb-2" />
+                                Querying station route and spatial tracks...
+                            </div>
+                        ) : validStops.length === 0 ? (
+                            <div className="p-8 text-center text-xs text-slate-500">No route stops available for this train.</div>
                         ) : (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                {validStops.map((st, idx) => {
-                                    const delay = liveStatus ? liveStatus.delay_minutes : 0;
-                                    const dynamicArrETA = calculateDynamicETA(st.scheduled_arrival, delay);
-                                    const isSelected = selectedStation?.station_code === st.station_code;
-                                    const isCurrent = liveStatus?.current_station_name === st.station_name;
+                            validStops.map((st, idx) => {
+                                const delay = liveStatus ? liveStatus.delay_minutes : 0;
+                                const dynamicArrETA = calculateDynamicETA(st.scheduled_arrival, delay);
+                                const isSelected = selectedStation?.station_code === st.station_code;
+                                const isCurrent = liveStatus?.current_station_name === st.station_name;
 
-                                    return (
-                                        <div
-                                            key={idx}
-                                            onClick={() => handleStationClick(st)}
-                                            style={{
-                                                padding: '10px 14px',
-                                                borderRadius: '10px',
-                                                background: isSelected ? 'rgba(245, 158, 11, 0.18)' : isCurrent ? 'rgba(56, 189, 248, 0.12)' : '#1e293b',
-                                                border: isSelected ? '1px solid #f59e0b' : isCurrent ? '1px solid #38bdf8' : '1px solid #334155',
-                                                display: 'flex',
-                                                justifyContent: 'space-between',
-                                                alignItems: 'center',
-                                                cursor: 'pointer',
-                                                transition: 'all 0.2s',
-                                                boxShadow: isSelected ? '0 0 10px rgba(245, 158, 11, 0.3)' : 'none'
-                                            }}
-                                            onMouseEnter={(e) => {
-                                                if (!isSelected) e.currentTarget.style.borderColor = '#60a5fa';
-                                            }}
-                                            onMouseLeave={(e) => {
-                                                if (!isSelected) e.currentTarget.style.borderColor = isCurrent ? '#38bdf8' : '#334155';
-                                            }}
-                                        >
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                                <span style={{ fontSize: '11px', fontWeight: 700, color: isSelected ? '#f59e0b' : isCurrent ? '#38bdf8' : '#64748b', minWidth: '22px' }}>
-                                                    {idx + 1}.
-                                                </span>
-                                                <div>
-                                                    <div style={{ fontWeight: 600, fontSize: '13px', color: isSelected ? '#f59e0b' : isCurrent ? '#38bdf8' : '#e2e8f0' }}>
-                                                        {st.station_name} <span style={{ fontSize: '11px', color: '#94a3b8' }}>({st.station_code})</span>
-                                                    </div>
-                                                    <div style={{ fontSize: '11px', color: '#64748b' }}>
-                                                        Scheduled: {st.scheduled_arrival || st.scheduled_departure || '--'}
-                                                    </div>
+                                return (
+                                    <div
+                                        key={idx}
+                                        onClick={() => handleStationClick(st)}
+                                        className={`rounded-xl p-2.5 transition-all cursor-pointer flex items-center justify-between border ${
+                                            isSelected
+                                                ? 'bg-amber-50/80 border-2 border-[#F59E0B] shadow-xs'
+                                                : isCurrent
+                                                ? 'bg-teal-50/80 border border-[#0E7C86] shadow-xs'
+                                                : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-[#FFFDF9]'
+                                        }`}
+                                    >
+                                        <div className="flex items-center gap-2.5">
+                                            <span className={`text-[11px] font-mono font-bold min-w-[20px] ${
+                                                isSelected ? 'text-[#F59E0B]' : isCurrent ? 'text-[#0E7C86]' : 'text-slate-400'
+                                            }`}>
+                                                {idx + 1}.
+                                            </span>
+                                            <div>
+                                                <div className="text-xs font-bold text-[#071A33] flex items-center gap-1.5">
+                                                    <span>{st.station_name}</span>
+                                                    <span className="text-[10px] font-mono text-slate-400">({st.station_code})</span>
                                                 </div>
-                                            </div>
-
-                                            <div style={{ textAlign: 'right' }}>
-                                                <div style={{ fontSize: '12px', fontWeight: 700, color: delay > 0 ? '#f87171' : '#4ade80' }}>
-                                                    ETA: {dynamicArrETA}
+                                                <div className="text-[11px] text-slate-500">
+                                                    Scheduled: {st.scheduled_arrival || st.scheduled_departure || '--'}
                                                 </div>
-                                                {st.halt_minutes > 0 && (
-                                                    <span style={{ fontSize: '10px', color: '#94a3b8' }}>Halt {st.halt_minutes}m</span>
-                                                )}
                                             </div>
                                         </div>
-                                    );
-                                })}
-                            </div>
+
+                                        <div className="text-right">
+                                            <div className={`text-xs font-bold font-mono ${
+                                                delay > 0 ? 'text-amber-700' : 'text-emerald-700'
+                                            }`}>
+                                                ETA: {dynamicArrETA}
+                                            </div>
+                                            {st.halt_minutes > 0 && (
+                                                <span className="text-[10px] text-slate-400 font-medium">Halt {st.halt_minutes}m</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })
                         )}
                     </div>
                 </div>
 
-                {/* RIGHT PANEL: REAL OPENSTREETMAP OF INDIA */}
-                <div style={{ flex: 1, position: 'relative', height: '100%', zIndex: 1 }}>
-
+                {/* RIGHT PANEL: OPENSTREETMAP */}
+                <div className="flex-1 relative h-[500px] lg:h-full z-0">
                     <MapContainer
                         center={[20.5937, 78.9629]}
                         zoom={5}
@@ -787,8 +867,8 @@ export default function TrainETATracker() {
                         {/* TRACK POLYLINE */}
                         {polylineCoords.length > 1 && (
                             <>
-                                <Polyline positions={polylineCoords} color="#000000" weight={6} opacity={0.5} />
-                                <Polyline positions={polylineCoords} color="#dc2626" weight={3.5} opacity={1} />
+                                <Polyline positions={polylineCoords} color="#071A33" weight={5} opacity={0.6} />
+                                <Polyline positions={polylineCoords} color="#0E7C86" weight={3} opacity={1} />
                             </>
                         )}
 
@@ -810,13 +890,13 @@ export default function TrainETATracker() {
                                     }}
                                 >
                                     <Popup>
-                                        <div style={{ color: '#0f172a', padding: '6px', minWidth: '180px' }}>
-                                            <div style={{ fontWeight: 800, fontSize: '15px', color: '#1e293b' }}>{st.station_name}</div>
-                                            <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>Station Code: {st.station_code}</div>
-                                            <hr style={{ margin: '6px 0', borderColor: '#e2e8f0' }} />
-                                            <div style={{ fontSize: '12px', lineHeight: '1.5' }}>
-                                                Scheduled: <b>{st.scheduled_arrival || st.scheduled_departure || '--'}</b><br />
-                                                Live Forecast ETA: <b style={{ color: '#dc2626' }}>{calculateDynamicETA(st.scheduled_arrival, liveStatus?.delay_minutes || 0)}</b>
+                                        <div className="p-1 min-w-[180px] text-slate-800">
+                                            <div className="font-extrabold text-sm text-[#071A33]">{st.station_name}</div>
+                                            <div className="text-[11px] font-mono text-slate-500 font-semibold">Station Code: {st.station_code}</div>
+                                            <hr className="my-1.5 border-slate-200" />
+                                            <div className="text-xs leading-relaxed">
+                                                <div>Scheduled: <span className="font-bold text-[#071A33]">{st.scheduled_arrival || st.scheduled_departure || '--'}</span></div>
+                                                <div>Live Forecast ETA: <span className="font-bold text-[#0E7C86]">{calculateDynamicETA(st.scheduled_arrival, liveStatus?.delay_minutes || 0)}</span></div>
                                             </div>
                                         </div>
                                     </Popup>
@@ -828,14 +908,14 @@ export default function TrainETATracker() {
                         {liveCoord && (
                             <Marker position={liveCoord} icon={trainIcon}>
                                 <Popup>
-                                    <div style={{ color: '#0f172a', padding: '6px' }}>
-                                        <div style={{ fontWeight: 800, color: '#dc2626', fontSize: '15px' }}>🚆 Train #{liveStatus?.train_number}</div>
-                                        <div style={{ fontSize: '13px', fontWeight: 600 }}>{liveStatus?.train_name}</div>
-                                        <hr style={{ margin: '6px 0', borderColor: '#e2e8f0' }} />
-                                        <div style={{ fontSize: '12px', lineHeight: '1.5' }}>
-                                            Current: <b>{liveStatus?.current_station_name}</b><br />
-                                            Speed: <b>{liveStatus?.speed_kmh} km/h</b><br />
-                                            Live Delay: <b style={{ color: '#dc2626' }}>+{liveStatus?.delay_minutes} mins</b>
+                                    <div className="p-1 text-slate-800">
+                                        <div className="font-extrabold text-sm text-[#071A33]">🚆 Train #{liveStatus?.train_number}</div>
+                                        <div className="text-xs font-semibold text-[#0E7C86]">{liveStatus?.train_name}</div>
+                                        <hr className="my-1.5 border-slate-200" />
+                                        <div className="text-xs leading-relaxed">
+                                            <div>Current: <span className="font-bold text-[#071A33]">{liveStatus?.current_station_name}</span></div>
+                                            <div>Speed: <span className="font-bold font-mono text-[#0E7C86]">{liveStatus?.speed_kmh} km/h</span></div>
+                                            <div>Delay: <span className="font-bold font-mono text-amber-700">+{liveStatus?.delay_minutes} mins</span></div>
                                         </div>
                                     </div>
                                 </Popup>

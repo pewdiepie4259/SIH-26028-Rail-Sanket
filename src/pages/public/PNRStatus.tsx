@@ -173,7 +173,7 @@ export default function PNRStatus() {
               <button
                 type="submit"
                 disabled={loading}
-                className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-8 py-3.5 text-sm font-bold text-white shadow-md hover:scale-[1.01] transition-all cursor-pointer disabled:opacity-75"
+                className="flex items-center justify-center gap-2 rounded-xl border border-[#F59E0B] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-8 py-3.5 text-sm font-bold text-white shadow-md hover:scale-[1.01] transition-all cursor-pointer disabled:opacity-75"
               >
                 {loading ? (
                   <>
