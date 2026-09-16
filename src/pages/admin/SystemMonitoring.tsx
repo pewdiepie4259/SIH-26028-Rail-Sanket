@@ -355,7 +355,7 @@ export default function SystemMonitoring() {
   )
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="controller-page px-4 py-5 lg:px-6 space-y-6">
       {/* ── 1. PAGE HEADER ─────────────────────────────────────────── */}
       <header className="controller-panel rounded-lg px-5 py-4">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

@@ -183,11 +183,6 @@ export const LiveMap: React.FC = () => {
   const [animatedPos, setAnimatedPos] = useState<[number, number] | null>(null);
   const [passedStationIdx, setPassedStationIdx] = useState<number>(0);
 
-  /* const stationLookup = useMemo(() => {
-     const map = new Map<string, StationNode>();
-     stations.forEach((stn) => map.set(stn.code.toUpperCase(), stn));
-     return map;
-   }, [stations]);*/
 
   // 1. Fetch Station Registry
   useEffect(() => {

@@ -52,8 +52,8 @@ function ConflictPanel({ conflictsData }: ConflictPanelProps) {
   const conflicts = conflictsData && conflictsData.length > 0 ? conflictsData : baselineConflicts
 
   return (
-    <section className="overflow-hidden rounded-xl border border-[#16364A] bg-[#0A2036]">
-      <div className="border-b border-[#16364A] px-5 py-4">
+    <section className="controller-panel overflow-hidden rounded-xl">
+      <div className="controller-header px-5 py-3.5">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <AlertTriangle
@@ -66,75 +66,75 @@ function ConflictPanel({ conflictsData }: ConflictPanelProps) {
                 Active Conflicts
               </h3>
 
-              <p className="mt-1 text-xs text-[#71899C]">
+              <p className="mt-0.5 text-xs text-[#D7E5EC]/80">
                 Predicted train movement conflicts requiring attention.
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="flex h-2 w-2 rounded-full bg-rose-500 animate-ping" />
-            <span className="rounded-md border border-red-500/30 bg-red-500/10 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-red-300">
+            <span className="flex h-2 w-2 rounded-full bg-rose-400 animate-ping" />
+            <span className="rounded-md border border-red-400/40 bg-red-500/20 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-red-200">
               {conflicts.length} active
             </span>
           </div>
         </div>
       </div>
 
-      <div className="divide-y divide-[#16364A]">
+      <div className="divide-y divide-slate-100">
         {conflicts.map((conflict) => (
           <div
             key={conflict.id}
-            className="p-4 transition-colors hover:bg-[#071A33]"
+            className="p-4 transition-colors hover:bg-slate-50/80"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="flex min-w-0 items-start gap-3">
                 <div
                   className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${
                     conflict.severity === "Critical"
-                      ? "border-red-500/30 bg-red-500/10"
+                      ? "border-red-200 bg-red-50"
                       : conflict.severity === "High"
-                        ? "border-[#F59E0B]/30 bg-[#F59E0B]/10"
-                        : "border-[#16364A] bg-[#071A33]"
+                        ? "border-amber-200 bg-amber-50"
+                        : "border-slate-200 bg-slate-100"
                   }`}
                 >
                   <GitBranch
                     size={15}
                     className={
                       conflict.severity === "Critical"
-                        ? "text-red-400"
+                        ? "text-red-600"
                         : conflict.severity === "High"
-                          ? "text-[#F59E0B]"
-                          : "text-[#0E7C86]"
+                          ? "text-amber-600"
+                          : "text-[#0E5961]"
                     }
                   />
                 </div>
 
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h4 className="truncate text-xs font-bold text-white">
+                    <h4 className="truncate text-xs font-bold text-[#071A33]">
                       {conflict.location}
                     </h4>
 
-                    <span className="rounded border border-[#16364A] bg-[#071A33] px-1.5 py-0.5 font-mono text-[9px] font-semibold text-[#71899C]">
+                    <span className="rounded border border-slate-200 bg-slate-100 px-1.5 py-0.5 font-mono text-[9px] font-semibold text-slate-700">
                       {conflict.id}
                     </span>
 
-                    <span className="flex items-center gap-1 font-mono text-[10px] font-bold text-amber-400">
+                    <span className="flex items-center gap-1 font-mono text-[10px] font-bold text-amber-700">
                       <Clock3 size={11} className="animate-spin-slow" />
                       {conflict.timeToConflict}
                     </span>
                   </div>
 
-                  <div className="mt-2 flex items-center gap-2 text-xs font-bold text-[#D7E5EC]">
+                  <div className="mt-2 flex items-center gap-2 text-xs font-bold text-slate-700">
                     <TrainFront
                       size={13}
-                      className="text-[#0E7C86]"
+                      className="text-[#0E5961]"
                     />
                     <span>{conflict.trainA}</span>
                     <ArrowRight
                       size={12}
-                      className="text-[#71899C]"
+                      className="text-slate-400"
                     />
                     <span>{conflict.trainB}</span>
                   </div>
@@ -144,10 +144,10 @@ function ConflictPanel({ conflictsData }: ConflictPanelProps) {
               <span
                 className={`shrink-0 rounded-md border px-2 py-1 text-[9px] font-bold uppercase tracking-wide ${
                   conflict.severity === "Critical"
-                    ? "border-red-500/40 bg-red-500/10 text-red-300"
+                    ? "border-red-200 bg-red-50 text-red-700"
                     : conflict.severity === "High"
-                      ? "border-[#F59E0B]/40 bg-[#F59E0B]/10 text-[#F59E0B]"
-                      : "border-[#16364A] bg-[#071A33] text-[#71899C]"
+                      ? "border-amber-200 bg-amber-50 text-amber-800"
+                      : "border-slate-200 bg-slate-100 text-slate-700"
                 }`}
               >
                 {conflict.severity}
@@ -155,22 +155,22 @@ function ConflictPanel({ conflictsData }: ConflictPanelProps) {
             </div>
 
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
-              <div className="rounded-lg border border-[#16364A] bg-[#071A33] p-2.5">
-                <div className="text-[9px] font-bold uppercase tracking-wide text-[#71899C]">
+              <div className="rounded-lg border border-slate-200/80 bg-slate-50/70 p-2.5">
+                <div className="text-[9px] font-bold uppercase tracking-wide text-slate-500">
                   Estimated Impact
                 </div>
 
-                <div className="mt-0.5 text-xs font-semibold text-[#D7E5EC]">
+                <div className="mt-0.5 text-xs font-semibold text-[#071A33]">
                   {conflict.impact}
                 </div>
               </div>
 
-              <div className="rounded-lg border border-[#16364A] bg-[#071A33] p-2.5">
-                <div className="text-[9px] font-bold uppercase tracking-wide text-[#71899C]">
+              <div className="rounded-lg border border-slate-200/80 bg-slate-50/70 p-2.5">
+                <div className="text-[9px] font-bold uppercase tracking-wide text-slate-500">
                   Recommendation
                 </div>
 
-                <div className="mt-0.5 truncate text-xs font-semibold text-[#D7E5EC]">
+                <div className="mt-0.5 truncate text-xs font-semibold text-[#071A33]">
                   {conflict.recommendation}
                 </div>
               </div>
@@ -179,7 +179,7 @@ function ConflictPanel({ conflictsData }: ConflictPanelProps) {
             <div className="mt-3 flex items-center justify-between">
               <Link
                 to="/controller/junctions"
-                className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-[#0E7C86] transition hover:text-[#F59E0B]"
+                className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-[#0E5961] transition hover:text-[#F59E0B]"
               >
                 Inspect Conflict
                 <ArrowRight size={11} />

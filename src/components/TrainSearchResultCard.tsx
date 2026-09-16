@@ -135,10 +135,10 @@ export function TrainSearchResultCard({
           <button
             type="button"
             onClick={() => onTrackETA(train)}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 rounded-xl border border-[#F59E0B]/60 bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all hover:scale-105 hover:shadow-md cursor-pointer whitespace-nowrap min-w-[135px]"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 rounded-xl border border-[#F59E0B] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all hover:scale-[1.02] cursor-pointer whitespace-nowrap min-w-[135px]"
           >
             <span>Track ETA</span>
-            <ArrowRight className="w-3.5 h-3.5 text-amber-400" />
+            <ArrowRight className="w-3.5 h-3.5 text-[#F59E0B]" />
           </button>
 
           {/* View on Schematic Map */}

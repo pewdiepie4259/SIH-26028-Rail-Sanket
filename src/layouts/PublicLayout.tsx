@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import {
   ChevronDown,
   Eye,
@@ -413,6 +413,31 @@ function PublicLayout() {
     .filter(Boolean)
     .join(" ")
 
+  const [subHeaderOpen, setSubHeaderOpen] = useState(false)
+  const subHeaderTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const handleOpenSubHeader = () => {
+    if (subHeaderTimerRef.current) {
+      clearTimeout(subHeaderTimerRef.current)
+      subHeaderTimerRef.current = null
+    }
+    setSubHeaderOpen(true)
+  }
+
+  const handleCloseSubHeader = () => {
+    if (subHeaderTimerRef.current) {
+      clearTimeout(subHeaderTimerRef.current)
+    }
+    subHeaderTimerRef.current = setTimeout(() => {
+      setSubHeaderOpen(false)
+    }, 250)
+  }
+
+  const handleNavClick = () => {
+    setSubHeaderOpen(false)
+    setMobileMenuOpen(false)
+  }
+
   const cardBase =
     "flex min-h-[76px] flex-col items-center justify-center gap-1.5 rounded-xl border p-2.5 text-center shadow-sm transition-all duration-200 cursor-pointer select-none"
 
@@ -447,7 +472,7 @@ function PublicLayout() {
     >
       <header className="border-b border-[#164B5A] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] sticky top-0 z-40 shadow-lg">
         <div className="mx-auto flex h-16 max-w-[1600px] items-center justify-between px-4 sm:px-6 lg:px-8 gap-4">
-          {/* Brand Logo & Title */}
+          {/* Brand Logo & Title (Only RailDrishti logo and app name) */}
           <Link to="/" className="flex items-center gap-3 shrink-0">
             <div className="h-11 w-11 shrink-0 overflow-hidden rounded-full border border-[#294665] bg-[#071A33] shadow-sm">
               <img
@@ -458,61 +483,49 @@ function PublicLayout() {
             </div>
 
             <div>
-              <div className="text-lg font-extrabold leading-none tracking-tight text-white flex items-center">
+              <div className="text-xl font-extrabold leading-none tracking-tight text-white flex items-center">
                 Rail<span className="text-[#F59E0B]">Drishti</span>
-              </div>
-
-              <div className="mt-1 hidden text-[9px] font-bold uppercase tracking-wider text-[#F59E0B] sm:block">
-                Dynamic Train ETA & Decision Support
               </div>
             </div>
           </Link>
 
-          {/* Desktop Navigation Links */}
-          <nav className="hidden xl:flex items-center gap-1">
-            <NavLink to="/" end className={navLinkClass}>
-              Dashboard
-            </NavLink>
+          {/* Navigation Area / Menu Trigger - Triggers Hover Sub-Header */}
+          <div
+            onMouseEnter={handleOpenSubHeader}
+            onMouseLeave={handleCloseSubHeader}
+            className="flex items-center"
+          >
+            <button
+              type="button"
+              onClick={() => setSubHeaderOpen((prev) => !prev)}
+              aria-expanded={subHeaderOpen}
+              aria-label="Navigation Menu"
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg border text-xs font-semibold transition-all duration-200 cursor-pointer ${
+                subHeaderOpen
+                  ? "border-[#F59E0B] bg-white/15 text-[#F59E0B] shadow-[0_2px_10px_rgba(245,158,11,0.2)]"
+                  : "border-teal-500/40 bg-teal-950/40 text-teal-100 hover:border-[#F59E0B]/70 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              <Menu size={15} className="text-[#F59E0B]" />
+              <span className="font-semibold tracking-wide">Navigation</span>
+              <ChevronDown
+                size={13}
+                className={`transition-transform duration-200 ${
+                  subHeaderOpen ? "rotate-180 text-[#F59E0B]" : "text-teal-300"
+                }`}
+              />
+            </button>
+          </div>
 
-            <NavLink to="/live" className={navLinkClass}>
-              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-              Live Monitor
-            </NavLink>
-
-            <NavLink to="/eta" className={navLinkClass}>
-              Dynamic ETA
-            </NavLink>
-
-            <NavLink to="/map" className={navLinkClass}>
-              Live Map
-            </NavLink>
-
-            <NavLink to="/stations" className={navLinkClass}>
-              Stations
-            </NavLink>
-
-            {currentUser && (
-              <NavLink to="/pnr" className={navLinkClass}>
-                PNR Status
-              </NavLink>
-            )}
-
-            {currentUser?.role !== "user" && (
-              <NavLink to="/controller" className={({ isActive }) =>
-                `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${isActive
-                  ? "bg-amber-500 text-[#071A33] font-bold shadow-sm"
-                  : "bg-indigo-950/60 border border-indigo-700/60 text-indigo-300 hover:bg-indigo-900/60 hover:text-white"
-                }`
-              }>
-                <ShieldAlert size={13} />
-                Controller DSS
-              </NavLink>
-            )}
-          </nav>
-
-          {/* Right Actions: Live Clock Pill, Login, Register, Language, Accessibility, Mobile Toggle */}
+          {/* Right Actions: EXACT ORDER REQUIRED:
+              1. Live clock / IST time
+              2. Language selector
+              3. Accessibility tools
+              4. Login
+              5. Register
+          */}
           <div className="flex items-center gap-2">
-            {/* Live IST Digital Clock Capsule (Click to toggle 12H/24H) */}
+            {/* 1. Live IST Digital Clock Capsule */}
             <button
               type="button"
               onClick={() => setIs24HourHeader(!is24HourHeader)}
@@ -530,59 +543,7 @@ function PublicLayout() {
               </span>
             </button>
 
-            {currentUser ? (
-              <div className="hidden sm:flex items-center gap-2">
-                <Link
-                  to={currentUser.role === "user" ? "/user/profile" : currentUser.role === "employee" ? "/employee/profile" : currentUser.role === "controller" ? "/controller/dashboard" : "/admin"}
-                  title="View / Edit Profile"
-                  className="flex h-9 items-center gap-2 rounded-full border border-teal-500/60 bg-teal-950/40 px-3.5 text-xs font-semibold text-teal-200 shadow-sm transition hover:border-[#F59E0B] hover:text-[#F59E0B] cursor-pointer"
-                >
-                  <User size={14} className="text-teal-400" />
-                  <span className="max-w-[140px] truncate">{currentUser.name || "Passenger"}</span>
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => {
-                    logout()
-                    setCurrentUser(null)
-                    navigate("/login")
-                  }}
-                  title="Sign Out"
-                  className="flex h-9 items-center gap-1.5 rounded-full border border-slate-700 bg-slate-900/80 px-3 text-xs font-medium text-slate-300 transition-all hover:bg-red-950/40 hover:text-red-300 hover:border-red-500/50 cursor-pointer"
-                >
-                  <LogOut size={13} />
-                  <span>Logout</span>
-                </button>
-              </div>
-            ) : (
-              <div className="hidden sm:flex items-center gap-2">
-                <NavLink
-                  to="/login"
-                  className={({ isActive }) =>
-                    `${headerButton} ${isActive
-                      ? "shadow-[0_5px_14px_rgba(245,158,11,0.18)]"
-                      : ""
-                    }`
-                  }
-                >
-                  Login
-                </NavLink>
-
-                <NavLink
-                  to="/register"
-                  className={({ isActive }) =>
-                    `${headerButton} ${isActive
-                      ? "shadow-[0_5px_14px_rgba(245,158,11,0.18)]"
-                      : ""
-                    }`
-                  }
-                >
-                  Register
-                </NavLink>
-              </div>
-            )}
-
-            {/* Language Selector */}
+            {/* 2. Language Selector */}
             <div className="relative">
               <button
                 type="button"
@@ -1061,7 +1022,62 @@ function PublicLayout() {
               )}
             </div>
 
-            {/* Application Settings Button - Placed next to Accessibility Tool */}
+            {/* 4. Login & 5. Register (or User Profile & Sign Out if logged in) */}
+            {currentUser ? (
+              <div className="hidden sm:flex items-center gap-1.5 ml-1">
+                <Link
+                  to={currentUser.role === "user" ? "/user/profile" : currentUser.role === "employee" ? "/employee/profile" : currentUser.role === "controller" ? "/controller/dashboard" : "/admin"}
+                  title="View / Edit Profile"
+                  className="flex h-9 items-center gap-2 rounded-full border border-teal-500/60 bg-teal-950/40 px-3 text-xs font-semibold text-teal-200 shadow-sm transition hover:border-[#F59E0B] hover:text-[#F59E0B] cursor-pointer"
+                >
+                  <User size={14} className="text-teal-400" />
+                  <span className="max-w-[120px] truncate">{currentUser.name || "Passenger"}</span>
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    logout()
+                    setCurrentUser(null)
+                    navigate("/login")
+                  }}
+                  title="Sign Out"
+                  className="flex h-9 items-center gap-1 rounded-full border border-slate-700 bg-slate-900/80 px-2.5 text-xs font-medium text-slate-300 transition-all hover:bg-red-950/40 hover:text-red-300 hover:border-red-500/50 cursor-pointer"
+                >
+                  <LogOut size={13} />
+                  <span className="hidden lg:inline">Logout</span>
+                </button>
+              </div>
+            ) : (
+              <div className="hidden sm:flex items-center gap-1.5 ml-1">
+                {/* 4. Login */}
+                <NavLink
+                  to="/login"
+                  className={({ isActive }) =>
+                    `${headerButton} ${isActive
+                      ? "shadow-[0_5px_14px_rgba(245,158,11,0.18)] border-[#F59E0B]"
+                      : ""
+                    }`
+                  }
+                >
+                  Login
+                </NavLink>
+
+                {/* 5. Register */}
+                <NavLink
+                  to="/register"
+                  className={({ isActive }) =>
+                    `${headerButton} ${isActive
+                      ? "shadow-[0_5px_14px_rgba(245,158,11,0.18)] border-[#F59E0B]"
+                      : ""
+                    }`
+                  }
+                >
+                  Register
+                </NavLink>
+              </div>
+            )}
+
+            {/* Application Settings Button */}
             <NavLink
               to="/settings"
               title="System Preferences & Diagnostics"
@@ -1090,6 +1106,73 @@ function PublicLayout() {
             >
               {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
+          </div>
+        </div>
+
+        {/* SUB-HEADER: Appears smoothly when hovering over navigation area/menu trigger */}
+        <div
+          onMouseEnter={handleOpenSubHeader}
+          onMouseLeave={handleCloseSubHeader}
+          className={`border-t border-[#164B5A]/80 bg-[#071A33]/98 backdrop-blur-md transition-all duration-300 ease-out overflow-hidden shadow-md ${
+            subHeaderOpen
+              ? "max-h-16 opacity-100 py-2 pointer-events-auto"
+              : "max-h-0 opacity-0 py-0 pointer-events-none"
+          }`}
+        >
+          <div className="mx-auto flex max-w-[1600px] items-center justify-between px-4 sm:px-6 lg:px-8 gap-4">
+            {/* Left side: Subtle Railway Services indicator */}
+            <div className="hidden md:flex items-center gap-2 text-xs font-semibold text-teal-200/90">
+              <span className="h-2 w-2 rounded-full bg-[#F59E0B]" />
+              <span className="text-white font-bold tracking-wide">RailDrishti Public Services</span>
+              <span className="text-slate-400 font-normal">• National Coaching Portal</span>
+            </div>
+
+            {/* Right side: In EXACT order: Dashboard, Live Monitor, Dynamic ETA, Live Map, Stations */}
+            <nav className="flex w-full md:w-auto items-center justify-end gap-1 flex-wrap">
+              <NavLink to="/" end onClick={handleNavClick} className={navLinkClass}>
+                Dashboard
+              </NavLink>
+
+              <NavLink to="/live" onClick={handleNavClick} className={navLinkClass}>
+                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                Live Monitor
+              </NavLink>
+
+              <NavLink to="/eta" onClick={handleNavClick} className={navLinkClass}>
+                Dynamic ETA
+              </NavLink>
+
+              <NavLink to="/map" onClick={handleNavClick} className={navLinkClass}>
+                Live Map
+              </NavLink>
+
+              <NavLink to="/stations" onClick={handleNavClick} className={navLinkClass}>
+                Stations
+              </NavLink>
+
+              {/* PNR Status is a dedicated separate public page */}
+              <NavLink to="/pnr" onClick={handleNavClick} className={navLinkClass}>
+                PNR Status
+              </NavLink>
+
+              {/* Controller DSS link only for authorized personnel */}
+              {currentUser && currentUser.role !== "user" && (
+                <NavLink
+                  to="/controller"
+                  onClick={handleNavClick}
+                  className={({ isActive }) =>
+                    `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 ${
+                      isActive
+                        ? "bg-amber-500 text-[#071A33] shadow-sm"
+                        : "bg-indigo-950/70 border border-indigo-700/60 text-indigo-300 hover:bg-indigo-900 hover:text-white"
+                    }`
+                  }
+                >
+                  <ShieldAlert size={13} />
+                  Controller DSS
+                </NavLink>
+              )}
+            </nav>
           </div>
         </div>
 
@@ -1153,18 +1236,16 @@ function PublicLayout() {
               Stations & Amenities
             </NavLink>
 
-            {currentUser && (
-              <NavLink
-                to="/pnr"
-                onClick={() => setMobileMenuOpen(false)}
-                className={({ isActive }) =>
-                  `flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold ${isActive ? "bg-white/20 text-[#F59E0B]" : "text-slate-200 hover:bg-white/10"
-                  }`
-                }
-              >
-                <span className="font-bold">PNR Status</span>
-              </NavLink>
-            )}
+            <NavLink
+              to="/pnr"
+              onClick={() => setMobileMenuOpen(false)}
+              className={({ isActive }) =>
+                `flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold ${isActive ? "bg-white/20 text-[#F59E0B]" : "text-slate-200 hover:bg-white/10"
+                }`
+              }
+            >
+              <span className="font-bold">PNR Status</span>
+            </NavLink>
 
             <NavLink
               to="/settings"

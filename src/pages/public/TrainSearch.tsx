@@ -15,6 +15,11 @@ import {
 } from 'lucide-react';
 import { useLiveTelemetry } from '../../hooks/useLiveTelemetry';
 import { type TrainRecord, searchTrainsApi } from '../../services/trainSearchService';
+import {
+  type AutocompleteItem,
+  getSearchSuggestions,
+} from '../../services/autocompleteService';
+import { SearchAutocompleteDropdown } from '../../components/SearchAutocompleteDropdown';
 
 interface StationRecord {
   code: string;
@@ -37,10 +42,86 @@ export default function TrainSearch() {
   const [debouncedQuery, setDebouncedQuery] = useState(initialQuery);
   const [activeTab, setActiveTab] = useState<'ALL' | 'TRAINS' | 'STATIONS'>('ALL');
 
+  // Dynamic Autocomplete suggestions
+  const [suggestions, setSuggestions] = useState<AutocompleteItem[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
+
   const [trainResults, setTrainResults] = useState<TrainRecord[]>([]);
   const [stationResults, setStationResults] = useState<StationRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(Boolean(initialQuery.trim()));
+
+  // Fetch Autocomplete suggestions dynamically as user types (e.g. "raj")
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (!q || q.length < 1) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      setSelectedSuggestionIndex(-1);
+      return;
+    }
+
+    let isCancelled = false;
+    const fetchSuggestions = async () => {
+      try {
+        const results = await getSearchSuggestions(q);
+        if (!isCancelled) {
+          setSuggestions(results);
+          setShowSuggestions(results.length > 0);
+          setSelectedSuggestionIndex(-1);
+        }
+      } catch {
+        if (!isCancelled) {
+          setSuggestions([]);
+          setShowSuggestions(false);
+        }
+      }
+    };
+
+    const timer = setTimeout(fetchSuggestions, 120);
+    return () => {
+      isCancelled = true;
+      clearTimeout(timer);
+    };
+  }, [searchQuery]);
+
+  const handleSelectSuggestion = (item: AutocompleteItem) => {
+    setShowSuggestions(false);
+    setSelectedSuggestionIndex(-1);
+    setSearchQuery(item.codeOrNumber);
+    setDebouncedQuery(item.codeOrNumber);
+    setHasSearched(true);
+    setSearchParams({ q: item.codeOrNumber });
+  };
+
+  const handleInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (showSuggestions && suggestions.length > 0) {
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        setSelectedSuggestionIndex((prev) =>
+          prev < suggestions.length - 1 ? prev + 1 : 0
+        );
+        return;
+      }
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        setSelectedSuggestionIndex((prev) =>
+          prev > 0 ? prev - 1 : suggestions.length - 1
+        );
+        return;
+      }
+      if (event.key === "Enter" && selectedSuggestionIndex >= 0) {
+        event.preventDefault();
+        handleSelectSuggestion(suggestions[selectedSuggestionIndex]);
+        return;
+      }
+      if (event.key === "Escape") {
+        setShowSuggestions(false);
+        return;
+      }
+    }
+  };
 
   // Sync URL search param
   useEffect(() => {
@@ -172,7 +253,7 @@ export default function TrainSearch() {
 
           {/* Search Bar Input */}
           <form onSubmit={handleSearchSubmit} className="relative mt-6 max-w-4xl">
-            <div className="flex items-center rounded-2xl border-2 border-[#F59E0B]/70 bg-white p-2 shadow-xl transition-all focus-within:border-[#F59E0B] focus-within:ring-4 focus-within:ring-[#F59E0B]/20">
+            <div className="relative flex items-center rounded-2xl border-2 border-[#F59E0B]/70 bg-white p-2 shadow-xl transition-all focus-within:border-[#F59E0B] focus-within:ring-4 focus-within:ring-[#F59E0B]/20">
               <div className="pl-3 pr-2 text-slate-400">
                 <Search size={20} className="text-[#0E7C86]" />
               </div>
@@ -180,7 +261,14 @@ export default function TrainSearch() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search train number, train name, station name or code (e.g. 12627, Karnataka Express, SBC, KSR Bengaluru)..."
+                onFocus={() => {
+                  if (suggestions.length > 0) setShowSuggestions(true);
+                }}
+                onBlur={() => {
+                  setTimeout(() => setShowSuggestions(false), 200);
+                }}
+                onKeyDown={handleInputKeyDown}
+                placeholder="Search train number, train name, station name or code (e.g. 12627, Karnataka Express, SBC, KSR Bengaluru, Rajahmundry)..."
                 className="w-full bg-transparent px-2 py-2 text-sm sm:text-base font-semibold text-[#071A33] placeholder-slate-400 focus:outline-none"
               />
               {searchQuery && (
@@ -194,12 +282,20 @@ export default function TrainSearch() {
               )}
               <button
                 type="submit"
-                className="flex items-center gap-1.5 rounded-xl border border-[#F59E0B]/80 bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-5 py-2.5 text-xs sm:text-sm font-bold text-white shadow-md transition-all hover:scale-[1.02] hover:shadow-lg cursor-pointer shrink-0"
+                className="flex items-center gap-1.5 rounded-xl border border-[#F59E0B] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-5 py-2.5 text-xs sm:text-sm font-bold text-white shadow-md transition-all hover:scale-[1.02] hover:shadow-lg cursor-pointer shrink-0"
               >
                 <span>Search</span>
                 <ArrowRight size={14} className="text-[#F59E0B]" />
               </button>
             </div>
+
+            {/* Dynamic Autocomplete suggestions */}
+            <SearchAutocompleteDropdown
+              suggestions={suggestions}
+              selectedIndex={selectedSuggestionIndex}
+              onSelect={handleSelectSuggestion}
+              visible={showSuggestions}
+            />
           </form>
 
           {/* Quick Search Suggestion Pills */}

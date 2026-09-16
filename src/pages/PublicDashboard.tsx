@@ -4,12 +4,13 @@ import {
   Search,
   MapPin,
   TrainFront,
-  ArrowRight,
   Radio,
   CloudRain,
   ShieldCheck,
   TrendingUp,
   AlertTriangle,
+  Clock3,
+  Navigation,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import AlertMarquee from "../components/AlertMarquee";
@@ -17,8 +18,6 @@ import ETAFragment, { type ETATrain } from "../components/ETAFragment";
 import { WhatsAppChatModal } from "../components/WhatsAppChatModal";
 import { TrainSearchResultCard } from "../components/TrainSearchResultCard";
 import { useLiveTelemetry } from "../hooks/useLiveTelemetry";
-import { getCurrentUser, type AuthUser } from "../services/auth";
-import UserPNRSection from "../components/UserPNRSection";
 import {
   type TrainRecord,
   type FilterClass,
@@ -27,87 +26,33 @@ import {
   searchTrainsApi,
   filterAndSortTrains,
 } from "../services/trainSearchService";
-
-interface RailwayStation {
-  name: string;
-  code: string;
-  latitude: number;
-  longitude: number;
-  image: string;
-}
+import {
+  type PanIndiaStation,
+  PAN_INDIA_STATIONS,
+  findNearestPanIndiaStation,
+  DEFAULT_RAILWAY_FALLBACK_IMAGE,
+} from "../data/panIndiaStations";
+import {
+  type AutocompleteItem,
+  getSearchSuggestions,
+} from "../services/autocompleteService";
+import { SearchAutocompleteDropdown } from "../components/SearchAutocompleteDropdown";
 
 interface RecentSearch {
   name: string;
   number: string;
 }
 
-const defaultStation: RailwayStation = {
-  name: "KSR Bengaluru Railway Station",
-  code: "SBC",
-  latitude: 12.9775,
-  longitude: 77.5713,
+const defaultStation: PanIndiaStation = {
+  name: "Yesvantpur Junction",
+  code: "YPR",
+  state: "Karnataka",
+  zone: "SWR",
+  latitude: 13.028,
+  longitude: 77.5547,
   image:
-    "https://commons.wikimedia.org/wiki/Special:Redirect/file/KSR%20Bengaluru%20Railway%20Station.jpg",
+    "https://commons.wikimedia.org/wiki/Special:Redirect/file/Yesvantpur%20Junction%20railway%20station%20%28Sept%20%2723%29.jpg",
 };
-
-const bengaluruStations: RailwayStation[] = [
-  {
-    name: "KSR Bengaluru Railway Station",
-    code: "SBC",
-    latitude: 12.9775,
-    longitude: 77.5713,
-    image:
-      "https://commons.wikimedia.org/wiki/Special:Redirect/file/KSR%20Bengaluru%20Railway%20Station.jpg",
-  },
-  {
-    name: "Yesvantpur Junction",
-    code: "YPR",
-    latitude: 13.028,
-    longitude: 77.5547,
-    image:
-      "https://commons.wikimedia.org/wiki/Special:Redirect/file/Yesvantpur%20Junction%20railway%20station%20%28Sept%20%2723%29.jpg",
-  },
-  {
-    name: "Bengaluru Cantonment Railway Station",
-    code: "BNC",
-    latitude: 12.9937,
-    longitude: 77.598,
-    image:
-      "https://commons.wikimedia.org/wiki/Special:Redirect/file/Bangalore_Cantonment_railway_station.jpg",
-  },
-  {
-    name: "Bengaluru East Railway Station",
-    code: "BNCE",
-    latitude: 13.0007,
-    longitude: 77.6171,
-    image:
-      "https://commons.wikimedia.org/wiki/Special:Redirect/file/Bangalore_East_railway_station.jpg",
-  },
-  {
-    name: "Baiyappanahalli Railway Station",
-    code: "BYPL",
-    latitude: 13.0285,
-    longitude: 77.6328,
-    image:
-      "https://commons.wikimedia.org/wiki/Special:Redirect/file/Baiyappanahalli_railway_station.jpg",
-  },
-  {
-    name: "Krishnarajapuram Railway Station",
-    code: "KJM",
-    latitude: 13.0006,
-    longitude: 77.676,
-    image:
-      "https://commons.wikimedia.org/wiki/Special:Redirect/file/Krishnarajapuram_railway_station.jpg",
-  },
-  {
-    name: "Kengeri Railway Station",
-    code: "KGI",
-    latitude: 12.916844,
-    longitude: 77.483789,
-    image:
-      "https://commons.wikimedia.org/wiki/Special:Redirect/file/Kengeri%20Railway%20Station.jpg",
-  },
-];
 
 const defaultRecentSearches: RecentSearch[] = [
   { name: "Karnataka Express", number: "12627" },
@@ -237,55 +182,29 @@ const etaData: Record<string, ETATrain> = {
   },
 };
 
-function calculateDistance(
-  latitude1: number,
-  longitude1: number,
-  latitude2: number,
-  longitude2: number
-) {
-  const earthRadius = 6371;
-  const latitudeDifference = ((latitude2 - latitude1) * Math.PI) / 180;
-  const longitudeDifference = ((longitude2 - longitude1) * Math.PI) / 180;
 
-  const a =
-    Math.sin(latitudeDifference / 2) ** 2 +
-    Math.cos((latitude1 * Math.PI) / 180) *
-      Math.cos((latitude2 * Math.PI) / 180) *
-      Math.sin(longitudeDifference / 2) ** 2;
-
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return earthRadius * c;
-}
 
 export default function PublicDashboard() {
   const navigate = useNavigate();
   const { trains: liveTelemetryMap } = useLiveTelemetry();
 
-  const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => getCurrentUser());
 
-  useEffect(() => {
-    const handleAuthChange = () => {
-      setCurrentUser(getCurrentUser());
-    };
-    window.addEventListener("raildrishti_auth_changed", handleAuthChange);
-    window.addEventListener("storage", handleAuthChange);
-    return () => {
-      window.removeEventListener("raildrishti_auth_changed", handleAuthChange);
-      window.removeEventListener("storage", handleAuthChange);
-    };
-  }, []);
 
-  const [station, setStation] = useState<RailwayStation>(defaultStation);
-  const [locationStatus, setLocationStatus] = useState("Locating...");
+  const [station, setStation] = useState<PanIndiaStation>(defaultStation);
+  const [locationStatus, setLocationStatus] = useState("Nearest railway station");
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [filterClass, setFilterClass] = useState<FilterClass>("all");
   const [sortBy] = useState<SortOption>("priority");
 
+  // Autocomplete state
+  const [suggestions, setSuggestions] = useState<AutocompleteItem[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
+
   const [trainsList, setTrainsList] = useState<TrainRecord[]>(FALLBACK_TRAINS);
   const [loadingSearch, setLoadingSearch] = useState(false);
   const [selectedTrain, setSelectedTrain] = useState<TrainRecord | null>(null);
-
 
   // WhatsApp Assistant State
   const [botTrainNumber, setBotTrainNumber] = useState<string | undefined>(undefined);
@@ -319,58 +238,63 @@ export default function PublicDashboard() {
     });
   };
 
-  // Detect Geolocation for nearest station
+  // Detect Geolocation for nearest station anywhere in India
   useEffect(() => {
     if (!navigator.geolocation) {
-      setLocationStatus("Location unavailable");
+      setLocationStatus("Nearest railway station");
       return;
     }
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
-        const bengaluruCenter = { latitude: 12.9716, longitude: 77.5946 };
-        const distanceFromBengaluru = calculateDistance(
-          latitude,
-          longitude,
-          bengaluruCenter.latitude,
-          bengaluruCenter.longitude
-        );
-
-        if (distanceFromBengaluru > 45) {
-          setStation(defaultStation);
-          setLocationStatus("Bengaluru");
-          return;
-        }
-
-        let nearestStation = bengaluruStations[0];
-        let shortestDistance = Infinity;
-
-        bengaluruStations.forEach((railwayStation) => {
-          const distance = calculateDistance(
-            latitude,
-            longitude,
-            railwayStation.latitude,
-            railwayStation.longitude
-          );
-          if (distance < shortestDistance) {
-            shortestDistance = distance;
-            nearestStation = railwayStation;
-          }
-        });
-
-        setStation(nearestStation);
+        const nearest = findNearestPanIndiaStation(latitude, longitude);
+        setStation(nearest);
         setLocationStatus("Nearest railway station");
       },
       () => {
         setStation(defaultStation);
-        setLocationStatus("Bengaluru");
+        setLocationStatus("Nearest railway station");
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 5 * 60 * 1000 }
     );
   }, []);
 
-  // Debounce search query
+  // Fetch Autocomplete suggestions dynamically as user types (e.g. "raj")
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (!q || q.length < 1) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      setSelectedSuggestionIndex(-1);
+      return;
+    }
+
+    let isCancelled = false;
+    const fetchSuggestions = async () => {
+      try {
+        const results = await getSearchSuggestions(q);
+        if (!isCancelled) {
+          setSuggestions(results);
+          setShowSuggestions(results.length > 0);
+          setSelectedSuggestionIndex(-1);
+        }
+      } catch {
+        if (!isCancelled) {
+          setSuggestions([]);
+          setShowSuggestions(false);
+        }
+      }
+    };
+
+    const timer = setTimeout(fetchSuggestions, 120);
+    return () => {
+      isCancelled = true;
+      clearTimeout(timer);
+    };
+  }, [searchQuery]);
+
+  // Debounce search query for full table search
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedQuery(searchQuery.trim());
@@ -414,6 +338,66 @@ export default function PublicDashboard() {
     return processedTrains.slice(0, 8);
   }, [processedTrains, debouncedQuery]);
 
+  const handleSelectSuggestion = (item: AutocompleteItem) => {
+    setShowSuggestions(false);
+    setSelectedSuggestionIndex(-1);
+
+    if (item.type === "train") {
+      setSearchQuery(item.codeOrNumber);
+      addRecentSearch({ name: item.title, number: item.codeOrNumber });
+      if (etaData[item.codeOrNumber]) {
+        const matching = trainsList.find((t) => t.train_number === item.codeOrNumber);
+        if (matching) setSelectedTrain(matching);
+        else setSelectedTrain(null);
+      } else {
+        navigate(`/eta?train=${item.codeOrNumber}`);
+      }
+    } else {
+      // Station selected
+      setSearchQuery(item.codeOrNumber);
+      addRecentSearch({ name: item.title, number: item.codeOrNumber });
+      const foundStation = PAN_INDIA_STATIONS.find(
+        (s) => s.code.toLowerCase() === item.codeOrNumber.toLowerCase()
+      );
+      if (foundStation) {
+        setStation(foundStation);
+      }
+    }
+  };
+
+  const handleInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (showSuggestions && suggestions.length > 0) {
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        setSelectedSuggestionIndex((prev) =>
+          prev < suggestions.length - 1 ? prev + 1 : 0
+        );
+        return;
+      }
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        setSelectedSuggestionIndex((prev) =>
+          prev > 0 ? prev - 1 : suggestions.length - 1
+        );
+        return;
+      }
+      if (event.key === "Enter" && selectedSuggestionIndex >= 0) {
+        event.preventDefault();
+        handleSelectSuggestion(suggestions[selectedSuggestionIndex]);
+        return;
+      }
+      if (event.key === "Escape") {
+        setShowSuggestions(false);
+        return;
+      }
+    }
+
+    if (event.key === "Enter") {
+      setShowSuggestions(false);
+      handleSearchSubmit();
+    }
+  };
+
   const handleRecentSearch = (search: RecentSearch) => {
     setSearchQuery(search.number);
     addRecentSearch(search);
@@ -421,6 +405,7 @@ export default function PublicDashboard() {
   };
 
   const handleSearchSubmit = () => {
+    setShowSuggestions(false);
     const q = searchQuery.trim();
     if (!q) {
       setSelectedTrain(null);
@@ -456,22 +441,15 @@ export default function PublicDashboard() {
     setBotTrainName(train.train_name);
   };
 
-  const handleExploreFullDirectory = () => {
-    const user = getCurrentUser();
-    if (user && ["user", "employee", "admin", "controller"].includes(user.role)) {
-      navigate("/trains");
-    } else {
-      navigate("/login?redirect=/trains");
-    }
-  };
-
-
   return (
     <div className="min-h-screen bg-[#F4F7FA]">
-      {/* 1. HERO SECTION */}
+      {/* 1. HERO SECTION (Pan-India station background + dark overlay, no glowing blobs) */}
       <section className="relative min-h-[360px] overflow-hidden sm:min-h-[370px] lg:min-h-[380px]">
         <img
-          src={station.image}
+          src={station.image || DEFAULT_RAILWAY_FALLBACK_IMAGE}
+          onError={(e) => {
+            (e.target as HTMLImageElement).src = DEFAULT_RAILWAY_FALLBACK_IMAGE;
+          }}
           alt={station.name}
           className="absolute inset-0 h-full w-full object-cover"
         />
@@ -490,20 +468,31 @@ export default function PublicDashboard() {
                 Dynamic Estimated Time of Arrival System for Indian Coaching Trains.
               </p>
               <div className="mt-3 flex items-center gap-2 text-xs text-[#DDE9EF] sm:text-sm">
-                <MapPin size={16} className="text-[#F59E0B]" />
+                <MapPin size={16} className="text-[#F59E0B] shrink-0" />
                 <span>
                   {locationStatus}: <strong className="text-white">{station.name} ({station.code})</strong>
                 </span>
               </div>
+
+              {/* 1. NETWORK STATUS: Directly below nearest station with small green status dot */}
+              <div className="mt-1.5 flex items-center gap-2 text-xs text-[#DDE9EF]">
+                <span className="relative flex h-2 w-2 shrink-0">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_6px_#10B981]" />
+                </span>
+                <span>
+                  Network Status: <strong className="text-emerald-400 font-semibold">Operational</strong>
+                </span>
+              </div>
             </div>
 
-            {/* Main Train / Station Search Box */}
-            <div className="mt-6 w-full max-w-4xl">
+            {/* Main Train / Station Search Box with Dynamic Autocomplete */}
+            <div className="relative mt-6 w-full max-w-4xl">
               <div className="mb-2 text-xs font-semibold text-white sm:text-sm">
                 Search trains, stations or train numbers
               </div>
 
-              <div className="flex flex-col overflow-hidden rounded-xl border border-[#F59E0B] bg-white/95 shadow-2xl backdrop-blur-xl sm:flex-row">
+              <div className="relative flex flex-col overflow-visible rounded-xl border border-[#F59E0B] bg-white/95 shadow-2xl backdrop-blur-xl sm:flex-row">
                 <div className="flex min-h-[52px] flex-1 items-center gap-3 px-4 sm:px-5">
                   <Search size={20} className="shrink-0 text-[#0E7C86]" />
                   <input
@@ -513,12 +502,14 @@ export default function PublicDashboard() {
                       setSearchQuery(event.target.value);
                       setSelectedTrain(null);
                     }}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        handleSearchSubmit();
-                      }
+                    onFocus={() => {
+                      if (suggestions.length > 0) setShowSuggestions(true);
                     }}
-                    placeholder="Search train number, train name or station (e.g. 12627, 12245, SBC, YPR)..."
+                    onBlur={() => {
+                      setTimeout(() => setShowSuggestions(false), 200);
+                    }}
+                    onKeyDown={handleInputKeyDown}
+                    placeholder="Search train number, train name or station (e.g. 12627, 12245, SBC, YPR, Rajahmundry)..."
                     className="w-full bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-500 sm:text-base font-medium"
                   />
                 </div>
@@ -526,11 +517,19 @@ export default function PublicDashboard() {
                 <button
                   type="button"
                   onClick={handleSearchSubmit}
-                  className="flex min-h-[52px] items-center justify-center gap-2 bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-6 text-sm font-semibold text-white transition-all duration-300 hover:scale-[1.01] hover:shadow-[0_5px_14px_rgba(14,89,97,0.22)] sm:px-7 cursor-pointer"
+                  className="flex min-h-[52px] items-center justify-center gap-2 rounded-b-xl sm:rounded-b-none sm:rounded-r-xl border border-[#F59E0B] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-6 text-sm font-bold text-white transition-all duration-300 hover:scale-[1.01] hover:shadow-[0_5px_14px_rgba(14,89,97,0.22)] sm:px-7 cursor-pointer"
                 >
                   <Search size={17} />
                   Search
                 </button>
+
+                {/* 7. SEARCH AUTOCOMPLETE / SUGGESTIONS DROPDOWN */}
+                <SearchAutocompleteDropdown
+                  suggestions={suggestions}
+                  selectedIndex={selectedSuggestionIndex}
+                  onSelect={handleSelectSuggestion}
+                  visible={showSuggestions}
+                />
               </div>
 
               {/* Dynamic Recent Searches */}
@@ -556,7 +555,7 @@ export default function PublicDashboard() {
                 </div>
               </div>
 
-              {/* Quick Feature Indicators */}
+              {/* 8. FEATURE INDICATORS WITH UPDATED CLEAR ICONS */}
               <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-[11px] text-[#D0DEE5] sm:text-xs">
                 <span
                   className="flex items-center gap-1.5 cursor-pointer hover:text-white"
@@ -569,14 +568,14 @@ export default function PublicDashboard() {
                   className="flex items-center gap-1.5 cursor-pointer hover:text-white"
                   onClick={() => navigate('/eta')}
                 >
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#F59E0B]" />
+                  <Clock3 size={14} className="text-[#F59E0B]" />
                   Predictive ETA
                 </span>
                 <span
                   className="flex items-center gap-1.5 cursor-pointer hover:text-white"
                   onClick={() => navigate('/map')}
                 >
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#F59E0B]" />
+                  <Navigation size={14} className="text-[#F59E0B]" />
                   Live tracking
                 </span>
               </div>
@@ -590,10 +589,97 @@ export default function PublicDashboard() {
         <AlertMarquee />
       </div>
 
-      {/* 3. PNR SECTION (Visible only after user logs in) */}
-      {currentUser && (
-        <UserPNRSection currentUser={currentUser} />
-      )}
+      {/* 3. FLEET / NETWORK SNAPSHOT & WEATHER IMPACT */}
+      <section className="mx-auto max-w-[1600px] px-6 pt-4 pb-6 lg:px-12">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          {/* Network Snapshot Column (2/3 width on large screens) */}
+          <div className="lg:col-span-2 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-xs font-bold uppercase tracking-wider text-[#0E7C86]">
+                  Network Operations Snapshot
+                </span>
+                <h3 className="text-xl font-bold text-[#071A33] tracking-tight">
+                  Indian Railways Live Fleet Health
+                </h3>
+              </div>
+              <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">
+                ● Telemetry Stream Active
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* Card 1: Active Trains */}
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
+                <div className="flex items-center justify-between text-slate-400 mb-1.5">
+                  <span className="text-xs font-bold uppercase tracking-wider">Active Trains</span>
+                  <TrainFront size={18} className="text-[#0E7C86]" />
+                </div>
+                <div className="text-2xl sm:text-3xl font-black text-[#071A33]">5,210</div>
+                <p className="mt-0.5 text-xs text-slate-500 font-medium">Master database coaching rakes</p>
+              </div>
+
+              {/* Card 2: On-Time Performance */}
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
+                <div className="flex items-center justify-between text-slate-400 mb-1.5">
+                  <span className="text-xs font-bold uppercase tracking-wider">On-Time Performance</span>
+                  <TrendingUp size={18} className="text-emerald-600" />
+                </div>
+                <div className="text-2xl sm:text-3xl font-black text-emerald-600">94.2%</div>
+                <p className="mt-0.5 text-xs text-slate-500 font-medium">Corridor kinematic clearance</p>
+              </div>
+
+              {/* Card 3: Active Section Advisories */}
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
+                <div className="flex items-center justify-between text-slate-400 mb-1.5">
+                  <span className="text-xs font-bold uppercase tracking-wider">Section Advisories</span>
+                  <AlertTriangle size={18} className="text-amber-500" />
+                </div>
+                <div className="text-2xl sm:text-3xl font-black text-[#071A33]">3 Active</div>
+                <p className="mt-0.5 text-xs text-slate-500 font-medium">Weather & maintenance slots</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Weather & Section Condition Card (1/3 width on large screens) */}
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs flex flex-col justify-between space-y-3">
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#0E7C86]">
+                  Section Conditions
+                </span>
+                <CloudRain size={18} className="text-blue-500" />
+              </div>
+              <h4 className="text-base sm:text-lg font-bold text-[#071A33] tracking-tight">
+                Weather & Track Impact
+              </h4>
+              <p className="mt-1 text-xs text-slate-600 font-medium leading-relaxed">
+                Moderate monsoon rainfall observed across Bengaluru – Jolarpettai and Western Ghats sections.
+              </p>
+            </div>
+
+            <div className="rounded-xl bg-slate-50 border border-slate-200/80 p-3 space-y-1.5 text-xs">
+              <div className="flex items-center justify-between font-semibold text-slate-700">
+                <span>Estimated ETA Buffer:</span>
+                <span className="text-amber-700 font-bold">+8 to 15 mins</span>
+              </div>
+              <div className="flex items-center justify-between text-slate-500 text-[11px]">
+                <span>Track Temp / Clearance:</span>
+                <span className="font-mono text-slate-700">28°C • Normal</span>
+              </div>
+              <div className="flex items-center justify-between text-slate-500 text-[11px]">
+                <span>Visibility:</span>
+                <span className="font-mono text-emerald-700 font-bold">&gt;1,200m (Good)</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 text-[11px] text-slate-500 font-medium pt-0.5">
+              <ShieldCheck size={14} className="text-emerald-600 shrink-0" />
+              <span>ST-GNN model factoring dynamic weather coefficients</span>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* In-Page Dynamic ETA View if train selected */}
       {selectedTrain && etaData[selectedTrain.train_number] ? (
@@ -713,114 +799,9 @@ export default function PublicDashboard() {
               )}
             </div>
 
-            {/* "View All 5,207 Trains in Full Directory" Footer Pill */}
-            {!debouncedQuery && processedTrains.length > 8 && (
-              <div className="mt-6 text-center">
-                <button
-                  type="button"
-                  onClick={handleExploreFullDirectory}
-                  className="inline-flex items-center gap-2 rounded-xl border border-[#F59E0B] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-6 py-3 text-xs font-bold text-white shadow-sm transition-all hover:scale-105 hover:shadow-md cursor-pointer"
-                >
-                  <span>Explore Full Train Directory & Corridor Fleet (5,207 Trains)</span>
-                  <ArrowRight size={15} className="text-[#F59E0B]" />
-                </button>
-              </div>
-            )}
           </div>
         </section>
       )}
-
-      {/* 5. NETWORK SNAPSHOT & 6. WEATHER IMPACT */}
-      <section className="mx-auto max-w-[1600px] px-6 py-10 lg:px-12">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Network Snapshot Column (2/3 width on large screens) */}
-          <div className="lg:col-span-2 space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-[#0E7C86]">
-                  Network Operations Snapshot
-                </span>
-                <h3 className="text-xl font-bold text-[#071A33] tracking-tight">
-                  Indian Railways Live Fleet Health
-                </h3>
-              </div>
-              <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">
-                ● Telemetry Stream Active
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {/* Card 1: Active Trains */}
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
-                <div className="flex items-center justify-between text-slate-400 mb-2">
-                  <span className="text-xs font-bold uppercase tracking-wider">Active Trains</span>
-                  <TrainFront size={18} className="text-[#0E7C86]" />
-                </div>
-                <div className="text-3xl font-black text-[#071A33]">5,210</div>
-                <p className="mt-1 text-xs text-slate-500 font-medium">Master database coaching rakes</p>
-              </div>
-
-              {/* Card 2: On-Time Performance */}
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
-                <div className="flex items-center justify-between text-slate-400 mb-2">
-                  <span className="text-xs font-bold uppercase tracking-wider">On-Time Performance</span>
-                  <TrendingUp size={18} className="text-emerald-600" />
-                </div>
-                <div className="text-3xl font-black text-emerald-600">94.2%</div>
-                <p className="mt-1 text-xs text-slate-500 font-medium">Corridor kinematic clearance</p>
-              </div>
-
-              {/* Card 3: Active Section Advisories */}
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
-                <div className="flex items-center justify-between text-slate-400 mb-2">
-                  <span className="text-xs font-bold uppercase tracking-wider">Section Advisories</span>
-                  <AlertTriangle size={18} className="text-amber-500" />
-                </div>
-                <div className="text-3xl font-black text-[#071A33]">3 Active</div>
-                <p className="mt-1 text-xs text-slate-500 font-medium">Weather & maintenance slots</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Weather & Section Condition Card (1/3 width on large screens) */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs flex flex-col justify-between space-y-4">
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-[#0E7C86]">
-                  Section Conditions
-                </span>
-                <CloudRain size={18} className="text-blue-500" />
-              </div>
-              <h4 className="text-lg font-bold text-[#071A33] tracking-tight">
-                Weather & Track Impact
-              </h4>
-              <p className="mt-1 text-xs text-slate-600 font-medium leading-relaxed">
-                Moderate monsoon rainfall observed across Bengaluru – Jolarpettai and Western Ghats sections.
-              </p>
-            </div>
-
-            <div className="rounded-xl bg-slate-50 border border-slate-200/80 p-3.5 space-y-2 text-xs">
-              <div className="flex items-center justify-between font-semibold text-slate-700">
-                <span>Estimated ETA Buffer:</span>
-                <span className="text-amber-700 font-bold">+8 to 15 mins</span>
-              </div>
-              <div className="flex items-center justify-between text-slate-500 text-[11px]">
-                <span>Track Temp / Clearance:</span>
-                <span className="font-mono text-slate-700">28°C • Normal</span>
-              </div>
-              <div className="flex items-center justify-between text-slate-500 text-[11px]">
-                <span>Visibility:</span>
-                <span className="font-mono text-emerald-700 font-bold">&gt;1,200m (Good)</span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 text-[11px] text-slate-500 font-medium pt-1">
-              <ShieldCheck size={14} className="text-emerald-600 shrink-0" />
-              <span>ST-GNN model factoring dynamic weather coefficients</span>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* Floating RailDrishti AI RTIS Copilot / WhatsApp Bot Simulator */}
       <WhatsAppChatModal

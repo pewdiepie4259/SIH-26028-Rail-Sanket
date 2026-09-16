@@ -74,12 +74,12 @@ function WeatherImpact() {
   }, [])
 
   return (
-    <section className="overflow-hidden rounded-xl border border-[#16364A] bg-[#0A2036]">
-      <div className="border-b border-[#16364A] px-5 py-4 flex items-center justify-between">
+    <section className="controller-panel overflow-hidden rounded-xl">
+      <div className="controller-header px-5 py-3.5 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <CloudRain
             size={17}
-            className="text-cyan-400"
+            className="text-teal-300"
           />
 
           <div>
@@ -87,8 +87,8 @@ function WeatherImpact() {
               Weather Impact & Telemetry
             </h3>
 
-            <p className="mt-0.5 text-xs text-[#71899C]">
-              Real-time environmental conditions affecting section throughput.
+            <p className="mt-0.5 text-xs text-[#D7E5EC]/80">
+              Weather conditions affecting train movement across the section.
             </p>
           </div>
         </div>
@@ -98,25 +98,25 @@ function WeatherImpact() {
         </span>
       </div>
 
-      <div className="divide-y divide-[#16364A]">
+      <div className="divide-y divide-slate-100">
         {zones.map((zone) => (
           <div
             key={zone.location}
-            className="p-4 transition-colors hover:bg-[#071A33]"
+            className="p-4 transition-colors hover:bg-slate-50/80"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="flex min-w-0 items-center gap-2">
                 <MapPin
                   size={14}
-                  className="shrink-0 text-[#0E7C86]"
+                  className="shrink-0 text-[#0E5961]"
                 />
 
                 <div className="min-w-0">
-                  <div className="truncate text-xs font-bold text-white">
+                  <div className="truncate text-xs font-bold text-[#071A33]">
                     {zone.location}
                   </div>
 
-                  <div className="mt-0.5 text-[10px] text-cyan-300">
+                  <div className="mt-0.5 text-[10px] text-slate-500">
                     {zone.condition}
                   </div>
                 </div>
@@ -125,10 +125,10 @@ function WeatherImpact() {
               <span
                 className={`shrink-0 rounded-md border px-2 py-1 text-[9px] font-bold uppercase tracking-wide ${
                   zone.impact === "High"
-                    ? "border-red-500/40 bg-red-500/10 text-red-300"
+                    ? "border-red-200 bg-red-50 text-red-700"
                     : zone.impact === "Moderate"
-                      ? "border-[#F59E0B]/40 bg-[#F59E0B]/10 text-[#F59E0B]"
-                      : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                      ? "border-amber-200 bg-amber-50 text-amber-800"
+                      : "border-emerald-200 bg-emerald-50 text-emerald-700"
                 }`}
               >
                 {zone.impact} impact
@@ -136,46 +136,46 @@ function WeatherImpact() {
             </div>
 
             <div className="mt-4 grid grid-cols-3 gap-2">
-              <div className="rounded-md border border-[#16364A] bg-[#071A33] p-2.5">
-                <div className="flex items-center gap-1.5 text-[9px] text-[#71899C]">
-                  <Droplets size={11} className="text-cyan-400" />
+              <div className="rounded-md border border-slate-200 bg-slate-50/70 p-2.5">
+                <div className="flex items-center gap-1.5 text-[9px] text-slate-500">
+                  <Droplets size={11} />
                   Rainfall
                 </div>
 
-                <div className="mt-1 text-[11px] font-bold text-[#D7E5EC]">
+                <div className="mt-1 text-[11px] font-bold text-[#071A33]">
                   {zone.rainfall}
                 </div>
               </div>
 
-              <div className="rounded-md border border-[#16364A] bg-[#071A33] p-2.5">
-                <div className="flex items-center gap-1.5 text-[9px] text-[#71899C]">
-                  <Gauge size={11} className="text-amber-400" />
+              <div className="rounded-md border border-slate-200 bg-slate-50/70 p-2.5">
+                <div className="flex items-center gap-1.5 text-[9px] text-slate-500">
+                  <Gauge size={11} />
                   Visibility
                 </div>
 
-                <div className="mt-1 text-[11px] font-bold text-[#D7E5EC]">
+                <div className="mt-1 text-[11px] font-bold text-[#071A33]">
                   {zone.visibility}
                 </div>
               </div>
 
-              <div className="rounded-md border border-[#16364A] bg-[#071A33] p-2.5">
-                <div className="flex items-center gap-1.5 text-[9px] text-[#71899C]">
-                  <Wind size={11} className="text-blue-400" />
+              <div className="rounded-md border border-slate-200 bg-slate-50/70 p-2.5">
+                <div className="flex items-center gap-1.5 text-[9px] text-slate-500">
+                  <Wind size={11} />
                   Wind
                 </div>
 
-                <div className="mt-1 text-[11px] font-bold text-[#D7E5EC]">
+                <div className="mt-1 text-[11px] font-bold text-[#071A33]">
                   {zone.wind}
                 </div>
               </div>
             </div>
 
-            <div className="mt-3 flex items-center justify-between rounded-md border border-[#16364A] bg-[#071A33] px-3 py-2">
-              <span className="text-[10px] text-[#71899C]">
+            <div className="mt-3 flex items-center justify-between rounded-md border border-slate-200 bg-slate-50/70 px-3 py-2">
+              <span className="text-[10px] text-slate-500">
                 Operational effect
               </span>
 
-              <span className="text-[10px] font-bold text-amber-300 font-mono">
+              <span className="text-[10px] font-bold text-[#071A33]">
                 {zone.speedRestriction}
               </span>
             </div>

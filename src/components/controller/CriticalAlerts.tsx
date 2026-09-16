@@ -128,8 +128,8 @@ function CriticalAlerts({ alerts }: CriticalAlertsProps) {
   }
 
   return (
-    <section className="overflow-hidden rounded-xl border border-[#16364A] bg-[#0A2036]">
-      <div className="flex items-center justify-between border-b border-[#16364A] px-4 py-3">
+    <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="flex items-center justify-between border-b border-[#164B5A] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-4 py-3">
         <div className="flex items-center gap-2">
           <ShieldAlert
             size={16}
@@ -141,7 +141,7 @@ function CriticalAlerts({ alerts }: CriticalAlertsProps) {
               Critical Operations
             </h3>
 
-            <p className="mt-0.5 text-[10px] text-[#71899C]">
+            <p className="mt-0.5 text-[10px] text-teal-200/80">
               Live operational alerts requiring attention
             </p>
           </div>
@@ -156,13 +156,13 @@ function CriticalAlerts({ alerts }: CriticalAlertsProps) {
             }`}
           />
 
-          <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#AFC0D4]">
+          <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-teal-200">
             {unacknowledgedCount} active
           </span>
         </div>
       </div>
 
-      <div className="divide-y divide-[#16364A] max-h-[360px] overflow-y-auto">
+      <div className="divide-y divide-slate-100 max-h-[360px] overflow-y-auto">
         {displayAlerts.map((alert, index) => {
           let message = "Operational headway caution in effect across section"
           if (
@@ -225,48 +225,48 @@ function CriticalAlerts({ alerts }: CriticalAlertsProps) {
           return (
             <div
               key={`${alertId}-${index}`}
-              className={`p-4 transition-colors hover:bg-[#071A33]/70 ${
+              className={`p-4 transition-colors hover:bg-slate-50 ${
                 isAcknowledged ? "opacity-60" : ""
               }`}
             >
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex gap-3">
                   <div
-                    className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md border ${
+                    className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${
                       isCritical
-                        ? "border-red-900/60 bg-red-950/40 text-red-400"
-                        : "border-[#F59E0B]/30 bg-[#F59E0B]/10 text-[#F59E0B]"
+                        ? "border-red-200 bg-red-50 text-red-600"
+                        : "border-amber-200 bg-amber-50 text-[#F59E0B]"
                     }`}
                   >
-                    <AlertTriangle size={15} />
+                    <AlertTriangle size={16} />
                   </div>
 
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-mono text-[10px] font-bold text-[#F59E0B]">
+                      <span className="font-mono text-[10px] font-bold text-slate-500">
                         {alertId}
                       </span>
                       <span
                         className={`rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${
                           isCritical
-                            ? "bg-red-500/10 text-red-400 border border-red-500/20"
-                            : "bg-[#F59E0B]/10 text-[#F59E0B] border border-[#F59E0B]/20"
+                            ? "bg-red-50 text-red-700 border border-red-200"
+                            : "bg-amber-50 text-amber-700 border border-amber-200"
                         }`}
                       >
                         {type}
                       </span>
                       {isAcknowledged && (
-                        <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-400 border border-emerald-500/20">
+                        <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-700 border border-emerald-200">
                           Acknowledged
                         </span>
                       )}
                     </div>
 
-                    <p className="mt-1 text-xs font-semibold leading-5 text-[#D7E5EC]">
+                    <p className="mt-1 text-xs font-bold leading-5 text-[#071A33]">
                       {message}
                     </p>
 
-                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-[#71899C]">
+                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-slate-500">
                       {trainNumber && (
                         <Link
                           to={`/controller/trains/${trainNumber}`}
@@ -281,8 +281,8 @@ function CriticalAlerts({ alerts }: CriticalAlertsProps) {
                         {timestamp}
                       </span>
 
-                      <span className="text-[#AFC0D4]">
-                        Destination: <span className="font-semibold text-white">{destination.label}</span>
+                      <span className="text-slate-500">
+                        Destination: <span className="font-semibold text-slate-700">{destination.label}</span>
                       </span>
                     </div>
                   </div>
@@ -293,10 +293,10 @@ function CriticalAlerts({ alerts }: CriticalAlertsProps) {
                   <button
                     onClick={() => handleAcknowledge(alertId, message)}
                     disabled={isAcknowledged}
-                    className={`inline-flex items-center gap-1 rounded border px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wide transition-colors ${
+                    className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wide transition-colors ${
                       isAcknowledged
-                        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 cursor-default"
-                        : "border-[#16364A] bg-[#071A33] text-[#9FB8BE] hover:text-white hover:border-[#F59E0B]"
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-700 cursor-default"
+                        : "border-slate-200 bg-white text-slate-700 hover:text-[#071A33] hover:border-[#F59E0B]"
                     }`}
                   >
                     <Check size={11} />
@@ -305,7 +305,7 @@ function CriticalAlerts({ alerts }: CriticalAlertsProps) {
 
                   <Link
                     to={destination.url}
-                    className="inline-flex items-center gap-1 rounded border border-[#0E7C86]/50 bg-[#0E7C86]/15 hover:bg-[#0E7C86]/25 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wide text-white transition-colors"
+                    className="inline-flex items-center gap-1 rounded-lg border border-[#0E7C86] bg-[#0E7C86] hover:bg-[#0E5961] px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wide text-white transition-colors shadow-xs"
                   >
                     Review
                     <ChevronRight size={12} />
@@ -317,8 +317,8 @@ function CriticalAlerts({ alerts }: CriticalAlertsProps) {
         })}
       </div>
 
-      <div className="flex items-center justify-between border-t border-[#16364A] px-4 py-2.5">
-        <span className="text-[10px] text-[#71899C]">
+      <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50 px-4 py-2.5">
+        <span className="text-[10px] text-slate-500">
           Showing {displayAlerts.length} operational alerts
         </span>
 

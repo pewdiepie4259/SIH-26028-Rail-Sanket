@@ -167,22 +167,8 @@ function App() {
 
           <Route path="/trains" element={<TrainSearch />} />
           <Route path="/stations" element={<StationInformation />} />
-          <Route
-            path="/pnr"
-            element={
-              <UserProtectedRoute>
-                <PNRStatus />
-              </UserProtectedRoute>
-            }
-          />
-          <Route
-            path="/pnr-status"
-            element={
-              <UserProtectedRoute>
-                <PNRStatus />
-              </UserProtectedRoute>
-            }
-          />
+          <Route path="/pnr" element={<PNRStatus />} />
+          <Route path="/pnr-status" element={<PNRStatus />} />
           <Route
             path="/user/profile"
             element={

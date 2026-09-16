@@ -21,27 +21,27 @@ function ControllerDashboard() {
     <div className="controller-page px-4 py-5 lg:px-6">
       <div className="mb-5 flex flex-col justify-between gap-3 md:flex-row md:items-end">
         <div>
-          <div className="text-xs font-bold uppercase tracking-[0.16em] text-[#F59E0B]">
+          <div className="text-xs font-bold uppercase tracking-[0.16em] text-[#0E7C86]">
             Control Centre
           </div>
 
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-white">
+          <h1 className="mt-1 text-2xl font-bold tracking-tight text-[#071A33]">
             Network Operations
           </h1>
 
-          <p className="mt-1 text-sm text-[#9FB8BE]">
+          <p className="mt-1 text-sm text-slate-600">
             Live railway network operations and decision support.
           </p>
         </div>
 
-        <div className="controller-panel flex w-fit items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold">
+        <div className="bg-white border border-slate-200 shadow-xs flex w-fit items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800">
           <Radio
             size={15}
             strokeWidth={2.2}
-            className="text-emerald-400 animate-pulse"
+            className="text-emerald-500 animate-pulse"
           />
 
-          <span className="text-[#D7E5EC]">
+          <span className="text-slate-700">
             {isConnected
               ? "Telemetry Connected (Live WS)"
               : "Telemetry Stream Active (RTIS Feeds)"}
@@ -52,7 +52,7 @@ function ControllerDashboard() {
       <NetworkHealthStrip metricsData={networkMetrics} />
 
       <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px] items-stretch">
-        <section className="controller-panel min-h-[580px] flex flex-col overflow-hidden rounded-lg">
+        <section className="controller-panel min-h-[580px] flex flex-col overflow-hidden rounded-xl">
           <div className="controller-header px-4 py-3 shrink-0">
             <div className="flex items-center justify-between gap-4">
               <div>
@@ -90,7 +90,7 @@ function ControllerDashboard() {
         <div className="flex flex-col gap-4">
           <CriticalAlerts alerts={activeAlerts} />
 
-          <section className="controller-panel overflow-hidden rounded-lg shrink-0">
+          <section className="controller-panel overflow-hidden rounded-xl shrink-0">
             <div className="controller-header px-4 py-3">
               <div className="text-sm font-bold text-white">
                 Telemetry Feed Status
@@ -102,13 +102,13 @@ function ControllerDashboard() {
             </div>
 
             <div className="p-4">
-              <div className="text-xs leading-5 text-[#9FB8BE]">
+              <div className="text-xs leading-5 text-slate-600">
                 {effectiveTrainCount} trains currently reporting live telemetry in monitored sector.
               </div>
 
-              <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[#031A1F]">
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100 border border-slate-200">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-[#0E7C86] to-emerald-400 transition-all duration-500"
+                  className="h-full rounded-full bg-gradient-to-r from-[#0E7C86] to-emerald-500 transition-all duration-500"
                   style={{
                     width: `${Math.min(
                       effectiveTrainCount * 20,
@@ -119,12 +119,12 @@ function ControllerDashboard() {
               </div>
 
               <div className="mt-3 flex items-center justify-between text-[10px]">
-                <span className="text-[#718F96]">
+                <span className="text-slate-500">
                   Network feed
                 </span>
 
-                <span className="font-bold text-emerald-400 flex items-center gap-1.5">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="font-bold text-emerald-600 flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                   {isConnected ? "ONLINE (LIVE WS)" : "ACTIVE (TELEMETRY STREAM)"}
                 </span>
               </div>

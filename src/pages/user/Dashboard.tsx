@@ -3,7 +3,6 @@ import { useEffect, useState, useMemo } from "react";
 import {
   Search,
   TrainFront,
-  ArrowRight,
   Radio,
   Activity,
   Ticket,
@@ -13,15 +12,12 @@ import {
   ShieldCheck,
   TrendingUp,
   AlertTriangle,
-  Clock,
-  Calendar,
   CheckCircle2,
   User,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import AlertMarquee from "../../components/AlertMarquee";
 import ETAFragment, { type ETATrain } from "../../components/ETAFragment";
-import UserPNRSection from "../../components/UserPNRSection";
 import { WhatsAppChatModal } from "../../components/WhatsAppChatModal";
 import { TrainSearchResultCard } from "../../components/TrainSearchResultCard";
 import { useLiveTelemetry } from "../../hooks/useLiveTelemetry";
@@ -40,42 +36,7 @@ interface RecentSearch {
   number: string;
 }
 
-interface SavedJourney {
-  id: string;
-  trainNumber: string;
-  trainName: string;
-  from: string;
-  to: string;
-  pnr?: string;
-  departureTime: string;
-  date: string;
-  status: string;
-}
 
-const defaultSavedJourneys: SavedJourney[] = [
-  {
-    id: "j1",
-    trainNumber: "12627",
-    trainName: "Karnataka Express",
-    from: "SBC (KSR Bengaluru)",
-    to: "NDLS (New Delhi)",
-    pnr: "4529108392",
-    departureTime: "19:20",
-    date: "Today",
-    status: "Confirmed (B3 / 42)",
-  },
-  {
-    id: "j2",
-    trainNumber: "20608",
-    trainName: "Mysuru - Chennai Vande Bharat",
-    from: "SBC (KSR Bengaluru)",
-    to: "MAS (Chennai Central)",
-    pnr: "8821903411",
-    departureTime: "06:00",
-    date: "Tomorrow",
-    status: "Confirmed (C1 / 18)",
-  },
-];
 
 const defaultRecentSearches: RecentSearch[] = [
   { name: "Karnataka Express", number: "12627" },
@@ -184,7 +145,6 @@ export default function UserDashboard() {
   const [loadingSearch, setLoadingSearch] = useState(false);
   const [selectedTrain, setSelectedTrain] = useState<TrainRecord | null>(null);
 
-  const [savedJourneys] = useState<SavedJourney[]>(defaultSavedJourneys);
   const [quickServiceNotice, setQuickServiceNotice] = useState<string | null>(null);
 
   // WhatsApp Assistant State
@@ -369,56 +329,6 @@ export default function UserDashboard() {
             </div>
           </div>
 
-          {/* Passenger Saved Journeys / Bookings */}
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-            {savedJourneys.map((j) => (
-              <div
-                key={j.id}
-                className="rounded-2xl border border-white/15 bg-white/10 p-4.5 backdrop-blur-md flex flex-col justify-between space-y-3 hover:border-[#F59E0B]/60 transition"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="rounded bg-[#F59E0B] px-2 py-0.5 text-[10px] font-mono font-bold text-[#071A33]">
-                        #{j.trainNumber}
-                      </span>
-                      <span className="font-bold text-white text-sm sm:text-base">{j.trainName}</span>
-                    </div>
-                    <p className="mt-1 text-xs text-slate-300 font-medium">{j.from} → {j.to}</p>
-                  </div>
-                  <span className="rounded-full bg-emerald-500/20 border border-emerald-400/40 px-2.5 py-0.5 text-[10px] font-bold text-emerald-300 whitespace-nowrap">
-                    {j.status}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between border-t border-white/10 pt-2.5 text-xs text-slate-300">
-                  <div className="flex items-center gap-3">
-                    <span className="flex items-center gap-1">
-                      <Calendar size={13} className="text-[#F59E0B]" />
-                      {j.date}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Clock size={13} className="text-[#F59E0B]" />
-                      Dep: {j.departureTime}
-                    </span>
-                    {j.pnr && (
-                      <span className="font-mono text-[11px] text-teal-300">PNR: {j.pnr}</span>
-                    )}
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/eta?train=${j.trainNumber}`)}
-                    className="flex items-center gap-1 font-bold text-[#F59E0B] hover:underline cursor-pointer"
-                  >
-                    <span>Track Live ETA</span>
-                    <ArrowRight size={13} />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-
           {/* Search Box in Header */}
           <div className="mt-6 w-full max-w-4xl">
             <div className="mb-2 text-xs font-semibold text-white sm:text-sm">
@@ -532,11 +442,6 @@ export default function UserDashboard() {
           })}
         </div>
       </section>
-
-      {/* PNR Status & Active Bookings Section */}
-      {currentUser && (
-        <UserPNRSection currentUser={currentUser} />
-      )}
 
       {/* In-Page Dynamic ETA View if train selected */}
       {selectedTrain && etaData[selectedTrain.train_number] ? (
@@ -655,18 +560,6 @@ export default function UserDashboard() {
               )}
             </div>
 
-            {!debouncedQuery && processedTrains.length > 8 && (
-              <div className="mt-6 text-center">
-                <button
-                  type="button"
-                  onClick={() => navigate("/trains")}
-                  className="inline-flex items-center gap-2 rounded-xl border border-[#F59E0B] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-6 py-3 text-xs font-bold text-white shadow-sm transition-all hover:scale-105 hover:shadow-md cursor-pointer"
-                >
-                  <span>Explore Full Train Directory & Corridor Fleet (5,207 Trains)</span>
-                  <ArrowRight size={15} className="text-[#F59E0B]" />
-                </button>
-              </div>
-            )}
           </div>
         </section>
       )}
