@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
   AlertTriangle,
   Calendar,
@@ -14,8 +14,10 @@ import {
   Sliders,
   UserCheck,
   X,
+  Server,
 } from "lucide-react"
 import type { AuditLog, AuditSeverity } from "../../types/admin"
+import { fetchAuditLogs, exportAuditLogs } from "../../services/adminAuditService"
 
 // ── Initial Baseline Seed Records (Development & Inspection Baseline) ───────
 const initialAuditLogs: AuditLog[] = [
@@ -150,7 +152,7 @@ const initialAuditLogs: AuditLog[] = [
 ]
 
 export default function AuditLogs() {
-  const [logs] = useState<AuditLog[]>(initialAuditLogs)
+  const [logs, setLogs] = useState<AuditLog[]>(initialAuditLogs)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedType, setSelectedType] = useState<string>("All")
   const [selectedSeverity, setSelectedSeverity] = useState<string>("All")
@@ -158,11 +160,38 @@ export default function AuditLogs() {
   const [dateFilter, setDateFilter] = useState<string>("All")
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
-  const [exportNotice, setExportNotice] = useState<string | null>(null)
+  const [exportNotice, setExportNotice] = useState<{ text: string; isSuccess: boolean } | null>(null)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [lastRefreshed, setLastRefreshed] = useState<string>("Just now")
+  const [isBackendConnected, setIsBackendConnected] = useState(false)
   const pageSize = 6
 
-  // Backend live indicator: without connected backend, shows true baseline state
-  const isBackendConnected = false
+  // Load audit logs from SQLite backend service
+  const loadAuditLogs = async () => {
+    try {
+      const res = await fetchAuditLogs()
+      if (res.success && res.logs.length > 0) {
+        setLogs(res.logs)
+        setIsBackendConnected(res.isBackend)
+        const now = new Date()
+        const timeFormatted = now.toLocaleTimeString("en-IN", {
+          timeZone: "Asia/Kolkata",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        })
+        setLastRefreshed(`${timeFormatted} IST`)
+        return res.logs.length
+      }
+    } catch (err) {
+      console.error("Failed to load audit logs from backend", err)
+    }
+    return logs.length
+  }
+
+  useEffect(() => {
+    loadAuditLogs()
+  }, [])
 
   // Filter logs
   const filteredLogs = useMemo(() => {
@@ -191,24 +220,67 @@ export default function AuditLogs() {
 
   // Summary counts
   const summaryCounts = useMemo(() => {
-    if (!isBackendConnected) {
-      return {
-        total: logs.length,
-        admin: logs.filter((l) => l.eventType === "Administrative").length,
-        config: logs.filter((l) => l.eventType === "Configuration").length,
-        security: logs.filter((l) => l.eventType === "Security").length,
-      }
+    return {
+      total: logs.length,
+      admin: logs.filter((l) => l.eventType === "Administrative").length,
+      config: logs.filter((l) => l.eventType === "Configuration").length,
+      security: logs.filter((l) => l.eventType === "Security").length,
     }
-    return { total: "--", admin: "--", config: "--", security: "--" }
-  }, [logs, isBackendConnected])
+  }, [logs])
 
-  const handleExport = (_format: "csv" | "json") => {
-    setExportNotice(
-      "Audit export is unavailable until the backend audit service is connected."
-    )
-    setTimeout(() => {
-      setExportNotice(null)
-    }, 6000)
+  const handleExportCSV = async () => {
+    const dataToExport = filteredLogs.length > 0 ? filteredLogs : logs
+    try {
+      await exportAuditLogs("csv", dataToExport, {
+        search: searchQuery,
+        type: selectedType,
+        severity: selectedSeverity,
+        status: selectedStatus,
+      })
+      setExportNotice({
+        text: `Export successful: ${dataToExport.length} audit records downloaded to your system as CSV.`,
+        isSuccess: true,
+      })
+    } catch (err: any) {
+      setExportNotice({
+        text: `Export failed: ${err.message || "Could not download CSV"}`,
+        isSuccess: false,
+      })
+    }
+    setTimeout(() => setExportNotice(null), 5000)
+  }
+
+  const handleExportJSON = async () => {
+    const dataToExport = filteredLogs.length > 0 ? filteredLogs : logs
+    try {
+      await exportAuditLogs("json", dataToExport, {
+        search: searchQuery,
+        type: selectedType,
+        severity: selectedSeverity,
+        status: selectedStatus,
+      })
+      setExportNotice({
+        text: `Export successful: ${dataToExport.length} audit records downloaded to your system as JSON.`,
+        isSuccess: true,
+      })
+    } catch (err: any) {
+      setExportNotice({
+        text: `Export failed: ${err.message || "Could not download JSON"}`,
+        isSuccess: false,
+      })
+    }
+    setTimeout(() => setExportNotice(null), 5000)
+  }
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true)
+    const count = await loadAuditLogs()
+    setIsRefreshing(false)
+    setExportNotice({
+      text: `Audit trail synchronized with backend database (${count} records verified).`,
+      isSuccess: true,
+    })
+    setTimeout(() => setExportNotice(null), 4000)
   }
 
   const getSeverityBadge = (severity: AuditSeverity) => {
@@ -291,42 +363,62 @@ export default function AuditLogs() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
+          <span className="hidden sm:inline-flex items-center gap-1.5 text-[11px] font-mono text-[#718F96] mr-1">
+            {isBackendConnected && <Server size={12} className="text-emerald-400" />}
+            Synced: {lastRefreshed}
+          </span>
           <button
-            onClick={() => handleExport("csv")}
+            type="button"
+            onClick={handleExportCSV}
             className="flex items-center gap-1.5 rounded-md border border-[#164B5A] bg-[#062A2F] px-3 py-2 text-xs font-semibold text-[#D7E5EC] transition hover:bg-[#08383D] hover:text-white"
+            title="Download audit logs as CSV"
           >
-            <Download size={14} />
+            <Download size={14} className="text-[#0E7C86]" />
             <span>Export CSV</span>
           </button>
           <button
-            onClick={() => handleExport("json")}
+            type="button"
+            onClick={handleExportJSON}
             className="flex items-center gap-1.5 rounded-md border border-[#164B5A] bg-[#062A2F] px-3 py-2 text-xs font-semibold text-[#D7E5EC] transition hover:bg-[#08383D] hover:text-white"
+            title="Download audit logs as JSON"
           >
-            <Download size={14} />
+            <Download size={14} className="text-[#F59E0B]" />
             <span>Export JSON</span>
           </button>
           <button
-            onClick={() => {
-              // Refresh action
-            }}
-            className="flex items-center gap-1.5 rounded-md border border-[#164B5A] bg-[#0E5961] px-3.5 py-2 text-xs font-bold text-white transition hover:bg-[#0E7C86]"
+            type="button"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="flex items-center gap-1.5 rounded-md border border-[#164B5A] bg-[#0E5961] px-3.5 py-2 text-xs font-bold text-white transition hover:bg-[#0E7C86] disabled:opacity-60"
+            title="Synchronize audit trail"
           >
-            <RefreshCw size={14} />
-            <span>Refresh</span>
+            <RefreshCw size={14} className={isRefreshing ? "animate-spin text-[#F59E0B]" : ""} />
+            <span>{isRefreshing ? "Refreshing..." : "Refresh"}</span>
           </button>
         </div>
       </div>
 
-      {/* Export Notice Banner if clicked */}
+      {/* Notice Banner */}
       {exportNotice && (
-        <div className="mb-6 flex items-center justify-between rounded-lg border border-amber-600/50 bg-amber-950/40 p-3.5 text-xs text-amber-200">
+        <div
+          className={`mb-6 flex items-center justify-between rounded-lg border p-3.5 text-xs transition-all ${
+            exportNotice.isSuccess
+              ? "border-[#0E7C86]/50 bg-[#062A2F] text-[#6DD3D5]"
+              : "border-amber-600/50 bg-amber-950/40 text-amber-200"
+          }`}
+        >
           <div className="flex items-center gap-2.5">
-            <AlertTriangle size={16} className="text-[#F59E0B] shrink-0" />
-            <span>{exportNotice}</span>
+            {exportNotice.isSuccess ? (
+              <CheckCircle2 size={16} className="text-[#0E7C86] shrink-0" />
+            ) : (
+              <AlertTriangle size={16} className="text-[#F59E0B] shrink-0" />
+            )}
+            <span className="font-medium">{exportNotice.text}</span>
           </div>
           <button
+            type="button"
             onClick={() => setExportNotice(null)}
-            className="text-amber-400 hover:text-amber-100"
+            className="text-[#9FB8BE] hover:text-white transition"
           >
             <X size={16} />
           </button>

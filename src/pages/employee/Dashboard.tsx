@@ -166,9 +166,38 @@ export default function EmployeeDashboard() {
   const roleData = getRoleSpecificDashboardData(currentUser);
   const { roleConfig, duty, assignment, summaryWidgets, isRoleValid, warningMessage } = roleData;
 
+  // Helpers for persistent alert acknowledgement & read state
+  const getStoredAckedAlerts = (): Record<string, { acknowledgedAt: string; read: boolean }> => {
+    try {
+      const raw = localStorage.getItem("raildrishti_acked_alerts");
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  };
+
+  const applyAckedState = (items: RoleAlertItem[]): RoleAlertItem[] => {
+    const acked = getStoredAckedAlerts();
+    return items.map((a) => {
+      if (acked[a.id]) {
+        return {
+          ...a,
+          status: "ACKNOWLEDGED",
+          read: true,
+          acknowledgedAt: acked[a.id].acknowledgedAt,
+        };
+      }
+      return {
+        ...a,
+        status: a.status || "ACTIVE",
+        read: a.read || false,
+      };
+    });
+  };
+
   // Local interactive states for Tasks & Alerts
   const [tasks, setTasks] = useState<RoleTaskItem[]>(roleData.tasks);
-  const [alerts, setAlerts] = useState<RoleAlertItem[]>(roleData.alerts);
+  const [alerts, setAlerts] = useState<RoleAlertItem[]>(() => applyAckedState(roleData.alerts));
   const [notifications, setNotifications] = useState<NotificationDemo[]>([
     {
       id: "notif-01",
@@ -197,7 +226,7 @@ export default function EmployeeDashboard() {
   useEffect(() => {
     const nextData = getRoleSpecificDashboardData(currentUser);
     setTasks(nextData.tasks);
-    setAlerts(nextData.alerts);
+    setAlerts(applyAckedState(nextData.alerts));
   }, [currentUser]);
 
   const formatIST = (date: Date, use24: boolean) => {
@@ -246,10 +275,54 @@ export default function EmployeeDashboard() {
     );
   };
 
-  // Mark alert as acknowledged
+  // Mark alert as acknowledged and read
   const handleAcknowledgeAlert = (alertId: string) => {
-    setAlerts((prev) => prev.filter((a) => a.id !== alertId));
-    showToast("Alert acknowledged.");
+    const timeFormatted = new Date().toLocaleTimeString("en-IN", {
+      timeZone: "Asia/Kolkata",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    setAlerts((prev) => {
+      const target = prev.find((a) => a.id === alertId);
+      const isCurrentlyAcked = target?.status === "ACKNOWLEDGED";
+      const nextStatus = isCurrentlyAcked ? "ACTIVE" : "ACKNOWLEDGED";
+
+      const ackedMap = getStoredAckedAlerts();
+      if (nextStatus === "ACKNOWLEDGED") {
+        ackedMap[alertId] = { acknowledgedAt: `${timeFormatted} IST`, read: true };
+      } else {
+        delete ackedMap[alertId];
+      }
+      try {
+        localStorage.setItem("raildrishti_acked_alerts", JSON.stringify(ackedMap));
+      } catch {}
+
+      if (nextStatus === "ACKNOWLEDGED") {
+        showToast(`Operational Alert "${target?.title || alertId}" acknowledged & marked as read.`);
+        if ("speechSynthesis" in window) {
+          try {
+            const utter = new SpeechSynthesisUtterance("Alert acknowledged and recorded.");
+            utter.rate = 1.05;
+            window.speechSynthesis.speak(utter);
+          } catch {}
+        }
+      } else {
+        showToast(`Alert "${target?.title || alertId}" status reverted to active.`);
+      }
+
+      return prev.map((a) => {
+        if (a.id === alertId) {
+          return {
+            ...a,
+            status: nextStatus,
+            read: true,
+            acknowledgedAt: nextStatus === "ACKNOWLEDGED" ? `${timeFormatted} IST` : undefined,
+          };
+        }
+        return a;
+      });
+    });
   };
 
   // Mark all notifications read
@@ -261,13 +334,14 @@ export default function EmployeeDashboard() {
   // Computed Counts
   const unreadCount = notifications.filter((n) => !n.isRead).length;
   const pendingTasksCount = tasks.filter((t) => t.status !== "Completed").length;
+  const activeAlertsCount = alerts.filter((a) => a.status !== "ACKNOWLEDGED").length;
 
   // Sidebar navigation menu items
   const navItems: EmployeeNavItem[] = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/employee/dashboard", active: true },
     { id: "duty", label: "My Duty", icon: CalendarCheck, path: "/employee/duty", active: true },
     { id: "assignment", label: "My Train / My Section", icon: TrainFront, path: "/employee/assignment", active: true },
-    { id: "alerts", label: "Operational Alerts", icon: AlertTriangle, path: "/employee/alerts", active: true, badge: alerts.length },
+    { id: "alerts", label: "Operational Alerts", icon: AlertTriangle, path: "/employee/alerts", active: true, badge: activeAlertsCount },
     { id: "tasks", label: "Tasks", icon: CheckSquare, path: "/employee/tasks", active: true, badge: pendingTasksCount },
     { id: "report_issue", label: "Report Issue", icon: FileWarning, path: "/employee/report", active: true },
     { id: "mail", label: "Official Mail & Directives", icon: Mail, path: "/employee/mail", active: true },

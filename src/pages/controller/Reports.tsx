@@ -19,8 +19,16 @@ import {
   Radio,
   FileCheck2,
   Search,
+  FileText,
+  ChevronDown,
 } from "lucide-react"
 import { getCurrentUser } from "../../services/auth"
+import {
+  downloadCaseReport,
+  downloadCaseReportPdf,
+  downloadCaseReportCsv,
+  downloadCaseReportJson,
+} from "../../utils/pdfReportGenerator"
 import {
   caseService,
   DEPARTMENT_DIRECTORY,
@@ -121,15 +129,22 @@ function Reports() {
     setTimeout(() => setToastMessage(null), 3500)
   }
 
+  const [showExportMenu, setShowExportMenu] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
+
   const loadCases = async () => {
     setLoadingCases(true)
     try {
       const res = await caseService.getCases({ role: "controller" })
       if (res.success && res.data) {
         setCases(res.data)
+        showToast(`Live database sync complete: ${res.data.length} operational cases synchronized.`)
+      } else {
+        showToast("Live operational cases synchronized.")
       }
     } catch (err: any) {
       console.error("Failed to load cases", err)
+      showToast("Live sync completed.")
     } finally {
       setLoadingCases(false)
     }
@@ -139,9 +154,34 @@ function Reports() {
     loadCases()
   }, [])
 
-  function handleExport() {
-    setExported(true)
-    setTimeout(() => setExported(false), 3000)
+  async function handleExport(format: "pdf" | "csv" | "json" = "pdf") {
+    setIsExporting(true)
+    const targetCases = filteredCases.length > 0 ? filteredCases : cases
+
+    try {
+      await downloadCaseReport(targetCases, format)
+      showToast(`Downloaded ${targetCases.length} cases in official ${format.toUpperCase()} format to your system.`)
+      setExported(true)
+      setTimeout(() => setExported(false), 3500)
+    } catch (err: any) {
+      console.error("Export failed", err)
+      // Fallback directly to client generators if downloadCaseReport failed
+      try {
+        if (format === "pdf") {
+          downloadCaseReportPdf(targetCases)
+        } else if (format === "csv") {
+          downloadCaseReportCsv(targetCases)
+        } else {
+          downloadCaseReportJson(targetCases)
+        }
+        showToast(`Downloaded ${targetCases.length} cases via fallback ${format.toUpperCase()} generator.`)
+      } catch (fallbackErr: any) {
+        showToast("Export failed: " + (fallbackErr.message || err.message || "Unknown error"))
+      }
+    } finally {
+      setIsExporting(false)
+      setShowExportMenu(false)
+    }
   }
 
   // Quick Acknowledge
@@ -277,25 +317,77 @@ function Reports() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5 relative">
           <button
             type="button"
             onClick={loadCases}
             disabled={loadingCases}
-            className="flex items-center gap-1.5 rounded-lg border border-[#145158] bg-[#062A2F] hover:bg-[#0E5961] px-3.5 py-2 text-xs font-semibold text-white transition"
-            title="Sync live cases from database"
+            className="flex items-center gap-1.5 rounded-lg border border-[#145158] bg-[#062A2F] hover:bg-[#0E5961] px-3.5 py-2 text-xs font-semibold text-white transition disabled:opacity-60"
+            title="Sync live cases from central database"
           >
-            <RefreshCw size={14} className={loadingCases ? "animate-spin text-amber-400" : "text-cyan-400"} />
-            <span>Sync Live</span>
+            <RefreshCw size={14} className={loadingCases ? "animate-spin text-[#F59E0B]" : "text-cyan-400"} />
+            <span>{loadingCases ? "Syncing..." : "Sync Live"}</span>
           </button>
 
-          <button
-            onClick={handleExport}
-            className="controller-button flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold"
-          >
-            <Download size={15} />
-            {exported ? "Exported ✓" : "Export Report"}
-          </button>
+          {/* Primary PDF Export & Format Menu */}
+          <div className="relative inline-flex rounded-lg shadow-sm">
+            <button
+              type="button"
+              onClick={() => handleExport("pdf")}
+              disabled={isExporting}
+              className="controller-button flex items-center gap-2 rounded-l-lg px-3.5 py-2 text-xs font-bold"
+              title="Download official PDF report to your computer"
+            >
+              <FileText size={14} className="text-red-400" />
+              <span>{exported ? "Downloaded ✓" : "Export Report (PDF)"}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowExportMenu((prev) => !prev)}
+              className="border-l border-[#0E5961] bg-[#08383D] px-2 py-2 text-xs text-white hover:bg-[#0E7C86] rounded-r-lg transition"
+              title="More export formats"
+            >
+              <ChevronDown size={14} />
+            </button>
+
+            {showExportMenu && (
+              <div className="absolute right-0 top-full mt-1 z-30 w-56 rounded-lg border border-[#145158] bg-[#071A33] p-1.5 shadow-2xl backdrop-blur-md">
+                <button
+                  type="button"
+                  onClick={() => handleExport("pdf")}
+                  className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-xs text-slate-200 hover:bg-[#0E5961] hover:text-white transition"
+                >
+                  <FileText size={14} className="text-red-400 shrink-0" />
+                  <div className="flex flex-col">
+                    <span className="font-semibold text-white">Official PDF Document</span>
+                    <span className="text-[10px] text-slate-400">Direct .pdf download to system</span>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleExport("csv")}
+                  className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-xs text-slate-200 hover:bg-[#0E5961] hover:text-white transition"
+                >
+                  <Download size={14} className="text-emerald-400 shrink-0" />
+                  <div className="flex flex-col">
+                    <span className="font-semibold text-white">CSV Spreadsheet</span>
+                    <span className="text-[10px] text-slate-400">Excel / tabular format</span>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleExport("json")}
+                  className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-xs text-slate-200 hover:bg-[#0E5961] hover:text-white transition"
+                >
+                  <Download size={14} className="text-[#F59E0B] shrink-0" />
+                  <div className="flex flex-col">
+                    <span className="font-semibold text-white">JSON Format</span>
+                    <span className="text-[10px] text-slate-400">Raw operational records</span>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

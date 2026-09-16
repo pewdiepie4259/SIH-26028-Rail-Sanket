@@ -29,6 +29,13 @@ import {
   markNotificationRead,
   markAllNotificationsRead
 } from './case_service.js';
+import {
+  initializeAuditService,
+  getAuditLogs,
+  createAuditLog,
+  getAuditStats,
+  buildServerPdf
+} from './audit_service.js';
 
 const app = express();
 app.use(cors());
@@ -43,6 +50,7 @@ const db = new sqlite3.Database(DB_PATH, (err) => {
     initializeDatabase(db);
     initializeMailService(db);
     initializeCaseService(db);
+    initializeAuditService(db);
   }
 });
 
@@ -1109,6 +1117,194 @@ app.get('/api/trains/:trainNo/live-ntes', async (req, res) => {
   } catch (err) {
     fallbackToSchedule();
   }
+});
+
+// ==========================================
+// AUDIT LOGS & COMPLIANCE SERVICE API
+// ==========================================
+
+// 1. Get Audit Logs with search & filters
+app.get('/api/admin/audit-logs', async (req, res) => {
+  try {
+    const { search, type, severity, status, limit } = req.query;
+    const logs = await getAuditLogs(db, { search, type, severity, status, limit });
+    res.json({ success: true, count: logs.length, logs });
+  } catch (err) {
+    console.error('Failed to query audit logs:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 2. Get Audit Statistics
+app.get('/api/admin/audit-logs/stats', async (req, res) => {
+  try {
+    const stats = await getAuditStats(db);
+    res.json({ success: true, stats });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 3. Create Audit Log
+app.post('/api/admin/audit-logs', async (req, res) => {
+  try {
+    const log = await createAuditLog(db, req.body);
+    res.json({ success: true, log });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 4. Export Audit Logs (CSV / JSON / PDF)
+app.get('/api/admin/audit-logs/export', async (req, res) => {
+  try {
+    const { format = 'csv', search, type, severity, status } = req.query;
+    const logs = await getAuditLogs(db, { search, type, severity, status });
+    const dateStr = new Date().toISOString().slice(0, 10);
+
+    if (format === 'csv') {
+      const headers = ["Log ID", "Timestamp (IST)", "Event", "Event Type", "Severity", "User", "User Role", "Resource", "Action", "Status", "IP Address"];
+      const escapeCsv = (val) => `"${String(val || '').replace(/"/g, '""')}"`;
+      const rows = logs.map(l => [
+        escapeCsv(l.id),
+        escapeCsv(l.timestamp),
+        escapeCsv(l.event),
+        escapeCsv(l.eventType),
+        escapeCsv(l.severity),
+        escapeCsv(l.user),
+        escapeCsv(l.userRole),
+        escapeCsv(l.resource),
+        escapeCsv(l.action),
+        escapeCsv(l.status),
+        escapeCsv(l.ipAddress)
+      ].join(','));
+      const csv = "\uFEFF" + [headers.join(','), ...rows].join('\r\n');
+
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="RailDrishti_Audit_Logs_${dateStr}.csv"`);
+      return res.send(csv);
+    }
+
+    if (format === 'json') {
+      const json = JSON.stringify({
+        system: "RailDrishti Governance & Access Compliance Audit Ledger",
+        exportedAt: new Date().toISOString(),
+        totalRecords: logs.length,
+        records: logs
+      }, null, 2);
+
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="RailDrishti_Audit_Logs_${dateStr}.json"`);
+      return res.send(json);
+    }
+
+    if (format === 'pdf') {
+      const pdfHeaders = [
+        { label: "LOG ID", key: "id", xOffset: 0, maxLen: 14 },
+        { label: "TIMESTAMP", key: "timestamp", xOffset: 70, maxLen: 16 },
+        { label: "EVENT", key: "event", xOffset: 85, maxLen: 28 },
+        { label: "TYPE", key: "eventType", xOffset: 135, maxLen: 12 },
+        { label: "SEVERITY", key: "severity", xOffset: 65, maxLen: 10 },
+        { label: "STATUS", key: "status", xOffset: 60, maxLen: 10 },
+        { label: "ACTOR / USER", key: "user", xOffset: 55, maxLen: 14 }
+      ];
+      const pdfBuf = buildServerPdf(
+        "GOVERNMENT OF INDIA - MINISTRY OF RAILWAYS",
+        "RAIL DRISHTI GOVERNANCE & ACCESS COMPLIANCE AUDIT LEDGER",
+        pdfHeaders,
+        logs,
+        `Total Events: ${logs.length}`
+      );
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="RailDrishti_Audit_Logs_${dateStr}.pdf"`);
+      return res.send(pdfBuf);
+    }
+
+    res.status(400).json({ error: 'Unsupported format. Use csv, json, or pdf.' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ==========================================
+// OPERATIONAL REPORTS & CASES EXPORT API
+// ==========================================
+
+// Direct PDF download endpoint for Controller Reports
+app.get(['/api/reports/export/pdf', '/api/cases/export/pdf'], (req, res) => {
+  db.all('SELECT * FROM operational_cases ORDER BY created_at DESC', (err, rows) => {
+    if (err) {
+      return res.status(500).json({ success: false, error: err.message });
+    }
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const pdfHeaders = [
+      { label: "CASE ID", key: "id", xOffset: 0, maxLen: 14 },
+      { label: "TYPE", key: "case_type", xOffset: 68, maxLen: 12 },
+      { label: "SEVERITY", key: "severity", xOffset: 55, maxLen: 10 },
+      { label: "LOCATION", key: "location", xOffset: 62, maxLen: 22 },
+      { label: "DEPARTMENT", key: "department", xOffset: 130, maxLen: 18 },
+      { label: "STATUS", key: "status", xOffset: 105, maxLen: 12 },
+      { label: "REPORTER", key: "reporter_name", xOffset: 60, maxLen: 12 }
+    ];
+
+    const criticalCount = (rows || []).filter(r => r.severity === 'CRITICAL').length;
+    const pdfBuf = buildServerPdf(
+      "GOVERNMENT OF INDIA - MINISTRY OF RAILWAYS",
+      "RAIL DRISHTI SECTION CONTROL - BENGALURU CENTRAL DIVISION",
+      pdfHeaders,
+      rows || [],
+      `Total Cases: ${(rows || []).length} | Critical: ${criticalCount}`
+    );
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="RailDrishti_Operational_Report_${dateStr}.pdf"`);
+    res.send(pdfBuf);
+  });
+});
+
+// Direct CSV download endpoint
+app.get(['/api/reports/export/csv', '/api/cases/export/csv'], (req, res) => {
+  db.all('SELECT * FROM operational_cases ORDER BY created_at DESC', (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const headers = ["Case ID", "Type", "Title", "Severity", "Location", "Status", "Reporter", "Department", "Created At"];
+    const escapeCsv = (val) => `"${String(val || '').replace(/"/g, '""')}"`;
+    const csvRows = (rows || []).map(r => [
+      escapeCsv(r.id),
+      escapeCsv(r.case_type),
+      escapeCsv(r.title),
+      escapeCsv(r.severity),
+      escapeCsv(r.location),
+      escapeCsv(r.status),
+      escapeCsv(r.reporter_name),
+      escapeCsv(r.department),
+      escapeCsv(r.created_at)
+    ].join(','));
+    const csv = "\uFEFF" + [headers.join(','), ...csvRows].join('\r\n');
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="RailDrishti_Operational_Report_${dateStr}.csv"`);
+    res.send(csv);
+  });
+});
+
+// Direct JSON download endpoint
+app.get(['/api/reports/export/json', '/api/cases/export/json'], (req, res) => {
+  db.all('SELECT * FROM operational_cases ORDER BY created_at DESC', (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const json = JSON.stringify({
+      system: "RailDrishti Section Control Operational Incidents & Audit Desk",
+      exportedAt: new Date().toISOString(),
+      totalRecords: (rows || []).length,
+      cases: rows || []
+    }, null, 2);
+
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="RailDrishti_Operational_Report_${dateStr}.json"`);
+    res.send(json);
+  });
 });
 
 // Server Listen

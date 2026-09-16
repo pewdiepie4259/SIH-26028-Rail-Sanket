@@ -64,6 +64,9 @@ export interface RoleAlertItem {
   trainOrSection: string;
   timestamp: string;
   description: string;
+  status?: "ACTIVE" | "ACKNOWLEDGED";
+  read?: boolean;
+  acknowledgedAt?: string;
 }
 
 export interface RoleDashboardData {

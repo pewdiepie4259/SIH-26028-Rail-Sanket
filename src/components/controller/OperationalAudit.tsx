@@ -5,6 +5,7 @@ import {
   FileText,
   ShieldCheck,
   UserCircle,
+  Download,
 } from "lucide-react"
 import { Link } from "react-router-dom"
 import {
@@ -12,9 +13,20 @@ import {
   subscribeAudit,
   type AuditRecord,
 } from "../../services/auditService"
+import { downloadAuditReportPdf } from "../../utils/pdfReportGenerator"
 
 function OperationalAudit() {
   const [auditEntries, setAuditEntries] = useState<AuditRecord[]>(getAuditEntries)
+  const [downloading, setDownloading] = useState(false)
+
+  const handleExportPdf = () => {
+    setDownloading(true)
+    try {
+      downloadAuditReportPdf(auditEntries)
+    } finally {
+      setTimeout(() => setDownloading(false), 2000)
+    }
+  }
 
   useEffect(() => {
     return subscribeAudit((updated) => {
@@ -42,12 +54,25 @@ function OperationalAudit() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#71899C]">
-          <ShieldCheck
-            size={14}
-            className="text-[#0E7C86]"
-          />
-          Audit trail active
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={handleExportPdf}
+            disabled={downloading}
+            className="flex items-center gap-1.5 rounded-md border border-[#16364A] bg-[#071A33] px-2.5 py-1 text-[11px] font-semibold text-[#D7E5EC] hover:border-[#0E7C86] hover:text-white transition disabled:opacity-60"
+            title="Download audit records as official PDF"
+          >
+            <Download size={13} className="text-[#0E7C86]" />
+            <span>{downloading ? "Downloading..." : "Export Audit (PDF)"}</span>
+          </button>
+
+          <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#71899C]">
+            <ShieldCheck
+              size={14}
+              className="text-[#0E7C86]"
+            />
+            Audit trail active
+          </div>
         </div>
       </div>
 
