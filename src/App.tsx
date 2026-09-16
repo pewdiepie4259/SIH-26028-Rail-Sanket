@@ -115,18 +115,9 @@ function ControllerProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function PassengerDashboardRoute() {
-  const user = getCurrentUser();
-  if (user?.role === "employee") {
-    return <Navigate to="/employee/dashboard" replace />;
-  }
-  if (user?.role === "controller") {
-    return <Navigate to="/controller/dashboard" replace />;
-  }
-  if (user?.role === "admin") {
-    return <Navigate to="/admin/dashboard" replace />;
-  }
   return <PublicDashboard />;
 }
+
 
 function AdminProtectedRoute({ children }: { children: React.ReactNode }) {
   const user = getCurrentUser();
