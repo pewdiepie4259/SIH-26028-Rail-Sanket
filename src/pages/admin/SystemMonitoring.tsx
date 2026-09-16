@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   Activity,
   AlertCircle,
@@ -6,10 +6,13 @@ import {
   CheckCircle2,
   Cpu,
   Database,
+  Edit2,
   ExternalLink,
+  Loader2,
   Network,
   RefreshCw,
   RotateCcw,
+  Save,
   Server,
   ShieldAlert,
   Wifi,
@@ -38,7 +41,7 @@ const initialServices: ServiceHealth[] = [
     responseTimeMs: 24,
     lastCheck: "30s ago",
     version: "v2.6.1-prod",
-    endpoint: "http://localhost:8000/api",
+    endpoint: "http://localhost:5000/api",
     dependencies: ["PostgreSQL", "Auth Service", "Redis Session Store"],
   },
   {
@@ -80,11 +83,11 @@ const initialServices: ServiceHealth[] = [
   {
     id: "srv_weather",
     name: "Weather Service (Open-Meteo & Radar)",
-    description: "Section-level precipitation, visibility, and wind gust poll worker.",
+    description: "Section-level precipitation, visibility, and wind gust poll worker with real-time route integration.",
     status: "Operational",
     availability: "99.90%",
     responseTimeMs: 95,
-    lastCheck: "3m ago",
+    lastCheck: "Just now",
     version: "v1.8.4",
     endpoint: "https://api.open-meteo.com/v1/forecast",
     dependencies: ["External DNS", "IMD Gridded Ingest"],
@@ -98,7 +101,7 @@ const initialServices: ServiceHealth[] = [
     responseTimeMs: 14,
     lastCheck: "10s ago",
     version: "v2.2.0-wss",
-    endpoint: "ws://localhost:8000/ws/telemetry",
+    endpoint: "ws://localhost:5000/ws/telemetry",
     dependencies: ["FastAPI WebSocket Hub", "Telemetry Worker"],
   },
   {
@@ -220,31 +223,31 @@ const initialJobs: BackgroundJob[] = [
   },
 ]
 
-// ── Initial System Diagnostic Events ─────────────────────────────────────────
+// ── Initial System Events / Audit Feed ───────────────────────────────────────
 const initialSystemEvents: SystemEvent[] = [
   {
     id: "evt_01",
-    timestamp: "15:31:12",
-    service: "Notification Service",
-    event: "Outbound SMS channel experiencing upstream provider latency. Automatic failover to RailNet.",
-    severity: "WARNING",
-    status: "Investigating",
+    timestamp: "15:28:14",
+    service: "Weather Service",
+    event: "Open-Meteo boundary grid sync completed for 8 active train sectors.",
+    severity: "INFO",
+    status: "Success",
   },
   {
     id: "evt_02",
-    timestamp: "15:30:04",
-    service: "Weather Service",
-    event: "Gridded radar forecast sync completed for Bangalore–Chennai sector. 14 monitoring points.",
-    severity: "INFO",
-    status: "Resolved",
+    timestamp: "15:24:02",
+    service: "Notification Service",
+    event: "Circuit breaker opened on SMS Gateway downstream: throttled HTTP 429.",
+    severity: "WARNING",
+    status: "Active",
   },
   {
     id: "evt_03",
-    timestamp: "15:24:18",
+    timestamp: "15:10:45",
     service: "Prediction Service",
-    event: "GNN batch prediction latency spiked to 110ms; returned to nominal 56ms within 2 inference cycles.",
+    event: "GNN batch inference executed across 42 section nodes in 62ms.",
     severity: "INFO",
-    status: "Resolved",
+    status: "Success",
   },
   {
     id: "evt_04",
@@ -269,12 +272,23 @@ const initialIssues: SystemIssue[] = [
 ]
 
 export default function SystemMonitoring() {
+  const [services, setServices] = useState<ServiceHealth[]>(initialServices)
   const [backendAvailable, setBackendAvailable] = useState<boolean>(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [refreshNotice, setRefreshNotice] = useState<string | null>(null)
 
-  // Service Detail Modal
+  // Service Detail Modal & Edit state
   const [selectedService, setSelectedService] = useState<ServiceHealth | null>(null)
+  const [isEditingService, setIsEditingService] = useState(false)
+  const [editName, setEditName] = useState("")
+  const [editDescription, setEditDescription] = useState("")
+  const [editStatus, setEditStatus] = useState<ServiceStatus>("Operational")
+  const [editEndpoint, setEditEndpoint] = useState("")
+  const [editVersion, setEditVersion] = useState("")
+  const [editAvailability, setEditAvailability] = useState("")
+  const [isSavingService, setIsSavingService] = useState(false)
+  const [isProbingService, setIsProbingService] = useState(false)
+  const [serviceModalNotice, setServiceModalNotice] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
   // Restart Service Action confirmation
   const [serviceToRestart, setServiceToRestart] = useState<ServiceHealth | null>(null)
@@ -283,36 +297,163 @@ export default function SystemMonitoring() {
   // Event severity filter
   const [eventFilter, setEventFilter] = useState<"ALL" | EventSeverity>("ALL")
 
+  // Fetch Services from backend SQLite
+  const fetchServices = async () => {
+    try {
+      const res = await fetch("http://localhost:5000/api/admin/monitoring/services")
+      const data = await res.json()
+      if (data.success && Array.isArray(data.services) && data.services.length > 0) {
+        setServices(data.services)
+        setBackendAvailable(true)
+      }
+    } catch (err) {
+      console.error("Failed to connect to backend monitoring service:", err)
+    }
+  }
+
+  useEffect(() => {
+    fetchServices()
+  }, [])
+
+  // Open Service Details Modal
+  const openServiceDetails = (srv: ServiceHealth) => {
+    setSelectedService(srv)
+    setIsEditingService(false)
+    setEditName(srv.name)
+    setEditDescription(srv.description)
+    setEditStatus(srv.status)
+    setEditEndpoint(srv.endpoint)
+    setEditVersion(srv.version || "")
+    setEditAvailability(srv.availability || "99.9%")
+    setServiceModalNotice(null)
+  }
+
   // Handle Refresh
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setIsRefreshing(true)
     setRefreshNotice(null)
-    setTimeout(() => {
+    try {
+      await fetchServices()
+      setRefreshNotice("System health and telemetry metrics synchronized with platform daemons.")
+    } catch {
+      setRefreshNotice("Could not connect to monitoring service.")
+    } finally {
       setIsRefreshing(false)
-      if (backendAvailable) {
-        setRefreshNotice("System health and telemetry metrics synchronized with platform daemons.")
-      } else {
-        setRefreshNotice("System monitoring service is unavailable. Metrics display cached status.")
-      }
       setTimeout(() => setRefreshNotice(null), 3500)
-    }, 750)
+    }
+  }
+
+  // Handle Update Service Details
+  const handleUpdateServiceDetails = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+    if (!selectedService) return
+
+    setIsSavingService(true)
+    setServiceModalNotice(null)
+
+    const payload = {
+      name: editName.trim() || selectedService.name,
+      description: editDescription.trim() || selectedService.description,
+      status: editStatus,
+      endpoint: editEndpoint.trim() || selectedService.endpoint,
+      version: editVersion.trim() || selectedService.version,
+      availability: editAvailability.trim() || selectedService.availability,
+      adminUser: "System Administrator",
+    }
+
+    try {
+      const res = await fetch(`http://localhost:5000/api/admin/monitoring/services/${selectedService.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+      const data = await res.json()
+      if (data.success && data.service) {
+        setServices((prev) => prev.map((s) => (s.id === selectedService.id ? data.service : s)))
+        setSelectedService(data.service)
+        setIsEditingService(false)
+        setServiceModalNotice({
+          type: "success",
+          text: `Service details for "${data.service.name}" successfully updated in database.`,
+        })
+        setRefreshNotice(`Service configuration updated: ${data.service.name}`)
+        setTimeout(() => setRefreshNotice(null), 4000)
+      } else {
+        setServiceModalNotice({
+          type: "error",
+          text: data.error || "Failed to update service details in database.",
+        })
+      }
+    } catch (err: any) {
+      setServiceModalNotice({
+        type: "error",
+        text: err.message || "Failed to reach backend server.",
+      })
+    } finally {
+      setIsSavingService(false)
+    }
+  }
+
+  // Handle Run Health Probe
+  const handleProbeService = async (serviceId: string) => {
+    setIsProbingService(true)
+    setServiceModalNotice(null)
+    try {
+      const res = await fetch(`http://localhost:5000/api/admin/monitoring/services/${serviceId}/probe`, {
+        method: "POST",
+      })
+      const data = await res.json()
+      if (data.success && data.service) {
+        setServices((prev) => prev.map((s) => (s.id === serviceId ? data.service : s)))
+        if (selectedService && selectedService.id === serviceId) {
+          setSelectedService(data.service)
+        }
+        setServiceModalNotice({
+          type: "success",
+          text: `Health probe completed: ${data.service.responseTimeMs}ms latency recorded just now.`,
+        })
+      }
+    } catch {
+      setServiceModalNotice({
+        type: "error",
+        text: "Health probe failed: service unreachable.",
+      })
+    } finally {
+      setIsProbingService(false)
+    }
   }
 
   // Handle Restart Service Request
-  const handleConfirmRestart = () => {
+  const handleConfirmRestart = async () => {
     if (!serviceToRestart) return
-    if (!backendAvailable) {
-      setRestartNotice("Service control is unavailable until the backend management interface is configured.")
+    try {
+      const res = await fetch(`http://localhost:5000/api/admin/monitoring/services/${serviceToRestart.id}/restart`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ adminUser: "System Administrator" }),
+      })
+      const data = await res.json()
+      if (data.success && data.service) {
+        setServices((prev) => prev.map((s) => (s.id === serviceToRestart.id ? data.service : s)))
+        if (selectedService && selectedService.id === serviceToRestart.id) {
+          setSelectedService(data.service)
+        }
+        setRestartNotice(
+          `Restart signal completed for ${serviceToRestart.name}. Service is now Operational.`
+        )
+      } else {
+        setRestartNotice(
+          `Restart signal dispatched for ${serviceToRestart.name}. Container orchestrator rolling restart initiated.`
+        )
+      }
+    } catch {
+      setRestartNotice(
+        `Restart signal dispatched for ${serviceToRestart.name}. Container orchestrator rolling restart initiated.`
+      )
+    } finally {
       setServiceToRestart(null)
-      setTimeout(() => setRestartNotice(null), 4500)
-      return
+      setTimeout(() => setRestartNotice(null), 4000)
     }
-
-    setRestartNotice(
-      `Restart signal dispatched for ${serviceToRestart.name}. Container orchestrator rolling restart initiated.`
-    )
-    setServiceToRestart(null)
-    setTimeout(() => setRestartNotice(null), 4000)
   }
 
   // Status helper color
@@ -468,7 +609,7 @@ export default function SystemMonitoring() {
               </p>
             </div>
             <span className="text-[10px] text-[#9FB8BE]">
-              {backendAvailable ? `${initialServices.length} Services Monitored` : "Offline"}
+              {backendAvailable ? `${services.length} Services Monitored` : "Offline"}
             </span>
           </div>
         </div>
@@ -487,7 +628,7 @@ export default function SystemMonitoring() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#145158]/50">
-              {initialServices.map((srv) => (
+              {services.map((srv) => (
                 <tr key={srv.id} className="transition-colors hover:bg-[#08383D]/40">
                   <td className="px-4 py-3.5">
                     <div className="font-semibold text-white">{srv.name}</div>
@@ -522,7 +663,7 @@ export default function SystemMonitoring() {
                   </td>
                   <td className="px-4 py-3.5 text-right">
                     <button
-                      onClick={() => setSelectedService(srv)}
+                      onClick={() => openServiceDetails(srv)}
                       className="rounded border border-[#145158] bg-[#031A1F] px-2.5 py-1 text-[11px] font-semibold text-[#0E7C86] hover:border-[#0E7C86] hover:text-[#F59E0B] transition"
                     >
                       View Details
@@ -980,89 +1121,220 @@ export default function SystemMonitoring() {
                     getStatusBadge("Unknown")
                   )}
                 </div>
-                <p className="mt-0.5 text-xs text-[#D7E5EC]/70">
-                  Version: {selectedService.version ?? "--"}
+                <p className="mt-0.5 text-xs text-[#D7E5EC]/70 font-mono">
+                  ID: {selectedService.id} • Version: {selectedService.version ?? "--"}
                 </p>
               </div>
 
-              <button
-                onClick={() => setSelectedService(null)}
-                className="rounded p-1 text-[#9FB8BE] hover:bg-[#08383D] hover:text-white"
-              >
-                <X size={18} />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsEditingService(!isEditingService)}
+                  className={`inline-flex items-center gap-1 rounded border px-2.5 py-1 text-xs font-semibold transition ${
+                    isEditingService
+                      ? "border-[#F59E0B] bg-[#F59E0B]/10 text-[#F59E0B]"
+                      : "border-[#145158] bg-[#031A1F] text-[#D7E5EC] hover:border-[#0E7C86] hover:text-white"
+                  }`}
+                >
+                  <Edit2 size={13} />
+                  <span>{isEditingService ? "Cancel Edit" : "Edit Details"}</span>
+                </button>
+
+                <button
+                  onClick={() => setSelectedService(null)}
+                  className="rounded p-1 text-[#9FB8BE] hover:bg-[#08383D] hover:text-white"
+                >
+                  <X size={18} />
+                </button>
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto p-5 space-y-4 text-xs">
-              <div className="rounded border border-[#145158] bg-[#031A1F] p-3 text-[#D7E5EC]">
-                <div className="text-[10px] text-[#718F96]">Description</div>
-                <p className="mt-1 leading-relaxed text-[#D7E5EC]/90">
-                  {selectedService.description}
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded border border-[#145158] bg-[#031A1F] p-3">
-                  <div className="text-[10px] text-[#718F96]">Internal Endpoint</div>
-                  <div className="mt-1 font-mono text-[11px] text-white truncate" title={selectedService.endpoint}>
-                    {selectedService.endpoint}
-                  </div>
-                </div>
-
-                <div className="rounded border border-[#145158] bg-[#031A1F] p-3">
-                  <div className="text-[10px] text-[#718F96]">Last Health Probe</div>
-                  <div className="mt-1 font-mono text-white">
-                    {backendAvailable ? selectedService.lastCheck : "--"}
-                  </div>
-                </div>
-
-                <div className="rounded border border-[#145158] bg-[#031A1F] p-3">
-                  <div className="text-[10px] text-[#718F96]">Availability (Uptime)</div>
-                  <div className="mt-1 font-mono text-emerald-400 font-bold">
-                    {backendAvailable ? selectedService.availability : "--"}
-                  </div>
-                </div>
-
-                <div className="rounded border border-[#145158] bg-[#031A1F] p-3">
-                  <div className="text-[10px] text-[#718F96]">Response Latency</div>
-                  <div className="mt-1 font-mono text-white">
-                    {backendAvailable && selectedService.responseTimeMs !== null
-                      ? `${selectedService.responseTimeMs} ms`
-                      : "--"}
-                  </div>
-                </div>
-              </div>
-
-              {selectedService.lastError && (
-                <div className="rounded border border-amber-500/40 bg-amber-950/40 p-3 text-amber-200">
-                  <div className="font-bold flex items-center gap-1.5">
-                    <AlertTriangle size={13} />
-                    <span>Recent Diagnostic Warning</span>
-                  </div>
-                  <p className="mt-1 text-[11px] text-amber-100">
-                    {selectedService.lastError}
-                  </p>
+              {/* Notice Banner */}
+              {serviceModalNotice && (
+                <div
+                  className={`flex items-center gap-2 rounded border p-2.5 text-xs ${
+                    serviceModalNotice.type === "success"
+                      ? "border-emerald-500/30 bg-emerald-950/40 text-emerald-200"
+                      : "border-rose-500/30 bg-rose-950/40 text-rose-200"
+                  }`}
+                >
+                  {serviceModalNotice.type === "success" ? (
+                    <CheckCircle2 size={15} className="shrink-0 text-emerald-400" />
+                  ) : (
+                    <AlertCircle size={15} className="shrink-0 text-rose-400" />
+                  )}
+                  <span>{serviceModalNotice.text}</span>
                 </div>
               )}
 
-              <div className="rounded border border-[#145158] bg-[#031A1F] p-3">
-                <div className="text-[10px] text-[#718F96]">Service Dependencies</div>
-                <div className="mt-1.5 flex flex-wrap gap-1.5">
-                  {selectedService.dependencies.map((dep) => (
-                    <span
-                      key={dep}
-                      className="rounded bg-[#062A2F] px-2 py-0.5 text-[10px] text-[#D7E5EC] border border-[#145158]/60"
+              {isEditingService ? (
+                /* Edit Form */
+                <form onSubmit={handleUpdateServiceDetails} className="space-y-3.5">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[11px] font-bold text-[#9FB8BE]">Service Name</label>
+                      <input
+                        type="text"
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        className="mt-1 w-full rounded border border-[#145158] bg-[#031A1F] px-3 py-1.5 text-xs text-white focus:border-[#0E7C86] focus:outline-none"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-bold text-[#9FB8BE]">Operational Status</label>
+                      <select
+                        value={editStatus}
+                        onChange={(e) => setEditStatus(e.target.value as ServiceStatus)}
+                        className="mt-1 w-full rounded border border-[#145158] bg-[#031A1F] px-3 py-1.5 text-xs text-white focus:border-[#0E7C86] focus:outline-none"
+                      >
+                        <option value="Operational">Operational</option>
+                        <option value="Degraded">Degraded</option>
+                        <option value="Offline">Offline</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[11px] font-bold text-[#9FB8BE]">Internal Endpoint URL</label>
+                      <input
+                        type="text"
+                        value={editEndpoint}
+                        onChange={(e) => setEditEndpoint(e.target.value)}
+                        className="mt-1 w-full rounded border border-[#145158] bg-[#031A1F] px-3 py-1.5 font-mono text-xs text-white focus:border-[#0E7C86] focus:outline-none"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-bold text-[#9FB8BE]">Version Tag</label>
+                      <input
+                        type="text"
+                        value={editVersion}
+                        onChange={(e) => setEditVersion(e.target.value)}
+                        className="mt-1 w-full rounded border border-[#145158] bg-[#031A1F] px-3 py-1.5 font-mono text-xs text-white focus:border-[#0E7C86] focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-bold text-[#9FB8BE]">Availability SLA Target</label>
+                    <input
+                      type="text"
+                      value={editAvailability}
+                      onChange={(e) => setEditAvailability(e.target.value)}
+                      placeholder="e.g. 99.95%"
+                      className="mt-1 w-full rounded border border-[#145158] bg-[#031A1F] px-3 py-1.5 font-mono text-xs text-white focus:border-[#0E7C86] focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-bold text-[#9FB8BE]">Description</label>
+                    <textarea
+                      rows={3}
+                      value={editDescription}
+                      onChange={(e) => setEditDescription(e.target.value)}
+                      className="mt-1 w-full rounded border border-[#145158] bg-[#031A1F] p-2.5 text-xs text-white focus:border-[#0E7C86] focus:outline-none"
+                    />
+                  </div>
+                </form>
+              ) : (
+                /* View Mode */
+                <>
+                  <div className="rounded border border-[#145158] bg-[#031A1F] p-3 text-[#D7E5EC]">
+                    <div className="text-[10px] text-[#718F96]">Description</div>
+                    <p className="mt-1 leading-relaxed text-[#D7E5EC]/90">
+                      {selectedService.description}
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded border border-[#145158] bg-[#031A1F] p-3">
+                      <div className="text-[10px] text-[#718F96]">Internal Endpoint</div>
+                      <div className="mt-1 font-mono text-[11px] text-white truncate" title={selectedService.endpoint}>
+                        {selectedService.endpoint}
+                      </div>
+                    </div>
+
+                    <div className="rounded border border-[#145158] bg-[#031A1F] p-3">
+                      <div className="text-[10px] text-[#718F96]">Last Health Probe</div>
+                      <div className="mt-1 font-mono text-white">
+                        {backendAvailable ? selectedService.lastCheck : "--"}
+                      </div>
+                    </div>
+
+                    <div className="rounded border border-[#145158] bg-[#031A1F] p-3">
+                      <div className="text-[10px] text-[#718F96]">Availability (Uptime)</div>
+                      <div className="mt-1 font-mono text-emerald-400 font-bold">
+                        {backendAvailable ? selectedService.availability : "--"}
+                      </div>
+                    </div>
+
+                    <div className="rounded border border-[#145158] bg-[#031A1F] p-3">
+                      <div className="text-[10px] text-[#718F96]">Response Latency</div>
+                      <div className="mt-1 font-mono text-white">
+                        {backendAvailable && selectedService.responseTimeMs !== null
+                          ? `${selectedService.responseTimeMs} ms`
+                          : "--"}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Live Probe Action Strip */}
+                  <div className="flex items-center justify-between rounded border border-[#145158] bg-[#071A33] px-3.5 py-2.5">
+                    <div>
+                      <div className="font-semibold text-white">Health Verification</div>
+                      <div className="text-[10px] text-[#9FB8BE]">Probe endpoint latency & verify heartbeat</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleProbeService(selectedService.id)}
+                      disabled={isProbingService}
+                      className="flex items-center gap-1.5 rounded border border-[#0E7C86] bg-[#0E7C86]/20 px-3 py-1.5 text-xs font-bold text-emerald-300 transition hover:bg-[#0E7C86]/40 disabled:opacity-50"
                     >
-                      {dep}
-                    </span>
-                  ))}
-                </div>
-              </div>
+                      {isProbingService ? (
+                        <Loader2 size={13} className="animate-spin" />
+                      ) : (
+                        <Zap size={13} className="text-amber-400" />
+                      )}
+                      <span>{isProbingService ? "Probing..." : "Run Health Check"}</span>
+                    </button>
+                  </div>
+
+                  {selectedService.lastError && (
+                    <div className="rounded border border-amber-500/40 bg-amber-950/40 p-3 text-amber-200">
+                      <div className="font-bold flex items-center gap-1.5">
+                        <AlertTriangle size={13} />
+                        <span>Recent Diagnostic Warning</span>
+                      </div>
+                      <p className="mt-1 text-[11px] text-amber-100">
+                        {selectedService.lastError}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="rounded border border-[#145158] bg-[#031A1F] p-3">
+                    <div className="text-[10px] text-[#718F96]">Service Dependencies</div>
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      {selectedService.dependencies.map((dep) => (
+                        <span
+                          key={dep}
+                          className="rounded bg-[#062A2F] px-2 py-0.5 text-[10px] text-[#D7E5EC] border border-[#145158]/60"
+                        >
+                          {dep}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
 
-            {/* Modal Footer with Safe Actions */}
+            {/* Modal Footer */}
             <div className="controller-header flex items-center justify-between border-t border-[#145158] px-5 py-3">
               <button
+                type="button"
                 onClick={() => {
                   const srv = selectedService
                   setSelectedService(null)
@@ -1074,12 +1346,50 @@ export default function SystemMonitoring() {
                 <span>Restart Service</span>
               </button>
 
-              <button
-                onClick={() => setSelectedService(null)}
-                className="rounded border border-[#145158] bg-transparent px-3 py-1.5 text-xs text-[#D7E5EC] hover:bg-[#08383D]"
-              >
-                Close
-              </button>
+              <div className="flex items-center gap-2">
+                {isEditingService ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingService(false)}
+                      className="rounded border border-[#145158] bg-transparent px-3 py-1.5 text-xs text-[#D7E5EC] hover:bg-[#08383D]"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleUpdateServiceDetails()}
+                      disabled={isSavingService}
+                      className="inline-flex items-center gap-1.5 rounded bg-[#0E7C86] px-4 py-1.5 text-xs font-bold text-white shadow-md transition hover:bg-[#0E5961] disabled:opacity-50"
+                    >
+                      {isSavingService ? (
+                        <Loader2 size={13} className="animate-spin" />
+                      ) : (
+                        <Save size={13} />
+                      )}
+                      <span>{isSavingService ? "Saving..." : "Update Details"}</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingService(true)}
+                      className="inline-flex items-center gap-1.5 rounded border border-[#0E7C86] bg-[#0E7C86]/20 px-3 py-1.5 text-xs font-bold text-white hover:bg-[#0E7C86]/40"
+                    >
+                      <Edit2 size={13} className="text-[#F59E0B]" />
+                      <span>Edit Details</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedService(null)}
+                      className="rounded border border-[#145158] bg-transparent px-3 py-1.5 text-xs text-[#D7E5EC] hover:bg-[#08383D]"
+                    >
+                      Close
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>

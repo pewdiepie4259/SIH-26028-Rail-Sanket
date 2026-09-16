@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
   Check,
   CheckCircle2,
@@ -7,6 +7,7 @@ import {
   Filter,
   KeyRound,
   Plus,
+  RefreshCw,
   RotateCcw,
   Search,
   Shield,
@@ -17,7 +18,7 @@ import {
   UserX,
 } from "lucide-react"
 
-export type AdminUserRole = "admin" | "controller" | "employee"
+export type AdminUserRole = "admin" | "controller" | "employee" | "user"
 export type AdminUserStatus = "active" | "pending" | "suspended"
 
 export interface AdminUserRecord {
@@ -30,16 +31,28 @@ export interface AdminUserRecord {
   status: AdminUserStatus
   lastActive: string
   createdAt: string
+  phone?: string
 }
 
 const initialUsers: AdminUserRecord[] = [
   {
-    id: "usr_adm_9001",
-    name: "Chief Administrator",
-    email: "admin@raildrishti.gov.in",
-    employeeId: "ADM-HQ-01",
+    id: "usr_adm_1001",
+    name: "Souvik Saha",
+    email: "souvik.saha@raildrishti.gov.in",
+    employeeId: "ADM-1001",
     role: "admin",
-    department: "Systems & Infrastructure Administration",
+    department: "Railway Operations & Safety Directorate",
+    status: "active",
+    lastActive: "Just now",
+    createdAt: "2024-01-10",
+  },
+  {
+    id: "usr_adm_1002",
+    name: "Rohit Roy",
+    email: "rohit.roy@raildrishti.gov.in",
+    employeeId: "ADM-1002",
+    role: "admin",
+    department: "Network Safety & Infrastructure Directorate",
     status: "active",
     lastActive: "Just now",
     createdAt: "2024-01-10",
@@ -57,47 +70,69 @@ const initialUsers: AdminUserRecord[] = [
   },
   {
     id: "usr_ctrl_2002",
-    name: "Rajesh Kumar",
-    email: "rajesh.kumar@raildrishti.gov.in",
-    employeeId: "CTRL-SBC-02",
+    name: "Neeraj Singh Gaira",
+    email: "neeraj.gaira@raildrishti.gov.in",
+    employeeId: "CTRL-NDLS-02",
     role: "controller",
     department: "Operations & Traffic Control",
     status: "active",
-    lastActive: "1 hour ago",
-    createdAt: "2024-03-01",
+    lastActive: "Active recently",
+    createdAt: "2024-02-15",
   },
   {
-    id: "usr_emp_4001",
-    name: "Vikram Malhotra",
-    email: "vikram.malhotra@raildrishti.gov.in",
-    employeeId: "EMP-SBC-401",
+    id: "usr_emp_5001",
+    name: "Manas Kumar",
+    email: "manas.kumar@raildrishti.gov.in",
+    employeeId: "IR-2024-5001",
     role: "employee",
-    department: "Traction & Rolling Stock",
+    department: "Signal & Telecommunication (S&T)",
     status: "active",
     lastActive: "35 mins ago",
     createdAt: "2024-04-12",
   },
   {
-    id: "usr_emp_4002",
-    name: "Pooja Sharma",
-    email: "pooja.sharma@raildrishti.gov.in",
-    employeeId: "IR-2024-6012",
+    id: "usr_emp_5002",
+    name: "Krutika Girennavar",
+    email: "krutika.g@raildrishti.gov.in",
+    employeeId: "IR-2024-5002",
     role: "employee",
-    department: "Mechanical Engineering",
-    status: "pending",
-    lastActive: "Never",
-    createdAt: "2024-09-14",
+    department: "Operations & Traffic Control",
+    status: "active",
+    lastActive: "1 hour ago",
+    createdAt: "2024-04-12",
   },
   {
-    id: "usr_emp_4003",
-    name: "Dinesh Rao",
-    email: "dinesh.rao@raildrishti.gov.in",
-    employeeId: "EMP-BYPL-109",
+    id: "usr_adm_001",
+    name: "Chief Operations Director",
+    email: "admin@raildrishti.gov.in",
+    employeeId: "ADM-9001",
+    role: "admin",
+    department: "Railway Operations & Safety",
+    status: "active",
+    lastActive: "Just now",
+    createdAt: "2024-01-10",
+  },
+  {
+    id: "usr_emp_001",
+    name: "Ramesh Sharma",
+    email: "employee@raildrishti.gov.in",
+    employeeId: "IR-2024-8841",
     role: "employee",
-    department: "Signal & Telecommunications",
-    status: "suspended",
-    lastActive: "12 days ago",
-    createdAt: "2024-02-20",
+    department: "Signal & Telecommunication",
+    status: "active",
+    lastActive: "2 hours ago",
+    createdAt: "2024-03-01",
+  },
+  {
+    id: "usr_pass_001",
+    name: "Amit Verma",
+    email: "passenger@raildrishti.gov.in",
+    employeeId: "9876543210",
+    role: "user",
+    department: "Passenger Services",
+    status: "active",
+    lastActive: "1 day ago",
+    createdAt: "2024-05-01",
   },
 ]
 
@@ -137,10 +172,20 @@ const rolePermissions: Record<AdminUserRole, { title: string; perms: string[] }>
       "Duty History & Profile Management",
     ],
   },
+  user: {
+    title: "PASSENGER / PUBLIC",
+    perms: [
+      "Live Train Map & Telemetry View",
+      "Section Arrival & Delay Search",
+      "Public Train Schedule Lookup",
+      "Live Station Board Tracker",
+    ],
+  },
 }
 
 export default function UserManagement() {
   const [users, setUsers] = useState<AdminUserRecord[]>(initialUsers)
+  const [isLoading, setIsLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [roleFilter, setRoleFilter] = useState<string>("ALL")
   const [statusFilter, setStatusFilter] = useState<string>("ALL")
@@ -166,6 +211,26 @@ export default function UserManagement() {
   const [editDepartment, setEditDepartment] = useState("")
   const [editRole, setEditRole] = useState<AdminUserRole>("employee")
   const [editStatus, setEditStatus] = useState<AdminUserStatus>("active")
+
+  // Fetch users from database
+  const fetchUsers = async () => {
+    setIsLoading(true)
+    try {
+      const res = await fetch("http://localhost:5000/api/admin/users")
+      const data = await res.json()
+      if (data.success && Array.isArray(data.users)) {
+        setUsers(data.users)
+      }
+    } catch (err) {
+      console.error("Failed to fetch users from database:", err)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchUsers()
+  }, [])
 
   // Filtered users
   const filteredUsers = useMemo(() => {
@@ -200,7 +265,7 @@ export default function UserManagement() {
   }
 
   // Handle Add User
-  const handleAddSubmit = (e: React.FormEvent) => {
+  const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newFullName.trim() || !newEmail.trim() || !newEmployeeId.trim()) {
       setAddError("Please fill in all required fields.")
@@ -211,28 +276,38 @@ export default function UserManagement() {
       return
     }
 
-    const created: AdminUserRecord = {
-      id: `usr_custom_${Date.now()}`,
-      name: newFullName.trim(),
-      email: newEmail.trim(),
-      employeeId: newEmployeeId.trim(),
-      role: newRole,
-      department: newDepartment,
-      status: "active",
-      lastActive: "Never",
-      createdAt: new Date().toISOString().split("T")[0],
+    try {
+      const res = await fetch("http://localhost:5000/api/admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newFullName.trim(),
+          email: newEmail.trim(),
+          employeeId: newEmployeeId.trim(),
+          role: newRole,
+          department: newDepartment,
+          adminUser: "System Administrator",
+        }),
+      })
+      const data = await res.json()
+      if (data.success && data.user) {
+        setUsers((prev) => [data.user, ...prev])
+        setIsAddOpen(false)
+        setNewFullName("")
+        setNewEmail("")
+        setNewEmployeeId("")
+        setAddError("")
+        setNoticeMessage({
+          type: "success",
+          text: `User account created for ${data.user.name} (${data.user.employeeId}) and persisted in database.`,
+        })
+        fetchUsers()
+      } else {
+        setAddError(data.error || "Failed to create user in database.")
+      }
+    } catch (err: any) {
+      setAddError(err.message || "Failed to connect to backend service.")
     }
-
-    setUsers([created, ...users])
-    setIsAddOpen(false)
-    setNewFullName("")
-    setNewEmail("")
-    setNewEmployeeId("")
-    setAddError("")
-    setNoticeMessage({
-      type: "success",
-      text: `User account created for ${created.name} (${created.employeeId}). Note: Persisted in local administrative session.`,
-    })
   }
 
   // Open Edit Modal
@@ -246,47 +321,96 @@ export default function UserManagement() {
   }
 
   // Handle Edit Submit
-  const handleEditSubmit = (e: React.FormEvent) => {
+  const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!editingUser) return
 
-    setUsers(
-      users.map((u) =>
-        u.id === editingUser.id
-          ? {
-              ...u,
-              name: editFullName.trim() || u.name,
-              email: editEmail.trim() || u.email,
-              department: editDepartment.trim() || u.department,
-              role: editRole,
-              status: editStatus,
-            }
-          : u
-      )
-    )
+    const payload = {
+      name: editFullName.trim() || editingUser.name,
+      email: editEmail.trim() || editingUser.email,
+      department: editDepartment.trim() || editingUser.department,
+      role: editRole,
+      status: editStatus,
+      adminUser: "System Administrator",
+    }
 
-    setEditingUser(null)
-    setNoticeMessage({
-      type: "success",
-      text: `User details updated for ${editingUser.employeeId}.`,
-    })
+    try {
+      const res = await fetch(`http://localhost:5000/api/admin/users/${editingUser.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+      const data = await res.json()
+      if (data.success && data.user) {
+        setUsers((prev) => prev.map((u) => (u.id === editingUser.id ? data.user : u)))
+        setEditingUser(null)
+        setNoticeMessage({
+          type: "success",
+          text: `User details updated in database for ${editingUser.employeeId}.`,
+        })
+      } else {
+        setNoticeMessage({
+          type: "info",
+          text: data.error || "Failed to update user in database.",
+        })
+      }
+    } catch (err) {
+      console.error("Failed to update user:", err)
+      setEditingUser(null)
+    }
   }
 
   // Toggle Suspend
-  const toggleSuspend = (user: AdminUserRecord) => {
+  const toggleSuspend = async (user: AdminUserRecord) => {
     const newStatus: AdminUserStatus = user.status === "suspended" ? "active" : "suspended"
-    setUsers(users.map((u) => (u.id === user.id ? { ...u, status: newStatus } : u)))
-    setNoticeMessage({
-      type: "info",
-      text: `Account for ${user.name} (${user.employeeId}) is now ${newStatus.toUpperCase()}.`,
-    })
+    setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, status: newStatus } : u)))
+
+    try {
+      const res = await fetch(`http://localhost:5000/api/admin/users/${user.id}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus, adminUser: "System Administrator" }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setNoticeMessage({
+          type: "info",
+          text: `Account for ${user.name} (${user.employeeId}) updated in database to ${newStatus.toUpperCase()}.`,
+        })
+      } else {
+        fetchUsers()
+      }
+    } catch (err) {
+      console.error("Failed to update status in DB:", err)
+      fetchUsers()
+    }
   }
 
-  // Export Users
+  // Export Users to CSV
   const handleExport = () => {
+    const headers = ["ID", "Name", "Email", "Employee ID", "Role", "Department", "Status", "Created At"]
+    const rows = filteredUsers.map((u) => [
+      `"${u.id}"`,
+      `"${u.name}"`,
+      `"${u.email}"`,
+      `"${u.employeeId}"`,
+      `"${u.role}"`,
+      `"${u.department}"`,
+      `"${u.status}"`,
+      `"${u.createdAt}"`,
+    ])
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n")
+    const encodedUri = encodeURI(csvContent)
+    const link = document.createElement("a")
+    link.setAttribute("href", encodedUri)
+    link.setAttribute("download", `raildrishti_users_${new Date().toISOString().split("T")[0]}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+
     setNoticeMessage({
       type: "info",
-      text: `Export generated for ${filteredUsers.length} user records (CSV format dispatched).`,
+      text: `Export generated: downloaded CSV for ${filteredUsers.length} user records.`,
     })
   }
 
@@ -304,17 +428,27 @@ export default function UserManagement() {
           </h1>
 
           <p className="mt-1 text-sm text-[#9FB8BE]">
-            Manage platform users, roles, credential status, and operational access permissions.
+            Manage platform users, roles, credential status, and operational access permissions from central database.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           <button
+            onClick={fetchUsers}
+            disabled={isLoading}
+            className="controller-panel inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold text-[#D7E5EC] transition hover:bg-[#08383D] disabled:opacity-50"
+            title="Refresh user data from database"
+          >
+            <RefreshCw size={14} className={isLoading ? "animate-spin text-[#0E7C86]" : "text-[#0E7C86]"} />
+            <span>{isLoading ? "Syncing..." : "Sync DB"}</span>
+          </button>
+
+          <button
             onClick={() => setShowPermissions(!showPermissions)}
             className="controller-panel inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold text-[#D7E5EC] transition hover:bg-[#08383D]"
           >
             <ShieldCheck size={14} className="text-[#0E7C86]" />
-            <span>{showPermissions ? "Hide Permissions" : "View Permissions Matrix"}</span>
+            <span>{showPermissions ? "Hide Permissions" : "Permissions Matrix"}</span>
           </button>
 
           <button
@@ -478,6 +612,7 @@ export default function UserManagement() {
                 <option value="admin">System Administrator</option>
                 <option value="controller">Controller</option>
                 <option value="employee">Employee</option>
+                <option value="user">Passenger / Public</option>
               </select>
             </div>
 
@@ -601,14 +736,18 @@ export default function UserManagement() {
                               ? "border-amber-500/40 bg-amber-950/60 text-amber-300"
                               : u.role === "controller"
                               ? "border-[#0E7C86]/40 bg-[#071A33] text-[#0E7C86]"
-                              : "border-slate-500/30 bg-slate-900/60 text-slate-300"
+                              : u.role === "employee"
+                              ? "border-slate-500/30 bg-slate-900/60 text-slate-300"
+                              : "border-cyan-500/40 bg-cyan-950/60 text-cyan-300"
                           }`}
                         >
                           {u.role === "admin"
                             ? "System Admin"
                             : u.role === "controller"
                             ? "Controller"
-                            : "Employee"}
+                            : u.role === "employee"
+                            ? "Employee"
+                            : "Passenger"}
                         </span>
                       </td>
 
@@ -670,7 +809,7 @@ export default function UserManagement() {
                             <Edit2 size={13} />
                           </button>
 
-                          {u.role !== "admin" && (
+                          {u.id !== "usr_adm_1001" && (
                             <button
                               onClick={() => toggleSuspend(u)}
                               className={`rounded border p-1 text-[11px] ${

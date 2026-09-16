@@ -29,7 +29,7 @@ export type {
 
 const WS_URL =
   import.meta.env.VITE_TELEMETRY_WS_URL ||
-  "ws://127.0.0.1:8000/ws/telemetry";
+  "ws://127.0.0.1:5000/ws/telemetry";
 
 export function useLiveTelemetry() {
   // Initial state from the telemetry engine

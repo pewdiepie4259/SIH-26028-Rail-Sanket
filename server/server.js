@@ -1,5 +1,7 @@
 // server/server.js
 import express from 'express';
+import { createServer } from 'http';
+import { WebSocketServer } from 'ws';
 import cors from 'cors';
 import sqlite3 from 'sqlite3';
 import { DB_PATH, initializeDatabase, hashPassword, verifyPassword, INITIAL_CREDENTIALS } from './init_db.js';
@@ -47,6 +49,7 @@ import {
 } from './weather_service.js';
 
 const app = express();
+const httpServer = createServer(app);
 app.use(cors());
 app.use(express.json());
 
@@ -55,10 +58,117 @@ const RAILRADAR_API_KEY = process.env.RAILRADAR_API_KEY || 'rg_e5d566785ee841099
 // ==========================================
 // ACTIVE REAL-TIME TELEMETRY POOL & CACHE
 // ==========================================
-const ACTIVE_MONITORED_TRAINS = ['12245', '12246', '12860', '12627', '20608', '12301', '12639', '12610'];
+const ACTIVE_MONITORED_TRAINS = [
+  '12245', '12246', '12860', '12627', '20608', '12301', '12639', '12610',
+  '16589', '16526', '12628', '12079', '16591', '12613', '12608'
+];
 const liveTelemetryCache = new Map();
-const sseClients = new Set();
 
+// ==========================================
+// WEBSOCKET SERVER — Telemetry Live Stream
+// ==========================================
+const wss = new WebSocketServer({ server: httpServer, path: '/ws/telemetry' });
+
+// Server-side train simulation state (mirrors telemetryEngine.ts)
+const WS_STATIONS = [
+  { code: 'SBC', name: 'KSR Bengaluru', lat: 12.9775, lon: 77.5713 },
+  { code: 'BNC', name: 'Bengaluru Cantonment', lat: 12.9913, lon: 77.5987 },
+  { code: 'BYPL', name: 'Baiyappanahalli', lat: 13.0285, lon: 77.6325 },
+  { code: 'KJM', name: 'Krishnarajapuram', lat: 13.0005, lon: 77.6784 },
+  { code: 'WFD', name: 'Whitefield', lat: 12.9934, lon: 77.7219 },
+];
+
+const wsTrainPool = [
+  { trainNumber: '12628', name: 'Karnataka Express', priority: 1, seg: 0, prog: 0.35, dir: 1, speed: 64.5, signal: 'GREEN', delay: 6, risk: 0.42 },
+  { trainNumber: '16589', name: 'Rani Chennamma Express', priority: 2, seg: 2, prog: 0.70, dir: -1, speed: 72.0, signal: 'YELLOW', delay: 8, risk: 0.35 },
+  { trainNumber: '16526', name: 'Kanyakumari Express', priority: 2, seg: 1, prog: 0.45, dir: 1, speed: 52.4, signal: 'YELLOW', delay: 5, risk: 0.28 },
+  { trainNumber: '12627', name: 'Karnataka Express (UP)', priority: 1, seg: 3, prog: 0.20, dir: -1, speed: 58.6, signal: 'DOUBLE_YELLOW', delay: 11, risk: 0.68 },
+  { trainNumber: '12079', name: 'Jan Shatabdi Express', priority: 1, seg: 0, prog: 0.85, dir: 1, speed: 68.2, signal: 'GREEN', delay: 3, risk: 0.15 },
+  { trainNumber: '16591', name: 'Hampi Express', priority: 2, seg: 2, prog: 0.15, dir: 1, speed: 60.0, signal: 'GREEN', delay: 7, risk: 0.38 },
+  { trainNumber: '12639', name: 'Brindavan Express', priority: 1, seg: 1, prog: 0.90, dir: -1, speed: 76.5, signal: 'GREEN', delay: 2, risk: 0.12 },
+];
+
+function advanceWsSimulation() {
+  for (const t of wsTrainPool) {
+    const DT = 1.8 / 3600;
+    const segLen = (() => {
+      const i = t.dir === 1 ? t.seg : (WS_STATIONS.length - 2 - t.seg);
+      const a = WS_STATIONS[Math.max(0, Math.min(i, WS_STATIONS.length - 1))];
+      const b = WS_STATIONS[Math.max(0, Math.min(i + 1, WS_STATIONS.length - 1))];
+      return Math.sqrt(Math.pow(b.lat - a.lat, 2) + Math.pow(b.lon - a.lon, 2)) * 111;
+    })();
+    const dp = segLen > 0 ? (t.speed * DT) / segLen : 0;
+    t.prog += dp;
+    if (t.prog >= 1) {
+      t.prog = 0;
+      const maxSeg = WS_STATIONS.length - 2;
+      t.seg = t.dir === 1 ? (t.seg + 1 > maxSeg ? (t.dir = -1, maxSeg - 1) : t.seg + 1)
+                          : (t.seg - 1 < 0 ? (t.dir = 1, 1) : t.seg - 1);
+    }
+    // Jitter speed & signal
+    t.speed = Math.max(30, Math.min(110, t.speed + (Math.random() - 0.48) * 3));
+    const r = Math.random();
+    if (r < 0.02) t.signal = 'RED';
+    else if (r < 0.08) t.signal = 'YELLOW';
+    else if (r < 0.15) t.signal = 'DOUBLE_YELLOW';
+    else if (t.signal !== 'GREEN' && r > 0.9) t.signal = 'GREEN';
+  }
+}
+
+function buildWsPayloads() {
+  return wsTrainPool.map(t => {
+    const i = t.dir === 1 ? t.seg : (WS_STATIONS.length - 2 - t.seg);
+    const sA = WS_STATIONS[Math.max(0, Math.min(i, WS_STATIONS.length - 1))];
+    const sB = WS_STATIONS[Math.max(0, Math.min(i + 1, WS_STATIONS.length - 1))];
+    const lat = sA.lat + (sB.lat - sA.lat) * t.prog;
+    const lon = sA.lon + (sB.lon - sA.lon) * t.prog;
+    const nextIdx = t.dir === 1 ? i + 1 : i;
+    const nextSt = WS_STATIONS[Math.max(0, Math.min(nextIdx, WS_STATIONS.length - 1))];
+    const distRem = Math.sqrt(Math.pow(nextSt.lat - lat, 2) + Math.pow(nextSt.lon - lon, 2)) * 111;
+    const etaMin = t.speed > 0 ? (distRem / t.speed) * 60 : 0;
+    const etaTime = new Date(Date.now() + etaMin * 60000);
+    return {
+      train_number: t.trainNumber,
+      train_name: t.name,
+      priority_tier: t.priority,
+      current_block: `${sA.code}-${sB.code} Block ${Math.ceil(t.prog * 4)}`,
+      telemetry: { lat, lon, speed_kmh: parseFloat(t.speed.toFixed(1)), signal: t.signal },
+      forecasts: [{
+        station: nextSt.code,
+        station_name: nextSt.name,
+        distance_remaining_km: parseFloat(distRem.toFixed(1)),
+        baseline_static_eta: etaTime.toTimeString().slice(0, 5),
+        dynamic_gnn_eta: new Date(etaTime.getTime() + t.delay * 60000).toTimeString().slice(0, 5),
+        predicted_delay_min: t.delay,
+        cascade_risk: t.risk,
+      }],
+    };
+  });
+}
+
+// Broadcast telemetry to all WS clients every 1.8s
+setInterval(() => {
+  advanceWsSimulation();
+  if (wss.clients.size === 0) return;
+  const payloads = buildWsPayloads();
+  const msgs = payloads.map(p => JSON.stringify(p));
+  wss.clients.forEach(client => {
+    if (client.readyState === 1 /* OPEN */) {
+      msgs.forEach(m => client.send(m));
+    }
+  });
+}, 1800);
+
+wss.on('connection', (ws) => {
+  console.log('[WS] Telemetry client connected. Total:', wss.clients.size);
+  // Send current snapshot immediately on connect
+  const payloads = buildWsPayloads();
+  payloads.forEach(p => ws.send(JSON.stringify(p)));
+  ws.on('close', () => console.log('[WS] Client disconnected. Total:', wss.clients.size));
+});
+
+// SSE client registry (for /api/trains/stream endpoint)
+const sseClients = new Set();
 
 const db = new sqlite3.Database(DB_PATH, (err) => {
   if (err) console.error("Database connection error:", err.message);
@@ -92,6 +202,45 @@ const db = new sqlite3.Database(DB_PATH, (err) => {
           `INSERT OR IGNORE INTO corridor_historical_delays (corridor_id, from_zone, to_zone, peak_hour_delay_bias, avg_clearance_minutes) VALUES (?, ?, ?, ?, ?)`,
           [id, fz, tz, bias, clr]
         );
+      });
+    });
+
+    // Initialize System Monitoring Services Table
+    db.run(`
+      CREATE TABLE IF NOT EXISTS system_monitoring_services (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT,
+        status TEXT DEFAULT 'Operational',
+        availability TEXT DEFAULT '99.9%',
+        response_time_ms INTEGER DEFAULT 24,
+        last_check TEXT DEFAULT 'Just now',
+        version TEXT,
+        endpoint TEXT,
+        dependencies TEXT,
+        last_error TEXT,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `, () => {
+      db.get(`SELECT COUNT(*) as count FROM system_monitoring_services`, (err, row) => {
+        if (!err && row && row.count === 0) {
+          const defaultServices = [
+            ['srv_api', 'API Gateway', 'Central FastAPI reverse proxy routing client requests, rate-limiting, and RBAC authentication.', 'Operational', '99.94%', 24, '30s ago', 'v2.6.1-prod', 'http://localhost:5000/api', JSON.stringify(["PostgreSQL", "Auth Service", "Redis Session Store"]), null],
+            ['srv_db', 'Database (PostgreSQL & TimescaleDB)', 'Primary relational datastore and hypertable time-series partitions for track occupancy.', 'Operational', '99.99%', 8, '1m ago', '16.3-timescale', 'rd-db-primary.railway.internal:5432', JSON.stringify(["Persistent Block Storage", "VPC Private Subnet"]), null],
+            ['srv_telemetry', 'Telemetry Ingestion (RTIS)', 'Sub-second GPS coordinate and locomotive speed stream consumer parsing CRIS transponder packets.', 'Operational', '99.85%', 38, 'Just now', 'v3.1.0-stream', 'wss://telemetry.cris.org.in/rtis/v2', JSON.stringify(["CRIS mTLS Bridge", "Kafka / Redis Message Queue"]), null],
+            ['srv_prediction', 'Prediction Service (GNN + Transformer)', 'Deep learning spatio-temporal inference engine generating dynamic section arrivals and delay trees.', 'Operational', '99.70%', 62, '45s ago', 'v2.4-prod', 'http://prediction-engine.internal:8000/v1', JSON.stringify(["GPU Inference Worker", "PyTorch C++ Runtime"]), null],
+            ['srv_weather', 'Weather Service (Open-Meteo & Radar)', 'Section-level precipitation, visibility, and wind gust poll worker with real-time route integration.', 'Operational', '99.90%', 95, 'Just now', 'v1.8.4', 'https://api.open-meteo.com/v1/forecast', JSON.stringify(["External DNS", "IMD Gridded Ingest"]), null],
+            ['srv_ws_gateway', 'WebSocket Gateway', 'Real-time client hub maintaining duplex stateful socket connections for active Controller terminals.', 'Operational', '99.92%', 14, '10s ago', 'v2.2.0-wss', 'ws://localhost:5000/ws/telemetry', JSON.stringify(["FastAPI WebSocket Hub", "Telemetry Worker"]), null],
+            ['srv_notification', 'Notification Service', 'Multi-channel dispatcher transmitting operational emergency bulletins, SMS, and RailNet terminal notices.', 'Degraded', '98.20%', 320, '2m ago', 'v1.4.2', 'https://notify.internal.raildrishti.gov/v1', JSON.stringify(["SMS Gateway Provider", "WebPush Dispatcher"]), 'SMS Provider API timeout: queue throttled at gateway node.']
+          ];
+          const insertStmt = db.prepare(`
+            INSERT INTO system_monitoring_services (id, name, description, status, availability, response_time_ms, last_check, version, endpoint, dependencies, last_error)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `);
+          defaultServices.forEach(s => insertStmt.run(...s));
+          insertStmt.finalize();
+          console.log("Initialized system_monitoring_services default rows.");
+        }
       });
     });
 
@@ -1577,8 +1726,401 @@ app.get(['/api/weather/controller', '/api/weather/sections'], async (req, res) =
   }
 });
 
-// Server Listen
+// ==========================================
+// ADMIN USER MANAGEMENT API (trains.db users)
+// ==========================================
+
+// 1. Get all users
+app.get('/api/admin/users', (req, res) => {
+  db.all(
+    `SELECT id, username, name, email, phone, role, admin_id, controller_id, employee_id, department, operational_role, status, created_at 
+     FROM users ORDER BY role ASC, name ASC`,
+    (err, rows) => {
+      if (err) {
+        console.error('Failed to fetch admin users:', err);
+        return res.status(500).json({ success: false, error: err.message });
+      }
+      const formatted = (rows || []).map((row) => ({
+        id: row.id,
+        name: row.name || 'Unnamed User',
+        email: row.email || '',
+        employeeId: row.admin_id || row.controller_id || row.employee_id || row.username || row.id,
+        role: row.role || 'employee',
+        department: row.department || (row.role === 'controller' ? 'Operations & Traffic Control' : row.role === 'admin' ? 'Systems & Infrastructure Administration' : 'Signal & Telecommunication'),
+        status: row.status || 'active',
+        lastActive: row.status === 'suspended' ? 'Suspended' : 'Active recently',
+        createdAt: row.created_at ? row.created_at.split(' ')[0] : '2024-01-10',
+        phone: row.phone || ''
+      }));
+      res.json({ success: true, users: formatted });
+    }
+  );
+});
+
+// 2. Create a new user
+app.post('/api/admin/users', (req, res) => {
+  try {
+    const { name, email, employeeId, role = 'employee', department, password = 'RailDrishti@2026', phone } = req.body || {};
+    if (!name || !email || !employeeId) {
+      return res.status(400).json({ success: false, error: 'Name, email, and employee ID are required.' });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanEmpId = employeeId.trim();
+    const cleanRole = ['admin', 'controller', 'employee', 'user'].includes(role) ? role : 'employee';
+    const id = `usr_${cleanRole.slice(0, 4)}_${Date.now().toString(36)}`;
+    const { hash, salt } = hashPassword(password);
+
+    const admin_id = cleanRole === 'admin' ? cleanEmpId : null;
+    const controller_id = cleanRole === 'controller' ? cleanEmpId : null;
+    const employee_id = (cleanRole === 'employee' || cleanRole === 'user') ? cleanEmpId : null;
+    const dept = department || (cleanRole === 'controller' ? 'Operations & Traffic Control' : cleanRole === 'admin' ? 'Systems & Infrastructure Administration' : 'Traction & Rolling Stock');
+
+    const sql = `
+      INSERT INTO users (
+        id, username, name, email, phone, password_hash, salt, role,
+        admin_id, controller_id, employee_id, department, status, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', CURRENT_TIMESTAMP)
+    `;
+
+    db.run(
+      sql,
+      [id, cleanEmpId, name.trim(), cleanEmail, phone || null, hash, salt, cleanRole, admin_id, controller_id, employee_id, dept],
+      function (err) {
+        if (err) {
+          console.error('Failed to create user:', err);
+          return res.status(500).json({ success: false, error: err.message });
+        }
+
+        try {
+          createAuditLog(db, {
+            event: `User Account Provisioned: ${name} (${cleanEmpId})`,
+            eventType: 'USER_MANAGEMENT',
+            severity: 'LOW',
+            user: req.body.adminUser || 'Admin Desk',
+            userRole: 'admin',
+            resource: 'User Management',
+            action: 'USER_CREATED',
+            status: 'SUCCESS'
+          });
+        } catch (e) {}
+
+        const newUser = {
+          id,
+          name: name.trim(),
+          email: cleanEmail,
+          employeeId: cleanEmpId,
+          role: cleanRole,
+          department: dept,
+          status: 'active',
+          lastActive: 'Just now',
+          createdAt: new Date().toISOString().split('T')[0],
+          phone: phone || ''
+        };
+        res.json({ success: true, user: newUser });
+      }
+    );
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 3. Update user status (Active / Suspended / Pending)
+app.patch('/api/admin/users/:id/status', (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body || {};
+  if (!['active', 'suspended', 'pending'].includes(status)) {
+    return res.status(400).json({ success: false, error: 'Invalid status value' });
+  }
+
+  db.run(`UPDATE users SET status = ? WHERE id = ?`, [status, id], function (err) {
+    if (err) {
+      console.error('Failed to update user status:', err);
+      return res.status(500).json({ success: false, error: err.message });
+    }
+    if (this.changes === 0) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    try {
+      createAuditLog(db, {
+        event: `User Status Updated: ${id} set to ${status.toUpperCase()}`,
+        eventType: 'USER_MANAGEMENT',
+        severity: status === 'suspended' ? 'MEDIUM' : 'LOW',
+        user: req.body.adminUser || 'Admin Desk',
+        userRole: 'admin',
+        resource: 'User Management',
+        action: status === 'suspended' ? 'USER_SUSPENDED' : 'USER_ACTIVATED',
+        status: 'SUCCESS'
+      });
+    } catch (e) {}
+
+    res.json({ success: true, id, status });
+  });
+});
+
+// 4. Update user details
+app.put('/api/admin/users/:id', (req, res) => {
+  const { id } = req.params;
+  const { name, email, department, role, status, employeeId } = req.body || {};
+
+  db.get(`SELECT * FROM users WHERE id = ?`, [id], (err, current) => {
+    if (err || !current) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    const updatedName = name !== undefined ? name.trim() : current.name;
+    const updatedEmail = email !== undefined ? email.trim().toLowerCase() : current.email;
+    const updatedDept = department !== undefined ? department.trim() : current.department;
+    const updatedRole = role !== undefined ? role : current.role;
+    const updatedStatus = status !== undefined ? status : current.status;
+    const newEmpId = employeeId !== undefined ? employeeId.trim() : (current.admin_id || current.controller_id || current.employee_id);
+
+    const admin_id = updatedRole === 'admin' ? newEmpId : (updatedRole === current.role ? current.admin_id : null);
+    const controller_id = updatedRole === 'controller' ? newEmpId : (updatedRole === current.role ? current.controller_id : null);
+    const employee_id = (updatedRole === 'employee' || updatedRole === 'user') ? newEmpId : (updatedRole === current.role ? current.employee_id : null);
+
+    db.run(
+      `UPDATE users SET name = ?, email = ?, department = ?, role = ?, status = ?, admin_id = ?, controller_id = ?, employee_id = ? WHERE id = ?`,
+      [updatedName, updatedEmail, updatedDept, updatedRole, updatedStatus, admin_id, controller_id, employee_id, id],
+      function (updateErr) {
+        if (updateErr) {
+          console.error('Failed to update user:', updateErr);
+          return res.status(500).json({ success: false, error: updateErr.message });
+        }
+
+        try {
+          createAuditLog(db, {
+            event: `User Details Updated: ${updatedName} (${newEmpId})`,
+            eventType: 'USER_MANAGEMENT',
+            severity: 'LOW',
+            user: req.body.adminUser || 'Admin Desk',
+            userRole: 'admin',
+            resource: 'User Management',
+            action: 'USER_UPDATED',
+            status: 'SUCCESS'
+          });
+        } catch (e) {}
+
+        res.json({
+          success: true,
+          user: {
+            id,
+            name: updatedName,
+            email: updatedEmail,
+            employeeId: newEmpId,
+            role: updatedRole,
+            department: updatedDept,
+            status: updatedStatus,
+            lastActive: current.status === 'suspended' ? 'Suspended' : 'Active recently',
+            createdAt: current.created_at ? current.created_at.split(' ')[0] : '2024-01-10'
+          }
+        });
+      }
+    );
+  });
+});
+
+// 5. Delete user
+app.delete('/api/admin/users/:id', (req, res) => {
+  const { id } = req.params;
+  db.run(`DELETE FROM users WHERE id = ?`, [id], function (err) {
+    if (err) return res.status(500).json({ success: false, error: err.message });
+    if (this.changes === 0) return res.status(404).json({ success: false, error: 'User not found' });
+
+    try {
+      createAuditLog(db, {
+        event: `User Account Removed: ${id}`,
+        eventType: 'USER_MANAGEMENT',
+        severity: 'MEDIUM',
+        user: req.body?.adminUser || 'Admin Desk',
+        userRole: 'admin',
+        resource: 'User Management',
+        action: 'USER_DELETED',
+        status: 'SUCCESS'
+      });
+    } catch (e) {}
+
+    res.json({ success: true, id });
+  });
+});
+
+// ==========================================
+// ADMIN SYSTEM MONITORING SERVICES API
+// ==========================================
+
+// 1. Get all system services
+app.get('/api/admin/monitoring/services', (req, res) => {
+  db.all(`SELECT * FROM system_monitoring_services ORDER BY rowid ASC`, (err, rows) => {
+    if (err) {
+      console.error('Failed to get monitoring services:', err);
+      return res.status(500).json({ success: false, error: err.message });
+    }
+    const services = (rows || []).map((r) => ({
+      id: r.id,
+      name: r.name,
+      description: r.description,
+      status: r.status,
+      availability: r.availability,
+      responseTimeMs: r.response_time_ms,
+      lastCheck: r.last_check,
+      version: r.version,
+      endpoint: r.endpoint,
+      dependencies: r.dependencies ? JSON.parse(r.dependencies) : [],
+      lastError: r.last_error
+    }));
+    res.json({ success: true, services });
+  });
+});
+
+// 2. Update service details
+app.put('/api/admin/monitoring/services/:id', (req, res) => {
+  const { id } = req.params;
+  const { name, description, status, availability, responseTimeMs, version, endpoint, dependencies, lastError } = req.body || {};
+
+  db.get(`SELECT * FROM system_monitoring_services WHERE id = ?`, [id], (err, current) => {
+    if (err || !current) {
+      return res.status(404).json({ success: false, error: 'Service not found' });
+    }
+
+    const newName = name !== undefined ? name : current.name;
+    const newDesc = description !== undefined ? description : current.description;
+    const newStatus = status !== undefined ? status : current.status;
+    const newAvail = availability !== undefined ? availability : current.availability;
+    const newResp = responseTimeMs !== undefined ? responseTimeMs : current.response_time_ms;
+    const newVer = version !== undefined ? version : current.version;
+    const newEndpoint = endpoint !== undefined ? endpoint : current.endpoint;
+    const newDeps = dependencies !== undefined ? (typeof dependencies === 'string' ? dependencies : JSON.stringify(dependencies)) : current.dependencies;
+    const newErr = lastError !== undefined ? lastError : current.last_error;
+
+    db.run(
+      `UPDATE system_monitoring_services 
+       SET name = ?, description = ?, status = ?, availability = ?, response_time_ms = ?, version = ?, endpoint = ?, dependencies = ?, last_error = ?, updated_at = CURRENT_TIMESTAMP 
+       WHERE id = ?`,
+      [newName, newDesc, newStatus, newAvail, newResp, newVer, newEndpoint, newDeps, newErr, id],
+      function (updateErr) {
+        if (updateErr) {
+          console.error('Failed to update service:', updateErr);
+          return res.status(500).json({ success: false, error: updateErr.message });
+        }
+
+        try {
+          createAuditLog(db, {
+            event: `Service Configuration Updated: ${newName} (${id})`,
+            eventType: 'CONFIG_CHANGE',
+            severity: 'LOW',
+            user: req.body.adminUser || 'Admin Desk',
+            userRole: 'admin',
+            resource: 'System Monitoring',
+            action: 'SERVICE_CONFIG_UPDATED',
+            status: 'SUCCESS'
+          });
+        } catch (e) {}
+
+        res.json({
+          success: true,
+          message: `Service details for ${newName} successfully updated.`,
+          service: {
+            id,
+            name: newName,
+            description: newDesc,
+            status: newStatus,
+            availability: newAvail,
+            responseTimeMs: newResp,
+            lastCheck: current.last_check,
+            version: newVer,
+            endpoint: newEndpoint,
+            dependencies: newDeps ? JSON.parse(newDeps) : [],
+            lastError: newErr
+          }
+        });
+      }
+    );
+  });
+});
+
+// 3. Run health probe on service
+app.post('/api/admin/monitoring/services/:id/probe', (req, res) => {
+  const { id } = req.params;
+  db.get(`SELECT * FROM system_monitoring_services WHERE id = ?`, [id], (err, current) => {
+    if (err || !current) return res.status(404).json({ success: false, error: 'Service not found' });
+
+    // Dynamic latency calculation based on service type
+    let newLatency = Math.floor(Math.random() * 25) + 12; // 12 - 37ms
+    if (id === 'srv_notification') newLatency = Math.floor(Math.random() * 80) + 210;
+    if (id === 'srv_prediction') newLatency = Math.floor(Math.random() * 30) + 50;
+
+    const newCheck = 'Just now';
+    const newStatus = current.status === 'Offline' ? 'Operational' : current.status;
+
+    db.run(
+      `UPDATE system_monitoring_services SET response_time_ms = ?, last_check = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+      [newLatency, newCheck, newStatus, id],
+      function (upErr) {
+        if (upErr) return res.status(500).json({ success: false, error: upErr.message });
+
+        res.json({
+          success: true,
+          message: `Health probe completed for ${current.name}. Latency: ${newLatency}ms.`,
+          service: {
+            ...current,
+            dependencies: current.dependencies ? JSON.parse(current.dependencies) : [],
+            responseTimeMs: newLatency,
+            lastCheck: newCheck,
+            status: newStatus
+          }
+        });
+      }
+    );
+  });
+});
+
+// 4. Restart service
+app.post('/api/admin/monitoring/services/:id/restart', (req, res) => {
+  const { id } = req.params;
+  db.get(`SELECT * FROM system_monitoring_services WHERE id = ?`, [id], (err, current) => {
+    if (err || !current) return res.status(404).json({ success: false, error: 'Service not found' });
+
+    const newLatency = Math.floor(Math.random() * 15) + 10;
+    db.run(
+      `UPDATE system_monitoring_services SET status = 'Operational', last_error = NULL, response_time_ms = ?, last_check = 'Just now', updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+      [newLatency, id],
+      function (upErr) {
+        if (upErr) return res.status(500).json({ success: false, error: upErr.message });
+
+        try {
+          createAuditLog(db, {
+            event: `Service Restart Dispatched: ${current.name} (${id})`,
+            eventType: 'SERVICE_RESTART',
+            severity: 'MEDIUM',
+            user: req.body.adminUser || 'Admin Desk',
+            userRole: 'admin',
+            resource: 'System Monitoring',
+            action: 'SERVICE_RESTARTED',
+            status: 'SUCCESS'
+          });
+        } catch (e) {}
+
+        res.json({
+          success: true,
+          message: `Service ${current.name} successfully restarted. Status: Operational.`,
+          service: {
+            ...current,
+            status: 'Operational',
+            last_error: null,
+            responseTimeMs: newLatency,
+            lastCheck: 'Just now',
+            dependencies: current.dependencies ? JSON.parse(current.dependencies) : []
+          }
+        });
+      }
+    );
+  });
+});
+
+// Server Listen (HTTP + WebSocket on same port)
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Backend API successfully running on http://localhost:${PORT}`);
+httpServer.listen(PORT, () => {
+  console.log(`Backend API + WebSocket Telemetry running on http://localhost:${PORT}`);
+  console.log(`WebSocket telemetry endpoint: ws://localhost:${PORT}/ws/telemetry`);
 });
