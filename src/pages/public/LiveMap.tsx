@@ -183,11 +183,11 @@ export const LiveMap: React.FC = () => {
   const [animatedPos, setAnimatedPos] = useState<[number, number] | null>(null);
   const [passedStationIdx, setPassedStationIdx] = useState<number>(0);
 
-  const stationLookup = useMemo(() => {
-    const map = new Map<string, StationNode>();
-    stations.forEach((stn) => map.set(stn.code.toUpperCase(), stn));
-    return map;
-  }, [stations]);
+  /* const stationLookup = useMemo(() => {
+     const map = new Map<string, StationNode>();
+     stations.forEach((stn) => map.set(stn.code.toUpperCase(), stn));
+     return map;
+   }, [stations]);*/
 
   // 1. Fetch Station Registry
   useEffect(() => {
@@ -266,7 +266,7 @@ export const LiveMap: React.FC = () => {
   // 3. SSE Stream Connection with Auto-reconnect & REST Polling Fallback
   useEffect(() => {
     let eventSource: EventSource | null = null;
-    let fallbackTimer: NodeJS.Timeout | null = null;
+    let fallbackTimer: ReturnType<typeof setInterval> | null = null;
 
     const connectSSE = () => {
       eventSource = new EventSource('http://localhost:5000/api/trains/stream');
@@ -617,8 +617,8 @@ export const LiveMap: React.FC = () => {
               type="button"
               onClick={() => setFollowTrain(!followTrain)}
               className={`px-2.5 py-1 rounded text-xs font-mono font-bold cursor-pointer transition flex items-center gap-1.5 ${followTrain
-                  ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
-                  : 'bg-slate-800 text-slate-400 hover:text-white'
+                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
+                : 'bg-slate-800 text-slate-400 hover:text-white'
                 }`}
             >
               <span className={`h-2 w-2 rounded-full ${followTrain ? 'bg-white animate-pulse' : 'bg-slate-500'}`} />
@@ -632,8 +632,8 @@ export const LiveMap: React.FC = () => {
               type="button"
               onClick={toggleDelaySimulation}
               className={`px-2.5 py-1 rounded text-xs font-mono font-bold cursor-pointer transition border ${(liveNtesData?.delay_minutes || 0) > 0
-                  ? 'bg-emerald-950/90 text-emerald-300 border-emerald-800 hover:bg-emerald-900'
-                  : 'bg-rose-950/90 text-rose-300 border-rose-800 hover:bg-rose-900'
+                ? 'bg-emerald-950/90 text-emerald-300 border-emerald-800 hover:bg-emerald-900'
+                : 'bg-rose-950/90 text-rose-300 border-rose-800 hover:bg-rose-900'
                 }`}
             >
               {(liveNtesData?.delay_minutes || 0) > 0 ? 'RESET SIMULATION' : 'SIMULATE DELAY SPIKE'}
@@ -798,8 +798,8 @@ export const LiveMap: React.FC = () => {
                 </span>
                 <span
                   className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono ${isStreamConnected
-                      ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
-                      : 'bg-amber-950 text-amber-400 border border-amber-800'
+                    ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
+                    : 'bg-amber-950 text-amber-400 border border-amber-800'
                     }`}
                 >
                   {isStreamConnected ? 'REAL-TIME STREAM' : 'OFFLINE'}
@@ -824,10 +824,10 @@ export const LiveMap: React.FC = () => {
                   ETA Stability
                 </span>
                 <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${liveNtesData?.eta_stability === 'HIGH'
-                    ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
-                    : liveNtesData?.eta_stability === 'MODERATE'
-                      ? 'bg-amber-950 text-amber-400 border border-amber-800'
-                      : 'bg-rose-950 text-rose-400 border border-rose-800'
+                  ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
+                  : liveNtesData?.eta_stability === 'MODERATE'
+                    ? 'bg-amber-950 text-amber-400 border border-amber-800'
+                    : 'bg-rose-950 text-rose-400 border border-rose-800'
                   }`}>
                   {liveNtesData?.eta_stability || 'HIGH'} ({liveNtesData?.eta_confidence || 92}%)
                 </span>
@@ -868,10 +868,10 @@ export const LiveMap: React.FC = () => {
                   <span className="text-slate-400">Weather: Normal</span>
                 )}
                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${liveNtesData?.congestion_level === 'CRITICAL'
-                    ? 'bg-rose-950 text-rose-400 border-rose-800'
-                    : liveNtesData?.congestion_level === 'MODERATE'
-                      ? 'bg-amber-950 text-amber-400 border-amber-800'
-                      : 'bg-slate-800 text-slate-300 border-slate-700'
+                  ? 'bg-rose-950 text-rose-400 border-rose-800'
+                  : liveNtesData?.congestion_level === 'MODERATE'
+                    ? 'bg-amber-950 text-amber-400 border-amber-800'
+                    : 'bg-slate-800 text-slate-300 border-slate-700'
                   }`}>
                   JCT: {liveNtesData?.congestion_level || 'NORMAL'}
                 </span>
@@ -926,19 +926,19 @@ export const LiveMap: React.FC = () => {
                     <div
                       key={idx}
                       className={`p-2 rounded text-xs font-mono flex items-center justify-between border ${isCurrent
-                          ? 'bg-indigo-950/80 border-indigo-500 text-white font-bold'
-                          : st.hasPassed
-                            ? 'bg-[#121722] border-slate-900 text-slate-500'
-                            : 'bg-[#161c2b] border-slate-800/80 text-slate-300'
+                        ? 'bg-indigo-950/80 border-indigo-500 text-white font-bold'
+                        : st.hasPassed
+                          ? 'bg-[#121722] border-slate-900 text-slate-500'
+                          : 'bg-[#161c2b] border-slate-800/80 text-slate-300'
                         }`}
                     >
                       <div className="flex items-center gap-2">
                         <span
                           className={`h-1.5 w-1.5 rounded-full ${isCurrent
-                              ? 'bg-emerald-400 animate-ping'
-                              : st.hasPassed
-                                ? 'bg-slate-600'
-                                : 'bg-indigo-400'
+                            ? 'bg-emerald-400 animate-ping'
+                            : st.hasPassed
+                              ? 'bg-slate-600'
+                              : 'bg-indigo-400'
                             }`}
                         />
                         <span className={isCurrent ? 'text-white font-bold' : ''}>{st.station_code}</span>
@@ -976,8 +976,8 @@ export const LiveMap: React.FC = () => {
                     setSelectedRakeNumber(no);
                   }}
                   className={`py-1.5 rounded border text-xs font-mono text-center transition cursor-pointer ${selectedRakeNumber === no
-                      ? 'bg-indigo-600 text-white font-bold border-indigo-500'
-                      : 'bg-[#161c2b] border-slate-800 text-slate-400 hover:text-white'
+                    ? 'bg-indigo-600 text-white font-bold border-indigo-500'
+                    : 'bg-[#161c2b] border-slate-800 text-slate-400 hover:text-white'
                     }`}
                 >
                   #{no}
