@@ -473,17 +473,6 @@ export default function PublicDashboard() {
                   {locationStatus}: <strong className="text-white">{station.name} ({station.code})</strong>
                 </span>
               </div>
-
-              {/* 1. NETWORK STATUS: Directly below nearest station with small green status dot */}
-              <div className="mt-1.5 flex items-center gap-2 text-xs text-[#DDE9EF]">
-                <span className="relative flex h-2 w-2 shrink-0">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_6px_#10B981]" />
-                </span>
-                <span>
-                  Network Status: <strong className="text-emerald-400 font-semibold">Operational</strong>
-                </span>
-              </div>
             </div>
 
             {/* Main Train / Station Search Box with Dynamic Autocomplete */}

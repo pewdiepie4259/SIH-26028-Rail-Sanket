@@ -118,21 +118,7 @@ export default function PNRStatus() {
               </p>
             </div>
 
-            {currentUser && (
-              <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/15 shrink-0">
-                <div className="h-9 w-9 rounded-full bg-[#F59E0B] text-[#071A33] font-black flex items-center justify-center text-sm shadow-xs">
-                  {currentUser.name.charAt(0).toUpperCase()}
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-white leading-tight">
-                    {currentUser.name}
-                  </div>
-                  <div className="text-[11px] text-teal-200 capitalize">
-                    {currentUser.role} Account • Verified
-                  </div>
-                </div>
-              </div>
-            )}
+
           </div>
 
           {/* PNR Search Card */}

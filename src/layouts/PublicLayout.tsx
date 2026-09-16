@@ -489,33 +489,50 @@ function PublicLayout() {
             </div>
           </Link>
 
-          {/* Navigation Area / Menu Trigger - Triggers Hover Sub-Header */}
-          <div
-            onMouseEnter={handleOpenSubHeader}
-            onMouseLeave={handleCloseSubHeader}
-            className="flex items-center"
-          >
-            <button
-              type="button"
-              onClick={() => setSubHeaderOpen((prev) => !prev)}
-              aria-expanded={subHeaderOpen}
-              aria-label="Navigation Menu"
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg border text-xs font-semibold transition-all duration-200 cursor-pointer ${
-                subHeaderOpen
-                  ? "border-[#F59E0B] bg-white/15 text-[#F59E0B] shadow-[0_2px_10px_rgba(245,158,11,0.2)]"
-                  : "border-teal-500/40 bg-teal-950/40 text-teal-100 hover:border-[#F59E0B]/70 hover:bg-white/10 hover:text-white"
-              }`}
-            >
-              <Menu size={15} className="text-[#F59E0B]" />
-              <span className="font-semibold tracking-wide">Navigation</span>
-              <ChevronDown
-                size={13}
-                className={`transition-transform duration-200 ${
-                  subHeaderOpen ? "rotate-180 text-[#F59E0B]" : "text-teal-300"
-                }`}
-              />
-            </button>
-          </div>
+          {/* Inline Navigation Links */}
+          <nav className="hidden xl:flex items-center gap-1">
+            <NavLink to="/" end onClick={handleNavClick} className={navLinkClass}>
+              Dashboard
+            </NavLink>
+
+            <NavLink to="/live" onClick={handleNavClick} className={navLinkClass}>
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+              Live Monitor
+            </NavLink>
+
+            <NavLink to="/eta" onClick={handleNavClick} className={navLinkClass}>
+              Dynamic ETA
+            </NavLink>
+
+            <NavLink to="/map" onClick={handleNavClick} className={navLinkClass}>
+              Live Map
+            </NavLink>
+
+            <NavLink to="/stations" onClick={handleNavClick} className={navLinkClass}>
+              Stations
+            </NavLink>
+
+            <NavLink to="/pnr" onClick={handleNavClick} className={navLinkClass}>
+              PNR Status
+            </NavLink>
+
+            {currentUser && currentUser.role !== "user" && (
+              <NavLink
+                to="/controller"
+                onClick={handleNavClick}
+                className={({ isActive }) =>
+                  `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 ${
+                    isActive
+                      ? "bg-amber-500 text-[#071A33] shadow-sm"
+                      : "bg-indigo-950/70 border border-indigo-700/60 text-indigo-300 hover:bg-indigo-900 hover:text-white"
+                  }`
+                }
+              >
+                <ShieldAlert size={13} />
+                Controller DSS
+              </NavLink>
+            )}
+          </nav>
 
           {/* Right Actions: EXACT ORDER REQUIRED:
               1. Live clock / IST time
@@ -1109,72 +1126,7 @@ function PublicLayout() {
           </div>
         </div>
 
-        {/* SUB-HEADER: Appears smoothly when hovering over navigation area/menu trigger */}
-        <div
-          onMouseEnter={handleOpenSubHeader}
-          onMouseLeave={handleCloseSubHeader}
-          className={`border-t border-[#164B5A]/80 bg-[#071A33]/98 backdrop-blur-md transition-all duration-300 ease-out overflow-hidden shadow-md ${
-            subHeaderOpen
-              ? "max-h-16 opacity-100 py-2 pointer-events-auto"
-              : "max-h-0 opacity-0 py-0 pointer-events-none"
-          }`}
-        >
-          <div className="mx-auto flex max-w-[1600px] items-center justify-between px-4 sm:px-6 lg:px-8 gap-4">
-            {/* Left side: Subtle Railway Services indicator */}
-            <div className="hidden md:flex items-center gap-2 text-xs font-semibold text-teal-200/90">
-              <span className="h-2 w-2 rounded-full bg-[#F59E0B]" />
-              <span className="text-white font-bold tracking-wide">RailDrishti Public Services</span>
-              <span className="text-slate-400 font-normal">• National Coaching Portal</span>
-            </div>
 
-            {/* Right side: In EXACT order: Dashboard, Live Monitor, Dynamic ETA, Live Map, Stations */}
-            <nav className="flex w-full md:w-auto items-center justify-end gap-1 flex-wrap">
-              <NavLink to="/" end onClick={handleNavClick} className={navLinkClass}>
-                Dashboard
-              </NavLink>
-
-              <NavLink to="/live" onClick={handleNavClick} className={navLinkClass}>
-                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                Live Monitor
-              </NavLink>
-
-              <NavLink to="/eta" onClick={handleNavClick} className={navLinkClass}>
-                Dynamic ETA
-              </NavLink>
-
-              <NavLink to="/map" onClick={handleNavClick} className={navLinkClass}>
-                Live Map
-              </NavLink>
-
-              <NavLink to="/stations" onClick={handleNavClick} className={navLinkClass}>
-                Stations
-              </NavLink>
-
-              {/* PNR Status is a dedicated separate public page */}
-              <NavLink to="/pnr" onClick={handleNavClick} className={navLinkClass}>
-                PNR Status
-              </NavLink>
-
-              {/* Controller DSS link only for authorized personnel */}
-              {currentUser && currentUser.role !== "user" && (
-                <NavLink
-                  to="/controller"
-                  onClick={handleNavClick}
-                  className={({ isActive }) =>
-                    `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 ${
-                      isActive
-                        ? "bg-amber-500 text-[#071A33] shadow-sm"
-                        : "bg-indigo-950/70 border border-indigo-700/60 text-indigo-300 hover:bg-indigo-900 hover:text-white"
-                    }`
-                  }
-                >
-                  <ShieldAlert size={13} />
-                  Controller DSS
-                </NavLink>
-              )}
-            </nav>
-          </div>
-        </div>
 
         {/* Mobile Navigation Drawer */}
         {mobileMenuOpen && (
