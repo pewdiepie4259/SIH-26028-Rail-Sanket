@@ -1,18 +1,14 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { 
-  Activity,
   ArrowRight,
   Bot,
-  Brain,
   Compass,
   KeyRound,
   Lock,
   Radio, 
   Search, 
   ShieldAlert, 
-  ShieldCheck,
-  TrendingDown,
   X
 } from 'lucide-react';
 import { useLiveTelemetry, type LiveTrain } from '../../hooks/useLiveTelemetry';
@@ -161,23 +157,42 @@ export const LiveTrainStatus = () => {
 
   const totalActiveRakes = mergedTrains.length;
 
+  const renderBlockSection = (blockStr: string) => {
+    if (!blockStr) return <span className="text-slate-400">—</span>;
+    const match = blockStr.match(/^(.*?)\s+Block\s+(\d+)$/i);
+    if (match) {
+      return (
+        <div className="flex flex-col items-start gap-1">
+          <span className="inline-block px-2.5 py-0.5 rounded-md bg-slate-100 border border-slate-300 text-xs font-bold text-[#071A33] tracking-wide whitespace-nowrap shadow-2xs">
+            {match[1]}
+          </span>
+          <span className="text-[11px] font-bold text-slate-500 pl-0.5 whitespace-nowrap">
+            Block {match[2]}
+          </span>
+        </div>
+      );
+    }
+    return (
+      <span className="inline-block px-2.5 py-1 rounded-md bg-slate-100 border border-slate-300 text-xs font-bold text-[#071A33] whitespace-nowrap shadow-2xs">
+        {blockStr}
+      </span>
+    );
+  };
+
   return (
-    <div className="min-h-screen bg-[#070d17] text-slate-100 p-4 sm:p-6 md:p-8 font-sans">
+    <div className="min-h-screen bg-gradient-to-br from-[#FFF4E1] via-white to-[#FFF4E1] text-[#071A33] p-4 sm:p-6 md:p-8 font-['Noto_Sans',sans-serif]">
       {/* Top Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between pb-6 border-b border-slate-800/80 gap-4">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between pb-6 border-b border-amber-200/80 gap-4">
         <div>
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white flex items-center gap-2.5">
-              <Radio className="text-indigo-400 animate-pulse" size={24} />
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#071A33] flex items-center gap-2.5">
+              <Radio className="text-[#0E7C86] animate-pulse" size={26} />
               <span>Live Corridor Telemetry Monitor</span>
             </h1>
-            <span className="text-xs px-2.5 py-1 rounded-md bg-indigo-950/80 border border-indigo-700/80 text-indigo-300 font-mono font-bold shadow-xs">
+            <span className="text-xs px-3 py-1 rounded-full bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] border border-[#F59E0B] text-white font-bold shadow-xs">
               RTIS & DB FEED
             </span>
           </div>
-          <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            Real-time block section positions, kinematic velocities, and ST-GNN delay projections across 5,200+ Indian Railway trains.
-          </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
@@ -188,9 +203,9 @@ export const LiveTrainStatus = () => {
                 navigate('/map');
               })
             }
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-900/90 hover:bg-slate-800 text-slate-200 border border-slate-700 shadow-xs transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-white hover:bg-[#FFF4E1] text-[#071A33] border border-slate-300 hover:border-[#F59E0B] shadow-xs transition-all duration-200 hover:scale-[1.02] cursor-pointer"
           >
-            <Compass size={14} className="text-teal-400" />
+            <Compass size={15} className="text-[#0E7C86]" />
             <span>Schematic Map</span>
           </button>
           
@@ -201,70 +216,24 @@ export const LiveTrainStatus = () => {
                 navigate('/controller');
               })
             }
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-indigo-950/80 hover:bg-indigo-900 text-indigo-300 border border-indigo-700/80 shadow-xs transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] text-white border border-[#F59E0B] shadow-xs transition-all duration-200 hover:scale-[1.02] hover:shadow-[0_4px_12px_rgba(245,158,11,0.25)] cursor-pointer"
           >
-            <ShieldAlert size={14} className="text-amber-400" />
+            <ShieldAlert size={15} className="text-[#F59E0B]" />
             <span>Section DSS</span>
           </button>
 
-          <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#0f172a]/90 border border-slate-800">
+          <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-slate-200 shadow-xs">
             <span
-              className={`h-2.5 w-2.5 rounded-full ${isConnected ? 'bg-emerald-400 animate-pulse shadow-[0_0_8px_#10B981]' : 'bg-amber-400'}`}
+              className={`h-2.5 w-2.5 rounded-full ${isConnected ? 'bg-emerald-500' : 'bg-amber-500'}`}
             />
-            <span className="text-xs font-mono font-bold text-slate-300">
+            <span className="text-xs font-bold text-[#071A33]">
               {isConnected ? 'LIVE SYNC ACTIVE' : 'RECONNECTING'}
             </span>
           </div>
 
-          <div className="text-xs font-mono font-bold px-3.5 py-2 rounded-xl bg-indigo-950/50 text-indigo-300 border border-indigo-900/70">
-            ACTIVE RAKES: {totalActiveRakes > 0 ? totalActiveRakes : 52}
-          </div>
-        </div>
-      </div>
-
-      {/* AI Spatio-Temporal Prediction Intelligence Strip (Pillars 4, 5 & 10) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 my-5">
-        <div className="rounded-xl border border-slate-800 bg-[#0d1424] p-3.5 flex items-center gap-3 shadow-xs">
-          <div className="h-10 w-10 rounded-lg bg-indigo-950/80 border border-indigo-700/60 flex items-center justify-center text-indigo-400 shrink-0">
-            <Brain size={20} />
-          </div>
-          <div>
-            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Dynamic AI Prediction</div>
-            <div className="text-sm font-extrabold text-white">LightGBM + ST-GNN Engine</div>
-            <div className="text-[10px] text-emerald-400 font-semibold">Continuous Traversal Recalculation</div>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-slate-800 bg-[#0d1424] p-3.5 flex items-center gap-3 shadow-xs">
-          <div className="h-10 w-10 rounded-lg bg-emerald-950/80 border border-emerald-700/60 flex items-center justify-center text-emerald-400 shrink-0">
-            <ShieldCheck size={20} />
-          </div>
-          <div>
-            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Fleet Confidence Index</div>
-            <div className="text-sm font-extrabold text-emerald-400">94.6% High Confidence</div>
-            <div className="text-[10px] text-slate-400">Multi-factor sensor validation</div>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-slate-800 bg-[#0d1424] p-3.5 flex items-center gap-3 shadow-xs">
-          <div className="h-10 w-10 rounded-lg bg-amber-950/80 border border-amber-700/60 flex items-center justify-center text-amber-400 shrink-0">
-            <Activity size={20} />
-          </div>
-          <div>
-            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Prediction Stability Window</div>
-            <div className="text-sm font-extrabold text-white">±2.1 mins margin</div>
-            <div className="text-[10px] text-amber-400 font-semibold">Zero erratic ETA fluctuations</div>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-slate-800 bg-[#0d1424] p-3.5 flex items-center gap-3 shadow-xs">
-          <div className="h-10 w-10 rounded-lg bg-teal-950/80 border border-teal-700/60 flex items-center justify-center text-teal-400 shrink-0">
-            <TrendingDown size={20} />
-          </div>
-          <div>
-            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Dynamic Delay Recovery</div>
-            <div className="text-sm font-extrabold text-teal-300">Active Slack Model</div>
-            <div className="text-[10px] text-slate-400">Downline recovery forecasting</div>
+          <div className="text-xs font-bold px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] text-white border border-[#F59E0B]/70 shadow-xs flex items-center gap-1.5">
+            <span className="text-[#F59E0B]">ACTIVE RAKES:</span>
+            <span>{totalActiveRakes > 0 ? totalActiveRakes : 52}</span>
           </div>
         </div>
       </div>
@@ -272,19 +241,19 @@ export const LiveTrainStatus = () => {
       {/* Control Bar: Filters & Search */}
       <div className="flex flex-col md:flex-row gap-4 my-6 items-stretch md:items-center">
         <div className="flex-1 relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#0E7C86]" size={17} />
           <input
             type="text"
             placeholder="Search any train (e.g. 12246, 12245, 20608, 12627), name, or station code..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[#0d1424] border border-slate-800 rounded-xl pl-11 pr-14 py-2.5 text-sm text-slate-100 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition shadow-inner"
+            className="w-full bg-white border-2 border-[#F59E0B]/70 rounded-xl pl-11 pr-14 py-2.5 text-sm text-[#071A33] font-medium placeholder-slate-400 focus:outline-none focus:border-[#0E5961] focus:ring-2 focus:ring-[#0E5961]/20 transition shadow-xs"
           />
           {searchQuery && (
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 hover:text-slate-200 cursor-pointer"
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 hover:text-[#071A33] hover:bg-slate-100 px-2 py-0.5 rounded cursor-pointer"
             >
               Clear
             </button>
@@ -292,16 +261,16 @@ export const LiveTrainStatus = () => {
         </div>
 
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 shrink-0">
-          <span className="text-xs text-slate-400 font-mono uppercase font-bold mr-1">ASPECT:</span>
+          <span className="text-xs text-[#071A33] uppercase font-bold mr-1">ASPECT:</span>
           {['ALL', 'GREEN', 'YELLOW', 'DOUBLE_YELLOW', 'RED'].map((aspect) => (
             <button
               key={aspect}
               type="button"
               onClick={() => setSelectedSignalFilter(aspect)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 cursor-pointer shadow-xs ${
                 selectedSignalFilter === aspect
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
-                  : 'bg-[#0d1424] border border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                  ? 'bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] text-white border border-[#F59E0B] shadow-md shadow-[#071A33]/20 scale-105'
+                  : 'bg-white border border-slate-300 text-slate-700 hover:bg-[#FFF4E1] hover:border-[#F59E0B]/60 hover:text-[#071A33]'
               }`}
             >
               {aspect}
@@ -311,25 +280,25 @@ export const LiveTrainStatus = () => {
       </div>
 
       {/* Live Table */}
-      <div className="overflow-x-auto border border-slate-800/90 rounded-2xl bg-[#0b1220]/90 shadow-2xl backdrop-blur-md">
+      <div className="overflow-x-auto border border-amber-200/80 rounded-2xl bg-white shadow-xl backdrop-blur-xs">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="border-b border-slate-800 bg-[#0e1729] text-[11px] font-mono uppercase tracking-wider text-slate-400">
-              <th className="py-3.5 px-4 font-bold">TRAIN NO / NAME</th>
-              <th className="py-3.5 px-4 font-bold">ACTIVE BLOCK SECTION</th>
-              <th className="py-3.5 px-4 font-bold">KINEMATIC SPEED</th>
-              <th className="py-3.5 px-4 font-bold">SIGNAL ASPECT</th>
-              <th className="py-3.5 px-4 font-bold">GNN DELAY FORECAST</th>
-              <th className="py-3.5 px-4 font-bold">ETA CONFIDENCE & STABILITY</th>
-              <th className="py-3.5 px-4 font-bold">PRIORITY TIER</th>
-              <th className="py-3.5 px-4 font-bold">NEXT EN-ROUTE STATION</th>
-              <th className="py-3.5 px-4 font-bold text-right">ACTIONS</th>
+            <tr className="border-b border-[#F59E0B]/30 bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] text-xs uppercase tracking-wider text-white">
+              <th className="py-4 px-4 font-bold whitespace-nowrap">TRAIN NO / NAME</th>
+              <th className="py-4 px-4 font-bold whitespace-nowrap min-w-[170px]">ACTIVE BLOCK SECTION</th>
+              <th className="py-4 px-4 font-bold whitespace-nowrap">KINEMATIC SPEED</th>
+              <th className="py-4 px-4 font-bold whitespace-nowrap">SIGNAL ASPECT</th>
+              <th className="py-4 px-4 font-bold whitespace-nowrap">GNN DELAY FORECAST</th>
+              <th className="py-4 px-4 font-bold whitespace-nowrap">ETA CONFIDENCE & STABILITY</th>
+              <th className="py-4 px-4 font-bold whitespace-nowrap">PRIORITY TIER</th>
+              <th className="py-4 px-4 font-bold whitespace-nowrap">NEXT EN-ROUTE STATION</th>
+              <th className="py-4 px-4 font-bold text-right whitespace-nowrap">ACTIONS</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-800/60 text-sm">
+          <tbody className="divide-y divide-slate-100 text-sm bg-white">
             {filteredTrains.length === 0 ? (
               <tr>
-                <td colSpan={9} className="py-14 text-center text-slate-400 text-xs font-mono">
+                <td colSpan={9} className="py-14 text-center text-slate-500 text-xs bg-white">
                   No trains found matching active search criteria.
                 </td>
               </tr>
@@ -340,54 +309,54 @@ export const LiveTrainStatus = () => {
                 return (
                   <tr
                     key={train.trainNumber}
-                    className="hover:bg-slate-800/40 transition duration-150 group"
+                    className="hover:bg-[#FFF4E1]/40 transition duration-150 group"
                   >
                     {/* Train Info */}
-                    <td className="py-3.5 px-4">
+                    <td className="py-3.5 px-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-white font-mono text-sm">#{train.trainNumber}</span>
+                        <span className="font-extrabold text-[#071A33] text-sm group-hover:text-[#0E5961] transition-colors">
+                          #{train.trainNumber}
+                        </span>
                         {train.isLiveWs && (
-                          <span className="text-[9px] font-mono font-bold bg-emerald-950/80 text-emerald-400 border border-emerald-800 px-1.5 py-0.5 rounded">
+                          <span className="text-[10px] font-bold bg-[#E7F4F5] text-[#0E7C86] border border-[#0E7C86]/30 px-2 py-0.5 rounded shadow-2xs">
                             LIVE RTIS
                           </span>
                         )}
                       </div>
-                      <div className="text-xs text-slate-400 truncate max-w-[220px] sm:max-w-xs">{train.name}</div>
+                      <div className="text-xs text-slate-600 truncate max-w-[220px] sm:max-w-xs font-medium mt-0.5">{train.name}</div>
                     </td>
 
                     {/* Block Section */}
-                    <td className="py-3.5 px-4">
-                      <span className="font-mono text-xs px-2.5 py-1 rounded-md bg-slate-800/80 border border-slate-700/80 text-slate-200">
-                        {train.currentBlock}
-                      </span>
+                    <td className="py-3.5 px-4 whitespace-nowrap min-w-[170px]">
+                      {renderBlockSection(train.currentBlock)}
                     </td>
 
                     {/* Speed */}
-                    <td className="py-3.5 px-4 font-mono">
-                      <span className="text-white font-semibold">{train.speed_kmh}</span>
-                      <span className="text-slate-400 text-xs ml-1">km/h</span>
+                    <td className="py-3.5 px-4 whitespace-nowrap">
+                      <span className="text-[#071A33] font-bold text-sm">{train.speed_kmh}</span>
+                      <span className="text-slate-500 text-xs ml-1 font-normal">km/h</span>
                     </td>
 
                     {/* Signal Aspect */}
-                    <td className="py-3.5 px-4">
+                    <td className="py-3.5 px-4 whitespace-nowrap">
                       <span
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-bold font-mono ${
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold shadow-2xs ${
                           train.signal === 'GREEN'
-                            ? 'bg-emerald-950/80 text-emerald-400 border border-emerald-800'
+                            ? 'bg-emerald-50 text-emerald-800 border border-emerald-300'
                             : train.signal === 'YELLOW'
-                            ? 'bg-amber-950/80 text-amber-400 border border-amber-800'
+                            ? 'bg-amber-50 text-amber-800 border border-amber-300'
                             : train.signal === 'DOUBLE_YELLOW'
-                            ? 'bg-amber-950/80 text-amber-300 border border-amber-700'
-                            : 'bg-rose-950/80 text-rose-400 border border-rose-800'
+                            ? 'bg-amber-50 text-amber-900 border border-amber-400'
+                            : 'bg-rose-50 text-rose-700 border border-rose-300'
                         }`}
                       >
                         <span
-                          className={`h-1.5 w-1.5 rounded-full ${
+                          className={`h-2 w-2 rounded-full ${
                             train.signal === 'GREEN'
-                              ? 'bg-emerald-400 animate-pulse'
+                              ? 'bg-emerald-500'
                               : train.signal === 'RED'
-                              ? 'bg-rose-400'
-                              : 'bg-amber-400'
+                              ? 'bg-rose-500'
+                              : 'bg-amber-500'
                           }`}
                         />
                         {train.signal}
@@ -395,60 +364,51 @@ export const LiveTrainStatus = () => {
                     </td>
 
                     {/* Delay */}
-                    <td className="py-3.5 px-4 font-mono">
+                    <td className="py-3.5 px-4 text-xs font-bold whitespace-nowrap">
                       <span
                         className={
                           !isDelayed
-                            ? 'text-emerald-400 font-bold'
+                            ? 'text-emerald-700 font-extrabold'
                             : train.delay > 10
-                            ? 'text-rose-400 font-bold'
-                            : 'text-amber-400 font-bold'
+                            ? 'text-rose-600 font-extrabold'
+                            : 'text-amber-700 font-extrabold'
                         }
                       >
                         {isDelayed ? `+${train.delay.toFixed(1)} min` : 'ON TIME'}
                       </span>
                     </td>
 
-                    {/* ETA Confidence & Stability (Problem 10) */}
-                    <td className="py-3.5 px-4">
+                    {/* ETA Confidence & Stability */}
+                    <td className="py-3.5 px-4 whitespace-nowrap">
                       <div className="flex flex-col gap-0.5">
                         <div className="flex items-center gap-1.5">
-                          <span
-                            className={`h-1.5 w-1.5 rounded-full ${
-                              train.priority === 1
-                                ? 'bg-emerald-400 animate-pulse'
-                                : train.priority === 2
-                                ? 'bg-teal-400'
-                                : 'bg-indigo-400'
-                            }`}
-                          />
-                          <span className="text-xs font-bold font-mono text-slate-100">
+                          <span className="text-xs font-bold text-[#071A33]">
                             {train.priority === 1 ? '96%' : train.priority === 2 ? '92%' : '88%'} Conf.
                           </span>
-                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-950/80 border border-emerald-800/80 text-emerald-300 font-mono font-bold">
+                          <span className="text-[10px] px-2 py-0.5 rounded bg-teal-50 border border-teal-200 text-[#0E7C86] font-bold shadow-2xs">
                             HIGH
                           </span>
                         </div>
-                        <div className="text-[10px] text-slate-400 font-mono">
-                          Stability: <span className="text-emerald-400 font-semibold">±1.8m</span> • Slack model active
+                        <div className="text-[11px] text-slate-500">
+                          Stability: <span className="text-[#0E5961] font-bold">±1.8m</span> • Slack model active
                         </div>
                       </div>
                     </td>
 
                     {/* Priority Tier */}
-                    <td className="py-3.5 px-4 font-mono">
-                      <span className="px-2 py-0.5 rounded text-xs bg-indigo-950/80 text-indigo-300 border border-indigo-800 font-semibold">
+                    <td className="py-3.5 px-4 whitespace-nowrap">
+                      <span className="px-2.5 py-1 rounded-lg text-xs bg-slate-100 text-[#071A33] border border-slate-200 font-bold shadow-2xs">
                         Tier {train.priority}
                       </span>
                     </td>
 
                     {/* Next En-Route Station */}
-                    <td className="py-3.5 px-4 font-mono text-xs text-slate-300">
+                    <td className="py-3.5 px-4 text-xs text-slate-700 font-semibold whitespace-nowrap">
                       {train.nextStation}
                     </td>
 
                     {/* Actions */}
-                    <td className="py-3.5 px-4 text-right">
+                    <td className="py-3.5 px-4 text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-2">
                         {/* Track Dynamic ETA Button */}
                         <button
@@ -458,10 +418,10 @@ export const LiveTrainStatus = () => {
                               navigate(`/eta?train=${train.trainNumber}`);
                             })
                           }
-                          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition shadow-xs cursor-pointer whitespace-nowrap"
+                          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] border border-[#F59E0B] text-white text-xs font-bold hover:scale-[1.03] hover:shadow-[0_4px_12px_rgba(245,158,11,0.25)] transition duration-200 shadow-sm cursor-pointer whitespace-nowrap"
                         >
                           <span>Track Dynamic ETA</span>
-                          <ArrowRight size={13} className="text-indigo-200" />
+                          <ArrowRight size={13} className="text-[#F59E0B]" />
                         </button>
 
                         {/* Ask Bot Button */}
@@ -474,7 +434,7 @@ export const LiveTrainStatus = () => {
                             })
                           }
                           title="Query WhatsApp Copilot"
-                          className="p-1.5 rounded-lg bg-emerald-950 hover:bg-emerald-900 text-emerald-400 border border-emerald-800 transition cursor-pointer"
+                          className="p-2 rounded-xl bg-white hover:bg-[#FFF4E1] text-[#0E7C86] border border-slate-300 hover:border-[#F59E0B] hover:scale-105 transition duration-200 shadow-xs cursor-pointer"
                         >
                           <Bot size={15} />
                         </button>
@@ -503,31 +463,31 @@ export const LiveTrainStatus = () => {
 
       {/* Login Required Action Gate Modal */}
       {showAuthModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="relative w-full max-w-md rounded-3xl border border-slate-800 bg-[#0d1424] p-7 shadow-2xl text-slate-100 animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#071A33]/70 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative w-full max-w-md rounded-3xl border border-[#F59E0B] bg-gradient-to-br from-[#FFF8EC] via-white to-[#FFF4E1] p-7 shadow-2xl text-[#071A33] animate-in zoom-in-95 duration-200">
             <button
               type="button"
               onClick={() => setShowAuthModal(false)}
-              className="absolute right-4 top-4 rounded-full p-2 text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition cursor-pointer"
+              className="absolute right-4 top-4 rounded-full p-2 text-slate-400 hover:bg-amber-100 hover:text-[#071A33] transition cursor-pointer"
             >
               <X size={18} />
             </button>
 
             <div className="flex flex-col items-center text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-tr from-[#071A33] via-[#0E5961] to-[#071A33] text-[#F59E0B] shadow-lg mb-4 border border-slate-700">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-tr from-[#071A33] via-[#0E5961] to-[#071A33] text-[#F59E0B] shadow-lg mb-4 border border-[#F59E0B]">
                 <Lock className="h-8 w-8" />
               </div>
 
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 border border-amber-500/40 px-3 py-1 text-xs font-extrabold text-amber-400 uppercase tracking-wider mb-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 border border-amber-300 px-3 py-1 text-xs font-extrabold text-amber-800 uppercase tracking-wider mb-2">
                 <KeyRound size={13} />
                 <span>Authentication Required</span>
               </span>
 
-              <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+              <h3 className="text-xl sm:text-2xl font-black text-[#071A33] tracking-tight">
                 Please login to use this feature.
               </h3>
 
-              <p className="mt-2.5 text-xs sm:text-sm text-slate-400 leading-relaxed max-w-xs">
+              <p className="mt-2.5 text-xs sm:text-sm text-slate-600 leading-relaxed max-w-xs">
                 {pendingFeatureName ? `"${pendingFeatureName}"` : "This feature"} requires an authenticated passenger or railway staff session. Sign in to access dynamic ETA tracking, live kinematic telemetry feeds, and interactive train tools.
               </p>
 
@@ -535,7 +495,7 @@ export const LiveTrainStatus = () => {
                 <button
                   type="button"
                   onClick={() => setShowAuthModal(false)}
-                  className="w-full sm:w-1/2 rounded-xl border border-slate-700 py-2.5 text-xs font-bold text-slate-300 hover:bg-slate-800 transition cursor-pointer"
+                  className="w-full sm:w-1/2 rounded-xl border border-slate-300 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-100 transition cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -545,10 +505,10 @@ export const LiveTrainStatus = () => {
                     setShowAuthModal(false);
                     navigate("/login");
                   }}
-                  className="w-full sm:w-1/2 flex items-center justify-center gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 py-2.5 text-xs font-bold text-white shadow-sm transition cursor-pointer"
+                  className="w-full sm:w-1/2 flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] border border-[#F59E0B] py-2.5 text-xs font-bold text-white shadow-sm transition hover:scale-[1.02] hover:shadow-[0_4px_12px_rgba(245,158,11,0.25)] cursor-pointer"
                 >
                   <span>Go to Login</span>
-                  <ArrowRight size={14} className="text-indigo-200" />
+                  <ArrowRight size={14} className="text-[#F59E0B]" />
                 </button>
               </div>
             </div>
