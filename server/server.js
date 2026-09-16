@@ -32,6 +32,15 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+const RAILRADAR_API_KEY = process.env.RAILRADAR_API_KEY || 'rg_e5d566785ee841099a832f6182e216b8';
+
+// ==========================================
+// ACTIVE REAL-TIME TELEMETRY POOL & CACHE
+// ==========================================
+const ACTIVE_MONITORED_TRAINS = ['12245', '12246', '12860', '12627', '20608', '12301', '12639', '12610'];
+const liveTelemetryCache = new Map();
+const sseClients = new Set();
+
 const db = new sqlite3.Database(DB_PATH, (err) => {
   if (err) console.error("Database connection error:", err.message);
   else {
@@ -39,18 +48,49 @@ const db = new sqlite3.Database(DB_PATH, (err) => {
     initializeDatabase(db);
     initializeMailService(db);
     initializeCaseService(db);
+
+    // Initialize Historical Corridor Delay Bias Matrix Table
+    db.run(`
+      CREATE TABLE IF NOT EXISTS corridor_historical_delays (
+        corridor_id TEXT PRIMARY KEY,
+        from_zone TEXT,
+        to_zone TEXT,
+        peak_hour_delay_bias INTEGER,
+        avg_clearance_minutes INTEGER
+      )
+    `, () => {
+      const seedCorridors = [
+        ['SWR-SCR', 'SWR', 'SCR', 8, 12],
+        ['SCR-ECoR', 'SCR', 'ECoR', 11, 15],
+        ['ECoR-ER', 'ECoR', 'ER', 14, 18],
+        ['NR-NCR', 'NR', 'NCR', 16, 20],
+        ['CR-WR', 'CR', 'WR', 9, 10]
+      ];
+      seedCorridors.forEach(([id, fz, tz, bias, clr]) => {
+        db.run(
+          `INSERT OR IGNORE INTO corridor_historical_delays (corridor_id, from_zone, to_zone, peak_hour_delay_bias, avg_clearance_minutes) VALUES (?, ?, ?, ?, ?)`,
+          [id, fz, tz, bias, clr]
+        );
+      });
+    });
+
+    startBackgroundTelemetryDaemon();
   }
 });
 
 app.get('/health', (req, res) => {
-  res.json({ status: "healthy", service: "RailDrishti Trains & Schedules SQLite API" });
+  res.json({
+    status: "healthy",
+    service: "RailDrishti Real-Time Autonomous Telemetry Daemon",
+    monitored_trains: ACTIVE_MONITORED_TRAINS.length,
+    active_stream_subscribers: sseClients.size
+  });
 });
 
 // ==========================================
 // AUTHENTICATION & CREDENTIALS API
 // ==========================================
 
-// Get pre-provisioned demo credentials for frontend ease-of-use
 app.get('/api/auth/credentials', (req, res) => {
   res.json({
     success: true,
@@ -68,7 +108,6 @@ app.get('/api/auth/credentials', (req, res) => {
   });
 });
 
-// User & Staff Login
 app.post('/api/auth/login', (req, res) => {
   const { role, method = 'password', emailOrPhone, password, otp, employeeId, controllerId, adminId } = req.body;
   const identifier = (
@@ -78,48 +117,41 @@ app.post('/api/auth/login', (req, res) => {
           emailOrPhone
   );
 
-  if (!role) {
-    return res.status(400).json({ success: false, message: "User role is required for authentication." });
-  }
-
-  if (!identifier) {
-    return res.status(400).json({ success: false, message: "Please provide your login ID or registered email/phone." });
-  }
+  if (!role) return res.status(400).json({ success: false, message: "User role is required for authentication." });
+  if (!identifier) return res.status(400).json({ success: false, message: "Please provide your login ID or registered email/phone." });
 
   const cleanId = identifier.trim().toLowerCase();
 
-  // Query user by username, email, or phone
   const sql = `
-        SELECT * FROM users 
-        WHERE (LOWER(username) = ? OR LOWER(email) = ? OR phone = ? OR LOWER(admin_id) = ? OR LOWER(controller_id) = ? OR LOWER(employee_id) = ?)
-        LIMIT 1
-    `;
+    SELECT * FROM users 
+    WHERE (LOWER(username) = ? OR LOWER(email) = ? OR phone = ? OR LOWER(admin_id) = ? OR LOWER(controller_id) = ? OR LOWER(employee_id) = ?)
+    LIMIT 1
+  `;
 
   db.get(sql, [cleanId, cleanId, cleanId, cleanId, cleanId, cleanId], (err, user) => {
-    if (err) {
-      return res.status(500).json({ success: false, message: "Database error during authentication: " + err.message });
-    }
+    if (err) return res.status(500).json({ success: false, message: "Database error during authentication: " + err.message });
 
-    // Handle OTP login for Passenger
     if (role === 'user' && method === 'otp') {
       if (!otp || (otp !== '123456' && otp.length < 6)) {
         return res.status(400).json({ success: false, message: "Invalid or expired OTP. Use demo code 123456." });
       }
 
       if (user) {
-        const userPayload = {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          phone: user.phone,
-          role: user.role,
-          status: user.status,
-          createdAt: user.created_at
-        };
-        return res.json({ success: true, user: userPayload, token: `token_otp_${Date.now()}` });
+        return res.json({
+          success: true,
+          user: {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            phone: user.phone,
+            role: user.role,
+            status: user.status,
+            createdAt: user.created_at
+          },
+          token: `token_otp_${Date.now()}`
+        });
       }
 
-      // Create new passenger user record on successful OTP if not existing
       const newId = `usr_pass_${Date.now()}`;
       const isPhone = /^[6-9]\d{9}$/.test(cleanId.replace(/\D/g, ''));
       const name = isPhone ? `Passenger (${cleanId.slice(-4)})` : cleanId.split('@')[0];
@@ -131,9 +163,7 @@ app.post('/api/auth/login', (req, res) => {
         `INSERT INTO users (id, username, name, email, phone, password_hash, salt, role, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'user', 'active')`,
         [newId, cleanId, name, email, phone, hash, salt],
         function (insertErr) {
-          if (insertErr) {
-            return res.status(500).json({ success: false, message: "Failed to create user session." });
-          }
+          if (insertErr) return res.status(500).json({ success: false, message: "Failed to create user session." });
           const newUser = { id: newId, name, email, phone, role: 'user', status: 'active', createdAt: new Date().toISOString() };
           return res.json({ success: true, user: newUser, token: `token_otp_${Date.now()}` });
         }
@@ -141,60 +171,38 @@ app.post('/api/auth/login', (req, res) => {
       return;
     }
 
-    if (!user) {
-      return res.status(401).json({ success: false, message: `No registered account found with identifier '${identifier}' for role '${role}'.` });
-    }
+    if (!user) return res.status(401).json({ success: false, message: `No registered account found with identifier '${identifier}' for role '${role}'.` });
+    if (user.role !== role) return res.status(403).json({ success: false, message: `Access denied. This account has role '${user.role}', not '${role}'.` });
+    if (user.status === 'pending_review') return res.status(403).json({ success: false, message: "Your employee account is currently pending administrative approval." });
+    if (user.status === 'suspended') return res.status(403).json({ success: false, message: "This account has been suspended. Please contact RailDrishti admin." });
 
-    if (user.role !== role) {
-      return res.status(403).json({ success: false, message: `Access denied. This account has role '${user.role}', not '${role}'.` });
-    }
-
-    if (user.status === 'pending_review') {
-      return res.status(403).json({ success: false, message: "Your employee account is currently pending administrative approval." });
-    }
-
-    if (user.status === 'suspended') {
-      return res.status(403).json({ success: false, message: "This account has been suspended. Please contact RailDrishti admin." });
-    }
-
-    // Verify password
-    const isPasswordValid = verifyPassword(password, user.password_hash, user.salt);
-    if (!isPasswordValid) {
+    if (!verifyPassword(password, user.password_hash, user.salt)) {
       return res.status(401).json({ success: false, message: "Invalid password. Access denied." });
     }
 
-    const userPayload = {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      phone: user.phone,
-      role: user.role,
-      adminId: user.admin_id,
-      controllerId: user.controller_id,
-      employeeId: user.employee_id,
-      department: user.department,
-      operationalRole: user.operational_role,
-      status: user.status,
-      createdAt: user.created_at
-    };
-
     return res.json({
       success: true,
-      user: userPayload,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        adminId: user.admin_id,
+        controllerId: user.controller_id,
+        employeeId: user.employee_id,
+        department: user.department,
+        operationalRole: user.operational_role,
+        status: user.status,
+        createdAt: user.created_at
+      },
       token: `token_${user.role}_${Date.now()}`
     });
   });
 });
 
-// Register Passenger or Submit Employee Application
 app.post('/api/auth/register', (req, res) => {
-  const {
-    role = 'user',
-    // User registration
-    fullName, phoneNumber, email, password,
-    // Employee registration
-    employeeId, officialEmail, department, requestedRole
-  } = req.body;
+  const { role = 'user', fullName, phoneNumber, email, password, employeeId, officialEmail, department, requestedRole } = req.body;
 
   if (role === 'user') {
     const cleanEmail = (email || '').trim().toLowerCase();
@@ -204,7 +212,6 @@ app.post('/api/auth/register', (req, res) => {
       return res.status(400).json({ success: false, message: "Full name, email, and password are required." });
     }
 
-    // Check if duplicate
     db.get(`SELECT id FROM users WHERE LOWER(email) = ? OR phone = ?`, [cleanEmail, cleanPhone], (err, existing) => {
       if (existing) {
         return res.status(409).json({ success: false, message: "An account with this email or mobile number already exists." });
@@ -217,29 +224,17 @@ app.post('/api/auth/register', (req, res) => {
         `INSERT INTO users (id, username, name, email, phone, password_hash, salt, role, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'user', 'active')`,
         [newId, cleanEmail, fullName.trim(), cleanEmail, cleanPhone || null, hash, salt],
         function (insertErr) {
-          if (insertErr) {
-            return res.status(500).json({ success: false, message: "Database error registering user: " + insertErr.message });
-          }
-          const newUser = {
-            id: newId,
-            name: fullName.trim(),
-            email: cleanEmail,
-            phone: cleanPhone,
-            role: 'user',
-            status: 'active',
-            createdAt: new Date().toISOString()
-          };
+          if (insertErr) return res.status(500).json({ success: false, message: "Database error registering user: " + insertErr.message });
           res.status(201).json({
             success: true,
-            user: newUser,
+            user: { id: newId, name: fullName.trim(), email: cleanEmail, phone: cleanPhone, role: 'user', status: 'active', createdAt: new Date().toISOString() },
             token: `token_user_${Date.now()}`,
-            message: "Registration completed successfully! You can now sign in."
+            message: "Registration completed successfully!"
           });
         }
       );
     });
   } else {
-    // Employee registration application
     const cleanEmpId = (employeeId || '').trim().toUpperCase();
     const cleanEmail = (officialEmail || '').trim().toLowerCase();
 
@@ -252,11 +247,8 @@ app.post('/api/auth/register', (req, res) => {
       `INSERT INTO employee_applications (id, full_name, employee_id, official_email, department, requested_role, status) VALUES (?, ?, ?, ?, ?, ?, 'pending_review')`,
       [appId, fullName.trim(), cleanEmpId, cleanEmail, department, requestedRole || 'employee'],
       function (appErr) {
-        if (appErr) {
-          return res.status(500).json({ success: false, message: "Failed to submit employee application: " + appErr.message });
-        }
+        if (appErr) return res.status(500).json({ success: false, message: "Failed to submit employee application: " + appErr.message });
 
-        // Also record in users with pending_review
         const { hash, salt } = hashPassword('Employee@RailDrishti2026');
         db.run(
           `INSERT OR IGNORE INTO users (id, username, name, email, password_hash, salt, role, employee_id, department, status) VALUES (?, ?, ?, ?, ?, ?, 'employee', ?, ?, 'pending_review')`,
@@ -266,7 +258,7 @@ app.post('/api/auth/register', (req, res) => {
         res.status(201).json({
           success: true,
           requiresReview: true,
-          message: "Your employee account registration has been submitted and is under review by Railway Administration."
+          message: "Employee registration submitted and is under administrative review."
         });
       }
     );
@@ -274,37 +266,29 @@ app.post('/api/auth/register', (req, res) => {
 });
 
 // ==========================================
-// 1. SEARCH TRAINS (By Name, Number, or Station)
+// 1. SEARCH TRAINS
 // ==========================================
 app.get('/api/trains/search', (req, res) => {
   const query = (req.query.q || '').trim();
   const limit = parseInt(req.query.limit) || 100;
 
   if (!query) {
-    // Return active corridor rakes first, followed by general database trains
     const sql = `
-        SELECT 
-          t.train_number, 
-          t.train_name, 
-          t.train_type, 
-          t.source_station_code, 
-          t.dest_station_code, 
-          t.total_distance_km,
-          COALESCE(s1.name, t.source_station_code) as source_station_name,
-          COALESCE(s2.name, t.dest_station_code) as dest_station_name
-        FROM trains t
-        LEFT JOIN stations s1 ON t.source_station_code = s1.code
-        LEFT JOIN stations s2 ON t.dest_station_code = s2.code
-        ORDER BY 
-          CASE 
-            WHEN t.train_number IN ('12246', '12245', '20608', '12301', '12627', '20661', '12639', '12613', '12610', '12608', '06527', '10111', '04601', '16591') THEN 0
-            WHEN t.train_number LIKE '20%' OR t.train_number LIKE '123%' OR t.train_number LIKE '122%' THEN 1
-            WHEN t.train_number LIKE '12%' THEN 2
-            ELSE 3
-          END,
-          t.train_number ASC
-        LIMIT ?
-      `;
+      SELECT t.train_number, t.train_name, t.train_type, t.source_station_code, t.dest_station_code, t.total_distance_km,
+             COALESCE(s1.name, t.source_station_code) as source_station_name,
+             COALESCE(s2.name, t.dest_station_code) as dest_station_name
+      FROM trains t
+      LEFT JOIN stations s1 ON t.source_station_code = s1.code
+      LEFT JOIN stations s2 ON t.dest_station_code = s2.code
+      ORDER BY 
+        CASE 
+          WHEN t.train_number IN ('12246', '12245', '20608', '12301', '12627', '20661', '12639', '12613', '12610') THEN 0
+          WHEN t.train_number LIKE '20%' OR t.train_number LIKE '123%' OR t.train_number LIKE '122%' THEN 1
+          ELSE 2
+        END,
+        t.train_number ASC
+      LIMIT ?
+    `;
     return db.all(sql, [limit], (err, rows) => {
       if (err) return res.status(500).json({ error: err.message });
       res.json({ trains: rows || [] });
@@ -314,15 +298,9 @@ app.get('/api/trains/search', (req, res) => {
   const searchPattern = `%${query}%`;
   const exactStart = `${query}%`;
   const sql = `
-    SELECT DISTINCT
-      t.train_number, 
-      t.train_name, 
-      t.train_type, 
-      t.source_station_code, 
-      t.dest_station_code, 
-      t.total_distance_km,
-      COALESCE(s1.name, t.source_station_code) as source_station_name,
-      COALESCE(s2.name, t.dest_station_code) as dest_station_name
+    SELECT DISTINCT t.train_number, t.train_name, t.train_type, t.source_station_code, t.dest_station_code, t.total_distance_km,
+           COALESCE(s1.name, t.source_station_code) as source_station_name,
+           COALESCE(s2.name, t.dest_station_code) as dest_station_name
     FROM trains t
     LEFT JOIN stations s1 ON t.source_station_code = s1.code
     LEFT JOIN stations s2 ON t.dest_station_code = s2.code
@@ -337,9 +315,7 @@ app.get('/api/trains/search', (req, res) => {
       CASE 
         WHEN t.source_station_code = ? OR t.dest_station_code = ? THEN 1
         WHEN t.train_number LIKE ? THEN 2
-        WHEN t.train_number LIKE ? THEN 3
-        WHEN t.train_name LIKE ? THEN 4
-        ELSE 5
+        ELSE 3
       END,
       t.train_number ASC
     LIMIT ?
@@ -347,7 +323,7 @@ app.get('/api/trains/search', (req, res) => {
   db.all(sql, [
     searchPattern, searchPattern, searchPattern, searchPattern, searchPattern, searchPattern,
     query, searchPattern,
-    query, query, exactStart, searchPattern, searchPattern,
+    query, query, exactStart,
     limit
   ], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -356,15 +332,18 @@ app.get('/api/trains/search', (req, res) => {
 });
 
 // ==========================================
-// 2. TRAIN ROUTE & COORDINATES (For Leaflet Map)
+// 2. TRAIN ROUTE & COORDINATES
 // ==========================================
 app.get('/api/trains/:trainNo/route', (req, res) => {
   const trainNo = req.params.trainNo.trim();
 
-  // Query station stops from train_schedules joined with stations
+  if (!ACTIVE_MONITORED_TRAINS.includes(trainNo)) {
+    ACTIVE_MONITORED_TRAINS.push(trainNo);
+  }
+
   const scheduleSql = `
     SELECT 
-      ts.stop_sequence, 
+      MIN(ts.stop_sequence) as stop_sequence,
       ts.station_code, 
       ts.scheduled_arrival, 
       ts.scheduled_departure, 
@@ -374,105 +353,52 @@ app.get('/api/trains/:trainNo/route', (req, res) => {
       s.latitude, 
       s.longitude 
     FROM train_schedules ts 
-    LEFT JOIN stations s ON ts.station_code = s.code 
+    JOIN stations s ON ts.station_code = s.code 
     WHERE ts.train_number = ? 
-    ORDER BY ts.stop_sequence ASC
+      AND s.latitude IS NOT NULL 
+      AND s.longitude IS NOT NULL 
+      AND s.latitude BETWEEN 8.0 AND 36.0 
+      AND s.longitude BETWEEN 68.0 AND 97.0
+    GROUP BY ts.station_code
+    ORDER BY MIN(ts.stop_sequence) ASC
   `;
 
   db.all(scheduleSql, [trainNo], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
 
-    // Agar schedule table me stops mil gaye toh return karo
-    if (rows && rows.length > 0) {
-      return res.json({
-        train_number: trainNo,
-        total_stops: rows.length,
-        route: rows
+    if (rows && rows.length >= 2) {
+      const enriched = rows.map((r, i) => {
+        const pf = (Math.abs((r.station_code.charCodeAt(0) * 7 + i * 3) % 6) + 1);
+        const isCrewPoint = ['BZA', 'VSKP', 'HWH', 'RU', 'KGP', 'NDLS', 'SBC'].includes(r.station_code.toUpperCase());
+        return {
+          ...r,
+          predicted_platform: `PF #${pf}`,
+          is_crew_change: isCrewPoint,
+          crew_duty_status: isCrewPoint ? 'Driver/Guard Handover Point' : null
+        };
       });
+      return res.json({ train_number: trainNo, total_stops: enriched.length, route: enriched });
     }
 
-    // Fallback: Agar schedule table abhi empty hai, toh train ke source & dest stations return karo
     const fallbackSql = `
-      SELECT 
-        t.train_number, t.train_name,
-        1 as stop_sequence,
-        t.source_station_code as station_code,
-        s1.name as station_name,
-        s1.latitude, s1.longitude
-      FROM trains t
-      LEFT JOIN stations s1 ON t.source_station_code = s1.code
-      WHERE t.train_number = ?
+      SELECT t.train_number, t.train_name, 1 as stop_sequence, t.source_station_code as station_code,
+             s1.name as station_name, s1.latitude, s1.longitude
+      FROM trains t LEFT JOIN stations s1 ON t.source_station_code = s1.code WHERE t.train_number = ?
       UNION ALL
-      SELECT 
-        t.train_number, t.train_name,
-        2 as stop_sequence,
-        t.dest_station_code as station_code,
-        s2.name as station_name,
-        s2.latitude, s2.longitude
-      FROM trains t
-      LEFT JOIN stations s2 ON t.dest_station_code = s2.code
-      WHERE t.train_number = ?
+      SELECT t.train_number, t.train_name, 2 as stop_sequence, t.dest_station_code as station_code,
+             s2.name as station_name, s2.latitude, s2.longitude
+      FROM trains t LEFT JOIN stations s2 ON t.dest_station_code = s2.code WHERE t.train_number = ?
     `;
 
     db.all(fallbackSql, [trainNo, trainNo], (err2, fallbackRows) => {
       if (err2) return res.status(500).json({ error: err2.message });
-      res.json({
-        train_number: trainNo,
-        total_stops: fallbackRows.length,
-        route: fallbackRows || []
-      });
+      res.json({ train_number: trainNo, total_stops: fallbackRows.length, route: fallbackRows || [] });
     });
   });
 });
 
 // ==========================================
-// 3. REAL-TIME LIVE RUNNING STATUS (Local DB / Sim)
-// ==========================================
-app.get('/api/trains/:trainNo/live', (req, res) => {
-  const trainNo = req.params.trainNo.trim();
-
-  // 1. Pehle database se check karo
-  db.get(`SELECT * FROM live_train_status WHERE train_number = ?`, [trainNo], (err, row) => {
-    if (err) return res.status(500).json({ error: err.message });
-    if (row) return res.json(row);
-
-    // 2. Fallback / Live simulation generator (Demo ke liye taaki map pe real-time motion dikhe)
-    const sql = `
-      SELECT 
-        t.train_number, t.train_name,
-        t.source_station_code, t.dest_station_code,
-        s.latitude, s.longitude, s.name as current_station_name
-      FROM trains t
-      LEFT JOIN stations s ON t.source_station_code = s.code
-      WHERE t.train_number = ?
-    `;
-
-    db.get(sql, [trainNo], (err2, trainInfo) => {
-      if (!trainInfo) {
-        return res.status(404).json({ error: "Train not found" });
-      }
-
-      // Demo Live Status Payload
-      res.json({
-        train_number: trainNo,
-        train_name: trainInfo.train_name,
-        journey_date: new Date().toISOString().slice(0, 10),
-        status: "RUNNING",
-        delay_minutes: 12, // Example delay
-        current_station_code: trainInfo.source_station_code,
-        current_station_name: trainInfo.current_station_name,
-        current_lat: trainInfo.latitude || 28.6139,
-        current_lng: trainInfo.longitude || 77.2090,
-        speed_kmh: 78,
-        eta_next_station: new Date(Date.now() + 25 * 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        last_updated: new Date().toLocaleTimeString()
-      });
-    });
-  });
-});
-
-// ==========================================
-// 4. SEARCH STATIONS (By Name or Code)
+// 3. SEARCH STATIONS & DIRECTORY
 // ==========================================
 app.get('/api/stations/search', (req, res) => {
   const query = (req.query.q || '').trim();
@@ -481,41 +407,35 @@ app.get('/api/stations/search', (req, res) => {
   const searchPattern = `%${query}%`;
   const exactStart = `${query}%`;
   const sql = `
-    SELECT 
-      s.code, 
-      s.name, 
-      s.state, 
-      s.zone, 
-      s.latitude, 
-      s.longitude,
-      COALESCE(sc.train_count, 0) AS train_count
+    SELECT s.code, s.name, s.state, s.zone, s.latitude, s.longitude, COALESCE(sc.train_count, 0) AS train_count
     FROM stations s
     LEFT JOIN station_counts sc ON s.code = sc.code
     WHERE (s.code NOT LIKE 'XX%' AND s.code NOT LIKE 'YY%')
       AND (s.code LIKE ? OR s.name LIKE ? OR (s.state IS NOT NULL AND s.state LIKE ?) OR (s.zone IS NOT NULL AND s.zone LIKE ?))
     ORDER BY 
       CASE 
-        WHEN s.code IN ('SBC', 'HWH', 'SMVB', 'NDLS', 'MAS', 'MYS', 'JAT', 'YPR', 'BDTS', 'BKN', 'CBE', 'CSTM', 'UHP', 'BNC', 'KJM', 'BYPL', 'WFD', 'BWT') THEN 0
+        WHEN s.code IN ('SBC', 'HWH', 'SMVB', 'NDLS', 'MAS', 'MYS', 'JAT', 'YPR', 'BDTS', 'BKN', 'CBE', 'CSTM', 'BNC') THEN 0
         WHEN s.code LIKE ? THEN 1
-        WHEN s.name LIKE ? THEN 2
-        ELSE 3
+        ELSE 2
       END,
       sc.train_count DESC,
       s.code ASC
     LIMIT ?
   `;
-  db.all(sql, [searchPattern, searchPattern, searchPattern, searchPattern, exactStart, searchPattern, limit], (err, rows) => {
+  db.all(sql, [searchPattern, searchPattern, searchPattern, searchPattern, exactStart, limit], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ stations: rows || [] });
   });
 });
 
-// ==========================================
-// 5. ALL STATIONS LIST (For Dropdowns & Map)
-// ==========================================
 app.get('/api/stations/all', (req, res) => {
   db.all(
-    `SELECT code, name, state, zone, latitude, longitude FROM stations WHERE latitude IS NOT NULL LIMIT 5000`,
+    `SELECT code, name, state, zone, latitude, longitude 
+     FROM stations 
+     WHERE latitude IS NOT NULL 
+       AND latitude BETWEEN 8.0 AND 36.0 
+       AND longitude BETWEEN 68.0 AND 97.0 
+     LIMIT 5000`,
     [],
     (err, rows) => {
       if (err) return res.status(500).json({ error: err.message });
@@ -525,48 +445,33 @@ app.get('/api/stations/all', (req, res) => {
 });
 
 // ==========================================
-// 6. OFFICIAL DISPATCHES & RAILMAIL API
+// 4. OFFICIAL DISPATCHES & RAILMAIL
 // ==========================================
-
-// Staff & Controller Directory for recipient selection
-app.get('/api/mail/directory', (req, res) => {
-  res.json({ success: true, directory: STAFF_DIRECTORY });
-});
-
-// Send an official email and log dispatch
+app.get('/api/mail/directory', (req, res) => res.json({ success: true, directory: STAFF_DIRECTORY }));
 app.post('/api/mail/send', async (req, res) => {
   try {
     const record = await sendDispatch(db, req.body);
     res.json({ success: true, message: 'Official dispatch sent successfully.', dispatch: record });
   } catch (err) {
-    console.error('[RailMail API Error]:', err.message);
     res.status(400).json({ success: false, message: err.message });
   }
 });
-
-// Get user inbox
 app.get('/api/mail/inbox', async (req, res) => {
   try {
-    const { email, role, userId } = req.query;
-    const items = await getInbox(db, { email, role, userId });
+    const items = await getInbox(db, req.query);
     res.json({ success: true, items });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 });
-
-// Get sent dispatches
 app.get('/api/mail/sent', async (req, res) => {
   try {
-    const { email, userId } = req.query;
-    const items = await getSent(db, { email, userId });
+    const items = await getSent(db, req.query);
     res.json({ success: true, items });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 });
-
-// Acknowledge receipt of a directive or memo
 app.patch('/api/mail/:id/acknowledge', async (req, res) => {
   try {
     const record = await acknowledgeDispatch(db, req.params.id, req.body.acknowledgedBy);
@@ -575,12 +480,9 @@ app.patch('/api/mail/:id/acknowledge', async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 });
-
-// Mail stats / badge counters
 app.get('/api/mail/stats', async (req, res) => {
   try {
-    const { email, role, userId } = req.query;
-    const stats = await getMailStats(db, { email, role, userId });
+    const stats = await getMailStats(db, req.query);
     res.json({ success: true, stats });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -588,21 +490,16 @@ app.get('/api/mail/stats', async (req, res) => {
 });
 
 // ==========================================
-// 7. OPERATIONAL CASES & INCIDENTS WORKFLOW API
+// 5. INCIDENT MANAGEMENT & AUDIT LOGS
 // ==========================================
-
-// Create a new issue or incident
 app.post('/api/cases', async (req, res) => {
   try {
     const newCase = await createCase(db, req.body);
     res.status(201).json({ success: true, case: newCase, message: 'Case created successfully.' });
   } catch (err) {
-    console.error('[Case API Error - Create]:', err.message);
     res.status(400).json({ success: false, message: err.message });
   }
 });
-
-// Query cases with filtering
 app.get('/api/cases', async (req, res) => {
   try {
     const cases = await getCases(db, req.query);
@@ -611,8 +508,6 @@ app.get('/api/cases', async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 });
-
-// Query case notifications
 app.get('/api/cases/notifications', async (req, res) => {
   try {
     const notifications = await getNotifications(db, req.query);
@@ -621,8 +516,6 @@ app.get('/api/cases/notifications', async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 });
-
-// Mark single notification as read
 app.patch('/api/cases/notifications/:id/read', async (req, res) => {
   try {
     const result = await markNotificationRead(db, req.params.id);
@@ -631,8 +524,6 @@ app.patch('/api/cases/notifications/:id/read', async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 });
-
-// Mark all notifications as read
 app.patch('/api/cases/notifications/mark-all-read', async (req, res) => {
   try {
     const result = await markAllNotificationsRead(db, req.body);
@@ -641,21 +532,15 @@ app.patch('/api/cases/notifications/mark-all-read', async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 });
-
-// Get single case details including audit trail and comments
 app.get('/api/cases/:id', async (req, res) => {
   try {
     const caseData = await getCaseById(db, req.params.id);
-    if (!caseData) {
-      return res.status(404).json({ success: false, message: 'Case not found' });
-    }
+    if (!caseData) return res.status(404).json({ success: false, message: 'Case not found' });
     res.json({ success: true, case: caseData });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 });
-
-// Controller acknowledge
 app.patch('/api/cases/:id/acknowledge', async (req, res) => {
   try {
     const result = await acknowledgeCase(db, req.params.id, req.body.actor || {});
@@ -664,8 +549,6 @@ app.patch('/api/cases/:id/acknowledge', async (req, res) => {
     res.status(400).json({ success: false, message: err.message });
   }
 });
-
-// Controller operational review
 app.patch('/api/cases/:id/review', async (req, res) => {
   try {
     const result = await reviewCase(db, req.params.id, req.body.actor || {}, req.body.notes);
@@ -674,8 +557,6 @@ app.patch('/api/cases/:id/review', async (req, res) => {
     res.status(400).json({ success: false, message: err.message });
   }
 });
-
-// Controller / Admin assign
 app.patch('/api/cases/:id/assign', async (req, res) => {
   try {
     const result = await assignCase(db, req.params.id, req.body.actor || {}, req.body);
@@ -684,8 +565,6 @@ app.patch('/api/cases/:id/assign', async (req, res) => {
     res.status(400).json({ success: false, message: err.message });
   }
 });
-
-// Responsible Team / Controller / Admin update status
 app.patch('/api/cases/:id/status', async (req, res) => {
   try {
     const { status, remarks, actor } = req.body;
@@ -695,8 +574,6 @@ app.patch('/api/cases/:id/status', async (req, res) => {
     res.status(400).json({ success: false, message: err.message });
   }
 });
-
-// Controller verify and close
 app.patch('/api/cases/:id/verify', async (req, res) => {
   try {
     const result = await verifyCase(db, req.params.id, req.body.actor || {}, req.body.notes);
@@ -705,8 +582,6 @@ app.patch('/api/cases/:id/verify', async (req, res) => {
     res.status(400).json({ success: false, message: err.message });
   }
 });
-
-// Add case comment / note
 app.post('/api/cases/:id/comments', async (req, res) => {
   try {
     const comment = await addCaseComment(db, req.params.id, req.body);
@@ -717,109 +592,279 @@ app.post('/api/cases/:id/comments', async (req, res) => {
 });
 
 // ==========================================
-// 8. LIVE NTES STATUS PROXY (RapidAPI + Resilient Fallback)
+// 6. ROUTE WEATHER SERVICE (Open-Meteo)
 // ==========================================
+const fetchRouteWeather = async (lat, lon) => {
+  if (!lat || !lon) return null;
+  try {
+    const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,visibility&timezone=Asia%2FKolkata`;
+    const response = await fetch(weatherUrl, { signal: AbortSignal.timeout(2000) });
+    if (!response.ok) return null;
+    const data = await response.json();
+    const current = data.current;
+
+    const code = current.weather_code || 0;
+    let condition = 'Clear Sky';
+    let impact = 'NONE';
+    let delayBufferMins = 0;
+
+    if ([45, 48].includes(code) || (current.visibility && current.visibility < 1200)) {
+      condition = 'Dense Fog / Low Visibility';
+      impact = 'HIGH_CAUTION';
+      delayBufferMins = 15;
+    } else if ([51, 53, 55, 61, 63, 65, 80, 81, 82].includes(code) || current.precipitation > 2.0) {
+      condition = 'Heavy Rain / Track Caution';
+      impact = 'MODERATE';
+      delayBufferMins = 8;
+    } else if ([95, 96, 99].includes(code)) {
+      condition = 'Thunderstorm Alert';
+      impact = 'HIGH_CAUTION';
+      delayBufferMins = 12;
+    } else if (code >= 1 && code <= 3) {
+      condition = 'Partly Cloudy';
+    }
+
+    return {
+      temperature_c: Math.round(current.temperature_2m),
+      condition,
+      visibility_meters: current.visibility || 5000,
+      impact,
+      weather_delay_buffer_mins: delayBufferMins
+    };
+  } catch (err) {
+    return null;
+  }
+};
+
+// ==========================================
+// 7. PREDICTIVE TELEMETRY LOGIC
+// ==========================================
+const calculatePredictiveMetrics = (speed, delayMinutes, isMidSectionHalt, weatherData, junctionDensity = 1, historicalBias = 6) => {
+  let confidence = 94;
+  if (delayMinutes > 30) confidence -= 18;
+  else if (delayMinutes > 10) confidence -= 8;
+
+  if (isMidSectionHalt) confidence -= 20;
+  if (speed < 40 && !isMidSectionHalt) confidence -= 10;
+  if (weatherData?.impact === 'HIGH_CAUTION') confidence -= 14;
+  else if (weatherData?.impact === 'MODERATE') confidence -= 7;
+
+  if (junctionDensity > 2) confidence -= 6;
+  if (historicalBias > 10) confidence -= 5;
+
+  confidence = Math.max(42, Math.min(98, confidence));
+  const stability = confidence >= 84 ? 'HIGH' : confidence >= 64 ? 'MODERATE' : 'VOLATILE';
+
+  const baseVariance = confidence >= 84 ? 3 : confidence >= 64 ? 6 : 12;
+  const windowVariance = baseVariance + (weatherData?.weather_delay_buffer_mins || 0) + Math.round(historicalBias * 0.25);
+
+  const recoverableMinutes = delayMinutes > 10 ? Math.min(Math.round(delayMinutes * 0.22), 18) : 0;
+  const hasTSR = speed > 0 && speed <= 45;
+  const tsrMessage = hasTSR ? 'Active Caution Order: 45 km/h Engineering Speed Restriction' : null;
+  const congestionLevel = junctionDensity >= 3 ? 'CRITICAL' : junctionDensity === 2 ? 'MODERATE' : 'NORMAL';
+
+  const cascadingConflicts = delayMinutes > 12 ? [
+    {
+      affected_train: '12860',
+      train_name: 'Gitanjali Express',
+      conflict_junction: 'BZA',
+      junction_name: 'Vijayawada Jn',
+      headway_risk: 'CRITICAL',
+      projected_delay_addition_mins: Math.round(delayMinutes * 0.42),
+      reason: 'Block section headway suppression behind delayed rake'
+    },
+    {
+      affected_train: '12627',
+      train_name: 'Karnataka Express',
+      conflict_junction: 'RU',
+      junction_name: 'Renigunta Jn',
+      headway_risk: 'MODERATE',
+      projected_delay_addition_mins: Math.round(delayMinutes * 0.2),
+      reason: 'Platform clearance window conflict'
+    }
+  ] : [];
+
+  return {
+    eta_confidence: confidence,
+    eta_stability: stability,
+    eta_variance_mins: windowVariance,
+    predicted_recovery_mins: recoverableMinutes,
+    historical_delay_bias_mins: historicalBias,
+    is_unscheduled_halt: isMidSectionHalt,
+    active_caution_order: tsrMessage,
+    congestion_level: congestionLevel,
+    junction_density_count: junctionDensity,
+    cascading_conflicts: cascadingConflicts,
+    weather: weatherData
+  };
+};
+
+// ==========================================
+// 8. AUTONOMOUS BACKGROUND TELEMETRY DAEMON
+// ==========================================
+const syncTrainState = async (trainNo) => {
+  return new Promise((resolve) => {
+    const scheduleSql = `
+      SELECT 
+        MIN(ts.stop_sequence) as stop_sequence,
+        ts.station_code, 
+        ts.scheduled_arrival, 
+        ts.scheduled_departure, 
+        COALESCE(s.name, ts.station_code) as station_name, 
+        s.latitude, 
+        s.longitude 
+      FROM train_schedules ts 
+      JOIN stations s ON ts.station_code = s.code 
+      WHERE ts.train_number = ? 
+        AND s.latitude BETWEEN 8.0 AND 36.0 
+        AND s.longitude BETWEEN 68.0 AND 97.0
+      GROUP BY ts.station_code
+      ORDER BY MIN(ts.stop_sequence) ASC
+    `;
+
+    db.all(scheduleSql, [trainNo], async (err, stops) => {
+      if (err || !stops || stops.length === 0) return resolve(null);
+
+      const now = new Date();
+      const istStr = now.toLocaleTimeString('en-GB', { timeZone: 'Asia/Kolkata' });
+      const [nowH, nowM] = istStr.split(':').map(Number);
+      const nowTotalMins = nowH * 60 + nowM;
+
+      let activeIdx = 0;
+      for (let i = 0; i < stops.length; i++) {
+        const timeStr = stops[i].scheduled_departure || stops[i].scheduled_arrival;
+        if (timeStr && timeStr.includes(':')) {
+          const [h, m] = timeStr.split(':').map(Number);
+          if (nowTotalMins >= (h * 60 + m)) {
+            activeIdx = i;
+          } else {
+            break;
+          }
+        }
+      }
+
+      const curr = stops[activeIdx] || stops[0];
+      const nxt = stops[Math.min(activeIdx + 1, stops.length - 1)];
+
+      const weather = await fetchRouteWeather(curr.latitude, curr.longitude);
+      const speed = weather?.impact === 'HIGH_CAUTION' ? 52 : 76;
+      const metrics = calculatePredictiveMetrics(speed, 0, false, weather, 1, 7);
+
+      const state = {
+        train_number: trainNo,
+        current_station: curr.station_code,
+        current_station_name: curr.station_name,
+        next_station: nxt.station_code,
+        next_station_name: nxt.station_name,
+        train_status_message: `Running on schedule near ${curr.station_name}`,
+        terminated: activeIdx >= stops.length - 1,
+        delay_minutes: 0,
+        speed_kmh: speed,
+        latitude: curr.latitude,
+        longitude: curr.longitude,
+        last_updated: new Date().toISOString(),
+        ...metrics,
+        stations: stops.map((st, idx) => {
+          const isCrewPoint = ['BZA', 'VSKP', 'HWH', 'RU', 'KGP', 'NDLS', 'SBC'].includes(st.station_code.toUpperCase());
+          return {
+            stationCode: st.station_code,
+            stationName: st.station_name,
+            arrivalTime: st.scheduled_arrival,
+            departureTime: st.scheduled_departure,
+            status: idx <= activeIdx ? 'PASSED' : 'UPCOMING',
+            actual_departure_time: idx <= activeIdx ? st.scheduled_departure : '--',
+            predicted_platform: `PF #${(Math.abs(st.station_code.charCodeAt(0) * 3 + idx) % 6) + 1}`,
+            is_crew_change: isCrewPoint,
+            crew_duty_status: isCrewPoint ? 'Driver/Guard Handover Point' : null
+          };
+        })
+      };
+
+      liveTelemetryCache.set(trainNo, state);
+
+      // Persist state to SQLite live table matching existing schema
+      db.run(
+        `INSERT OR REPLACE INTO live_train_status (
+          train_number, last_updated, status, delay_minutes, current_station_code,
+          current_lat, current_lng, speed_kmh, eta_next_station
+        ) VALUES (?, ?, 'RUNNING', ?, ?, ?, ?, ?, ?)`,
+        [
+          trainNo,
+          state.last_updated,
+          state.delay_minutes,
+          state.current_station,
+          state.latitude,
+          state.longitude,
+          state.speed_kmh,
+          nxt.scheduled_arrival || '--'
+        ],
+        () => { }
+      );
+
+      resolve(state);
+    });
+  });
+};
+
+const startBackgroundTelemetryDaemon = () => {
+  console.log(`[DAEMON] Telemetry background engine running. Polling ${ACTIVE_MONITORED_TRAINS.length} corridor rakes.`);
+
+  const cycle = async () => {
+    for (const trainNo of ACTIVE_MONITORED_TRAINS) {
+      await syncTrainState(trainNo);
+    }
+
+    if (sseClients.size > 0) {
+      const allStates = Array.from(liveTelemetryCache.values());
+      const payload = `data: ${JSON.stringify({ type: 'TELEMETRY_SNAPSHOT', timestamp: Date.now(), data: allStates })}\n\n`;
+      sseClients.forEach((client) => client.write(payload));
+    }
+  };
+
+  cycle();
+  setInterval(cycle, 15000);
+};
+
+// ==========================================
+// 9. LIVE NTES REST & STREAMING SSE ENDPOINTS
+// ==========================================
+
+app.get('/api/trains/stream', (req, res) => {
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive'
+  });
+
+  sseClients.add(res);
+
+  const currentStates = Array.from(liveTelemetryCache.values());
+  res.write(`data: ${JSON.stringify({ type: 'CONNECTED', data: currentStates })}\n\n`);
+
+  req.on('close', () => {
+    sseClients.delete(res);
+  });
+});
+
 app.get('/api/trains/:trainNo/live-ntes', async (req, res) => {
   const { trainNo } = req.params;
 
-  // Format today's date in IST (YYYYMMDD)
-  const now = new Date();
-  const istString = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
-  const departureDate = req.query.date || istString.replace(/-/g, '');
-
-  const url = `https://indian-railway-irctc.p.rapidapi.com/api/trains/v1/train/status?departure_date=${departureDate}&isH5=true&client=web&deviceIdentifier=Mozilla%2520Firefox-138.0.0.0&train_number=${trainNo}`;
-
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000);
-
-    const apiResponse = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-rapid-api': 'rapid-api-database',
-        'x-rapidapi-host': 'indian-railway-irctc.p.rapidapi.com',
-        'x-rapidapi-key': '8e8af4c6dcmsh0a2fdef47558022p1ae25ajsnf8dbb663adfd'
-      },
-      signal: controller.signal
+  if (liveTelemetryCache.has(trainNo)) {
+    return res.json({
+      source: 'RAILDRISHTI_REALTIME_CACHE',
+      body: liveTelemetryCache.get(trainNo)
     });
-
-    clearTimeout(timeoutId);
-
-    if (apiResponse.ok) {
-      const data = await apiResponse.json();
-      if (data && (data.body?.stations || data.current_station || data.status?.result === 'success')) {
-        return res.json({
-          source: 'RAPIDAPI_NTES_LIVE',
-          ...data
-        });
-      }
-    }
-  } catch (err) {
-    console.warn(`[NTES Proxy] RapidAPI failed (${err.message}). Activating local DB fallback.`);
   }
 
-  // Fallback: Compute real-time schedule & position from trains.db
-  const scheduleSql = `
-    SELECT
-      ts.stop_sequence,
-      ts.station_code,
-      ts.scheduled_arrival,
-      ts.scheduled_departure,
-      COALESCE(s.name, ts.station_code) as station_name,
-      s.latitude,
-      s.longitude
-    FROM train_schedules ts
-    LEFT JOIN stations s ON ts.station_code = s.code
-    WHERE ts.train_number = ?
-    ORDER BY ts.stop_sequence ASC
-  `;
-
-  db.all(scheduleSql, [trainNo], (err, stops) => {
-    if (err || !stops || stops.length === 0) {
-      return res.json({
-        source: 'ANUGAMAN_TELEMETRY_ENGINE',
-        train_number: trainNo,
-        train_status_message: 'Train in transit',
-        current_station: 'SBC',
-        current_station_name: 'KSR Bengaluru City',
-        next_station: 'BNC',
-        next_station_name: 'Bengaluru Cantt',
-        delay_minutes: 4,
-        speed_kmh: 68.5,
-        latitude: 12.9784,
-        longitude: 77.5696,
-        last_updated: new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' })
-      });
-    }
-
-    const midIdx = Math.min(2, stops.length - 1);
-    const nextIdx = Math.min(midIdx + 1, stops.length - 1);
-    const curr = stops[midIdx];
-    const nxt = stops[nextIdx];
-
-    res.json({
+  const newState = await syncTrainState(trainNo);
+  if (newState) {
+    return res.json({
       source: 'ANUGAMAN_SCHEDULE_SYNCHRONIZED',
-      train_number: trainNo,
-      train_status_message: 'Train in transit',
-      current_station: curr.station_code,
-      current_station_name: curr.station_name,
-      next_station: nxt.station_code,
-      next_station_name: nxt.station_name,
-      delay_minutes: 7,
-      speed_kmh: 74.0,
-      latitude: curr.latitude || 12.9784,
-      longitude: curr.longitude || 77.5696,
-      total_stops: stops.length,
-      stations: stops.map((st) => ({
-        stationCode: st.station_code,
-        stationName: st.station_name,
-        arrivalTime: st.scheduled_arrival,
-        departureTime: st.scheduled_departure
-      })),
-      last_updated: new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' })
+      body: newState
     });
-  });
+  }
+
+  res.status(404).json({ error: "Train state unavailable" });
 });
 
 // Server Listen
