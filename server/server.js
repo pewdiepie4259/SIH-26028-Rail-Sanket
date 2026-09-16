@@ -36,6 +36,15 @@ import {
   getAuditStats,
   buildServerPdf
 } from './audit_service.js';
+import {
+  initializeWeatherService,
+  getAdminWeatherStatus,
+  getControllerWeatherStatus,
+  testWeatherApiConnection,
+  saveWeatherConfig,
+  getWeatherConfig,
+  refreshRealtimeWeatherData
+} from './weather_service.js';
 
 const app = express();
 app.use(cors());
@@ -59,6 +68,7 @@ const db = new sqlite3.Database(DB_PATH, (err) => {
     initializeMailService(db);
     initializeCaseService(db);
     initializeAuditService(db);
+    initializeWeatherService(db);
 
     // Initialize Historical Corridor Delay Bias Matrix Table
     db.run(`
@@ -1244,6 +1254,12 @@ const startBackgroundTelemetryDaemon = () => {
       await syncTrainState(trainNo);
     }
 
+    try {
+      await refreshRealtimeWeatherData(db, liveTelemetryCache);
+    } catch (e) {
+      // Background weather refresh error non-blocking
+    }
+
     if (sseClients.size > 0) {
       const allStates = Array.from(liveTelemetryCache.values());
       const payload = `data: ${JSON.stringify({ type: 'TELEMETRY_SNAPSHOT', timestamp: Date.now(), data: allStates })}\n\n`;
@@ -1483,6 +1499,82 @@ app.get(['/api/reports/export/json', '/api/cases/export/json'], (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename="RailDrishti_Operational_Report_${dateStr}.json"`);
     res.send(json);
   });
+});
+
+// ==========================================
+// WEATHER & METEOROLOGICAL TELEMETRY API
+// ==========================================
+
+// 1. Admin Weather Service Status & Telemetry Link
+app.get('/api/admin/weather/status', async (req, res) => {
+  try {
+    const status = await getAdminWeatherStatus(db, liveTelemetryCache);
+    res.json({ success: true, ...status });
+  } catch (err) {
+    console.error('Failed to get weather status:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 2. Test Upstream Weather API Connection
+app.post('/api/admin/weather/test', async (req, res) => {
+  try {
+    const { endpoint } = req.body || {};
+    const result = await testWeatherApiConnection(endpoint);
+    res.json(result);
+  } catch (err) {
+    console.error('Failed to test weather API connection:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 3. Get Saved Weather Configuration
+app.get('/api/admin/weather/config', async (req, res) => {
+  try {
+    const config = await getWeatherConfig(db);
+    res.json({ success: true, config });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 4. Save Weather Configuration
+app.post('/api/admin/weather/config', async (req, res) => {
+  try {
+    const result = await saveWeatherConfig(db, req.body);
+    try {
+      await createAuditLog(db, {
+        event: 'Weather Monitoring Configuration Updated',
+        eventType: 'CONFIG_CHANGE',
+        severity: 'LOW',
+        user: req.body.adminUser || 'Admin Desk',
+        userRole: 'admin',
+        resource: 'Weather Service',
+        action: 'UPDATE_CONFIG',
+        status: 'SUCCESS'
+      });
+    } catch (e) {
+      // Audit non-fatal
+    }
+    res.json({
+      success: true,
+      message: 'Weather configuration saved successfully to central database and synced with telemetry daemon.',
+      ...result
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 5. Controller Weather Impact & Active Telemetry Correlated Advisories
+app.get(['/api/weather/controller', '/api/weather/sections'], async (req, res) => {
+  try {
+    const data = await getControllerWeatherStatus(db, liveTelemetryCache);
+    res.json(data);
+  } catch (err) {
+    console.error('Failed to get controller weather:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 // Server Listen
