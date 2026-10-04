@@ -346,13 +346,13 @@ Rail-Sanket is designed to be universally accessible to all citizens and railway
 
 ## 👥 Team & Acknowledgments
 
-- **Team Name:** Rail-Drishti / Rail-Sanket
+- **Team Name:** THE BUGZ
 - **Event:** Smart India Hackathon (SIH)
 - **Problem Statement ID:** #26028
-- **Domain:** Ministry of Railways / Transportation & Logistics
+- **Domain:** Ministry of Railways
 
 ---
 
 <p align="center">
-  <b>Rail-Sanket / Rail-Drishti</b> — <i>Pioneering Precision, Safety & Punctuality for Indian Railways</i> 🇮🇳
+  <b>Rail-Sanket</b> — <i>Pioneering Precision, Safety & Punctuality for Indian Railways</i> 🇮🇳
 </p>
