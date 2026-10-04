@@ -10,6 +10,7 @@ import {
   AlertCircle,
   Camera,
   Trash2,
+  Crop,
   ArrowLeft,
   Save,
   X,
@@ -18,6 +19,7 @@ import {
   IdCard
 } from "lucide-react";
 import { getCurrentUser, updateCurrentUser, fetchLatestUserProfile, isValidEmail, isValidIndianPhone, type AuthUser } from "../../services/auth";
+import { ImageCropModal } from "../../components/ImageCropModal";
 
 export default function UserProfile() {
   const navigate = useNavigate();
@@ -31,6 +33,10 @@ export default function UserProfile() {
   const [isSaving, setIsSaving] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [globalError, setGlobalError] = useState<string | null>(null);
+
+  // Image Cropping Modal State
+  const [isCropModalOpen, setIsCropModalOpen] = useState(false);
+  const [imageToCrop, setImageToCrop] = useState<string>("");
 
   // Form Fields State
   const [formData, setFormData] = useState({
@@ -131,7 +137,7 @@ export default function UserProfile() {
     setGlobalError(null);
   };
 
-  // Image upload preview handler
+  // Image upload preview handler - opens crop modal
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -141,15 +147,16 @@ export default function UserProfile() {
       return;
     }
 
-    if (file.size > 3 * 1024 * 1024) {
-      setErrors((prev) => ({ ...prev, avatarUrl: "Image file size should be less than 3MB." }));
+    if (file.size > 8 * 1024 * 1024) {
+      setErrors((prev) => ({ ...prev, avatarUrl: "Image file size should be less than 8MB." }));
       return;
     }
 
     const reader = new FileReader();
     reader.onload = () => {
       if (typeof reader.result === "string") {
-        setFormData((prev) => ({ ...prev, avatarUrl: reader.result as string }));
+        setImageToCrop(reader.result as string);
+        setIsCropModalOpen(true);
         setErrors((prev) => {
           const next = { ...prev };
           delete next.avatarUrl;
@@ -158,6 +165,28 @@ export default function UserProfile() {
       }
     };
     reader.readAsDataURL(file);
+
+    // Reset input so re-selecting same file triggers onChange
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleOpenCropForCurrent = () => {
+    const src = formData.avatarUrl || currentUser?.avatarUrl;
+    if (src) {
+      setImageToCrop(src);
+      setIsCropModalOpen(true);
+    }
+  };
+
+  const handleCropComplete = (croppedDataUrl: string) => {
+    setFormData((prev) => ({ ...prev, avatarUrl: croppedDataUrl }));
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next.avatarUrl;
+      return next;
+    });
   };
 
   const handleRemovePhoto = () => {
@@ -382,11 +411,21 @@ export default function UserProfile() {
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      title="Upload photo"
+                      title="Upload new photo"
                       className="p-2 rounded-xl bg-[#071A33] text-white hover:bg-[#0E5961] shadow-md transition cursor-pointer"
                     >
                       <Camera size={14} />
                     </button>
+                    {(formData.avatarUrl || currentUser.avatarUrl) && (
+                      <button
+                        type="button"
+                        onClick={handleOpenCropForCurrent}
+                        title="Crop / Adjust photo"
+                        className="p-2 rounded-xl bg-[#0E7C86] text-white hover:bg-[#0E5961] shadow-md transition cursor-pointer"
+                      >
+                        <Crop size={14} />
+                      </button>
+                    )}
                     {formData.avatarUrl && (
                       <button
                         type="button"
@@ -1099,6 +1138,15 @@ export default function UserProfile() {
           )}
         </div>
       </main>
+
+      {/* Interactive Image Cropper Modal */}
+      <ImageCropModal
+        isOpen={isCropModalOpen}
+        imageSrc={imageToCrop}
+        userName={formData.name || currentUser?.name || "Passenger"}
+        onClose={() => setIsCropModalOpen(false)}
+        onCropComplete={handleCropComplete}
+      />
     </div>
   );
 }

@@ -29,11 +29,16 @@ import { getCurrentUser } from "../../services/auth";
 
 interface RoleQuickActionsProps {
   roleConfig?: EmployeeRoleConfig;
+  onShowToast?: (message: string) => void;
 }
 
-export default function RoleQuickActions({ roleConfig: propConfig }: RoleQuickActionsProps) {
+export default function RoleQuickActions({
+  roleConfig: propConfig,
+  onShowToast,
+}: RoleQuickActionsProps) {
   const navigate = useNavigate();
   const currentUser = getCurrentUser();
+
   const viewData = getRoleQuickActionsViewData(currentUser);
   const activeConfig = propConfig || viewData.roleConfig;
   const actions: QuickActionItem[] = viewData.roleActions || [];
@@ -108,8 +113,12 @@ export default function RoleQuickActions({ roleConfig: propConfig }: RoleQuickAc
           <button
             key={action.id}
             type="button"
-            onClick={() => navigate(action.route)}
-            className={`flex flex-col justify-between p-3 rounded-lg border text-left transition group ${
+            onClick={() => {
+              if (onShowToast) onShowToast(`Navigating to ${action.label}...`);
+              navigate(action.route);
+            }}
+            className={`flex flex-col justify-between p-3 rounded-lg border text-left transition cursor-pointer group ${
+
               action.isPrimary
                 ? "border-[#0E7C86]/50 bg-gradient-to-b from-[#0A2036] to-[#071A33] hover:border-[#0E7C86] hover:bg-[#0E5961]/20 shadow-sm"
                 : "border-[#16364A] bg-[#0A2036] hover:border-[#0E7C86] hover:bg-[#0E5961]/15"

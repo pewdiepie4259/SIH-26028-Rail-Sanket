@@ -194,7 +194,7 @@ function RecommendedActions() {
           </div>
         </div>
 
-        <div className="divide-y divide-slate-100">
+        <div className="divide-y divide-[#164B5A]/60">
           {sorted.map((rec) => (
             <ActionCard
               key={rec.id}
@@ -227,38 +227,38 @@ function RecommendedActions() {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[650px] text-left">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50">
+              <tr className="border-b border-[#164B5A] bg-[#040E1B]">
                 {["Time", "Action", "Train", "Result"].map((h) => (
                   <th
                     key={h}
-                    className="px-4 py-3 text-[10px] font-bold uppercase tracking-wide text-slate-500"
+                    className="px-4 py-3 text-[10px] font-bold uppercase tracking-wide text-teal-300"
                   >
                     {h}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-[#164B5A]/50">
               {history.map((item, i) => (
                 <tr
                   key={`${item.time}-${i}`}
-                  className="hover:bg-slate-50/70 transition-colors"
+                  className="hover:bg-[#0A2036] transition-colors"
                 >
-                  <td className="px-4 py-3 text-xs text-slate-500 font-mono">
+                  <td className="px-4 py-3 text-xs text-slate-300 font-mono">
                     {item.time}
                   </td>
-                  <td className="px-4 py-3 text-xs font-semibold text-[#071A33]">
+                  <td className="px-4 py-3 text-xs font-semibold text-white">
                     {item.action}
                   </td>
-                  <td className="px-4 py-3 text-xs font-bold text-[#0E5961]">
+                  <td className="px-4 py-3 text-xs font-bold text-teal-300">
                     {item.train}
                   </td>
                   <td className="px-4 py-3">
                     <span
                       className={`rounded border px-2 py-1 text-[10px] font-bold ${
                         item.result === "No action taken"
-                          ? "border-slate-200 bg-slate-100 text-slate-600"
-                          : "border-emerald-200 bg-emerald-50 text-emerald-700"
+                          ? "border-[#164B5A] bg-[#0A2036] text-slate-300"
+                          : "border-emerald-500/50 bg-emerald-950/80 text-emerald-300"
                       }`}
                     >
                       {item.result}
@@ -289,38 +289,38 @@ function ActionCard({
 }) {
   const priorityClass =
     recommendation.priority === "Critical"
-      ? "border-red-200 bg-red-50 text-red-700"
+      ? "border-rose-500/50 bg-rose-950/80 text-rose-300"
       : recommendation.priority === "High"
-        ? "border-amber-200 bg-amber-50 text-amber-800"
-        : "border-slate-200 bg-slate-100 text-slate-700"
+        ? "border-amber-500/50 bg-amber-950/80 text-amber-300"
+        : "border-[#164B5A] bg-[#0A2036] text-slate-200"
 
   const isResolved = status === "accepted" || status === "rejected"
 
   return (
-    <div className={`p-4 transition-colors hover:bg-slate-50/60 ${isResolved ? "opacity-60" : ""}`}>
+    <div className={`p-4 transition-colors hover:bg-[#0A2036] ${isResolved ? "opacity-60" : ""}`}>
       {/* Status banner */}
       {status !== "pending" && (
         <div
           className={`mb-3 flex items-center gap-2 rounded-md border px-3 py-2 text-xs font-bold ${
             status === "accepted"
-              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+              ? "border-emerald-500/50 bg-emerald-950/80 text-emerald-300"
               : status === "rejected"
-                ? "border-red-200 bg-red-50 text-red-800"
-                : "border-amber-200 bg-amber-50 text-amber-800"
+                ? "border-rose-500/50 bg-rose-950/80 text-rose-300"
+                : "border-amber-500/50 bg-amber-950/80 text-amber-300"
           }`}
         >
-          {status === "accepted" && <Check size={14} className="shrink-0 text-emerald-600" />}
-          {status === "rejected" && <X size={14} className="shrink-0 text-red-600" />}
+          {status === "accepted" && <Check size={14} className="shrink-0 text-emerald-400" />}
+          {status === "rejected" && <X size={14} className="shrink-0 text-rose-400" />}
           {status === "accepted" && (
             <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
-              <span className="font-bold uppercase tracking-wider text-emerald-800">ACTION ACCEPTED</span>
-              <span className="text-[11px] font-medium text-emerald-700">Recorded in operational audit</span>
+              <span className="font-bold uppercase tracking-wider text-emerald-300">ACTION ACCEPTED</span>
+              <span className="text-[11px] font-medium text-emerald-400">Recorded in operational audit</span>
             </div>
           )}
           {status === "rejected" && (
             <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
-              <span className="font-bold uppercase tracking-wider text-red-800">ACTION REJECTED</span>
-              <span className="text-[11px] font-medium text-red-700">Recorded in operational audit</span>
+              <span className="font-bold uppercase tracking-wider text-rose-300">ACTION REJECTED</span>
+              <span className="text-[11px] font-medium text-rose-400">Recorded in operational audit</span>
             </div>
           )}
           {status === "reviewing" && "Under review by controller"}
@@ -336,31 +336,31 @@ function ActionCard({
             >
               {recommendation.priority}
             </span>
-            <span className="rounded border border-slate-200 bg-slate-100 px-1.5 py-0.5 text-[9px] font-semibold text-slate-700">
+            <span className="rounded border border-[#164B5A] bg-[#0A2036] px-1.5 py-0.5 text-[9px] font-semibold text-teal-300">
               {recommendation.id}
             </span>
-            <span className="text-[10px] text-slate-500">
+            <span className="text-[10px] text-slate-400">
               {recommendation.time}
             </span>
           </div>
 
           <div className="mt-3 flex items-start gap-3">
-            <div className="rounded-lg border border-slate-200 bg-slate-100 p-2">
-              <TrainFront size={18} className="text-[#0E5961]" />
+            <div className="rounded-lg border border-[#164B5A] bg-[#0A2036] p-2">
+              <TrainFront size={18} className="text-teal-300" />
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <Link
                   to={`/controller/trains/${recommendation.train}`}
-                  className="text-sm font-bold text-[#071A33] hover:text-[#F59E0B] transition-colors"
+                  className="text-sm font-bold text-white hover:text-[#FF8A3D] transition-colors"
                 >
                   {recommendation.train}
                 </Link>
-                <span className="text-[11px] font-medium text-slate-600">
+                <span className="text-[11px] font-medium text-slate-300">
                   {recommendation.trainName}
                 </span>
               </div>
-              <div className="mt-1 text-xs text-red-600 font-medium">
+              <div className="mt-1 text-xs text-rose-400 font-medium">
                 Current delay:{" "}
                 <span className="font-bold">
                   +{recommendation.currentDelay} min
@@ -370,19 +370,19 @@ function ActionCard({
           </div>
 
           <div className="mt-4 grid gap-3 md:grid-cols-2">
-            <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-3">
-              <div className="text-[9px] font-bold uppercase tracking-wide text-slate-500">
+            <div className="rounded-lg border border-[#164B5A] bg-[#0A2036]/90 p-3">
+              <div className="text-[9px] font-bold uppercase tracking-wide text-teal-300">
                 Reason
               </div>
-              <div className="mt-1.5 text-[11px] leading-5 text-slate-700">
+              <div className="mt-1.5 text-[11px] leading-5 text-slate-200">
                 {recommendation.reason}
               </div>
             </div>
-            <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-3">
-              <div className="text-[9px] font-bold uppercase tracking-wide text-slate-500">
+            <div className="rounded-lg border border-[#164B5A] bg-[#0A2036]/90 p-3">
+              <div className="text-[9px] font-bold uppercase tracking-wide text-teal-300">
                 Recommended Action
               </div>
-              <div className="mt-1.5 text-[11px] leading-5 font-semibold text-[#071A33]">
+              <div className="mt-1.5 text-[11px] leading-5 font-semibold text-white">
                 {recommendation.action}
               </div>
             </div>
@@ -410,14 +410,14 @@ function ActionCard({
           <div className="flex shrink-0 flex-row gap-2 xl:w-28 xl:flex-col">
             <button
               onClick={onAccept}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-[10px] font-bold text-emerald-800 transition hover:bg-emerald-100"
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-emerald-500/50 bg-emerald-950/60 hover:bg-emerald-900/80 px-3 py-2 text-[10px] font-bold text-emerald-300 transition cursor-pointer"
             >
               <Check size={14} />
               Accept
             </button>
             <button
               onClick={onReject}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[10px] font-bold text-red-800 transition hover:bg-red-100"
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-rose-500/50 bg-rose-950/60 hover:bg-rose-900/80 px-3 py-2 text-[10px] font-bold text-rose-300 transition cursor-pointer"
             >
               <X size={14} />
               Reject
@@ -425,7 +425,7 @@ function ActionCard({
             {status === "pending" && (
               <button
                 onClick={onReview}
-                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-[10px] font-bold text-slate-700 transition hover:bg-slate-200"
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-[#164B5A] bg-[#0A2036] hover:bg-[#16364A] px-3 py-2 text-[10px] font-bold text-slate-200 transition cursor-pointer"
               >
                 Review
                 <ChevronRight size={13} />
@@ -448,15 +448,15 @@ function ImpactItem({
   warning?: boolean
 }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2.5">
-      <div className="text-[9px] font-bold uppercase tracking-wide text-slate-500">
+    <div className="rounded-lg border border-[#164B5A] bg-[#0A2036]/90 px-3 py-2.5">
+      <div className="text-[9px] font-bold uppercase tracking-wide text-teal-300">
         {label}
       </div>
       <div
         className={
           warning
-            ? "mt-1 text-[11px] font-bold text-amber-800"
-            : "mt-1 text-[11px] font-bold text-[#071A33]"
+            ? "mt-1 text-[11px] font-bold text-[#FF8A3D]"
+            : "mt-1 text-[11px] font-bold text-white"
         }
       >
         {value}

@@ -427,7 +427,7 @@ export default function ControllerDispatches() {
                 <CheckCircle2 size={13} className="text-teal-400" />
                 Compliance Tracking
               </div>
-              Field staff must review and digitally acknowledge directives in their RailDrishti console before shift completion.
+              Field staff must review and digitally acknowledge directives in their RailSanket console before shift completion.
             </div>
           </div>
         </div>

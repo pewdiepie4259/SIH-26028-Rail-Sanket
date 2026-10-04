@@ -1,5 +1,5 @@
 /**
- * RailDrishti Operational Report Generator
+ * RailSanket Operational Report Generator
  * Generates standard, valid PDF-1.4 binary files directly in the browser,
  * as well as CSV and JSON formats, triggering direct downloads to the user's computer.
  */
@@ -34,7 +34,7 @@ function buildPdfDocument(pagesContent: string[]): Uint8Array {
   const fontBoldNum = fontNormalNum + 1;
 
   const pdfParts: string[] = [];
-  pdfParts.push("%PDF-1.4\n%RailDrishti-2026\n");
+  pdfParts.push("%PDF-1.4\n%RailSanket-2026\n");
 
   // Catalog
   pdfParts.push(`1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n`);
@@ -166,7 +166,7 @@ export function downloadCaseReportPdf(cases: OperationalCase[], divisionName = "
     s += "/F1 9 Tf\n";
     s += "0.85 0.92 0.95 rg\n";
     s += "48 775 Td\n";
-    s += `(RAIL DRISHTI SECTION CONTROL - ${escapePdf(divisionName.toUpperCase())}) Tj\n`;
+    s += `(RAIL SANKET SECTION CONTROL - ${escapePdf(divisionName.toUpperCase())}) Tj\n`;
     s += "ET\n";
 
     // Metadata Strip
@@ -312,7 +312,7 @@ export function downloadCaseReportPdf(cases: OperationalCase[], divisionName = "
     s += "/F1 7 Tf\n";
     s += "0.45 0.5 0.55 rg\n";
     s += "35 34 Td\n";
-    s += "(RailDrishti Operational Telemetry & Control Platform - Official Division Report) Tj\n";
+    s += "(RailSanket Operational Telemetry & Control Platform - Official Division Report) Tj\n";
     s += "ET\n";
 
     s += "BT\n";
@@ -328,7 +328,7 @@ export function downloadCaseReportPdf(cases: OperationalCase[], divisionName = "
   const pdfBytes = buildPdfDocument(pagesContent);
   const blob = new Blob([pdfBytes as unknown as BlobPart], { type: "application/pdf" });
   const dateFileStr = now.toISOString().slice(0, 10);
-  triggerFileDownload(blob, `RailDrishti_Operational_Report_${dateFileStr}.pdf`);
+  triggerFileDownload(blob, `RailSanket_Operational_Report_${dateFileStr}.pdf`);
 }
 
 /**
@@ -478,7 +478,7 @@ export function downloadAuditReportPdf(entries: AuditRecord[], title = "Controll
     s += "/F1 7 Tf\n";
     s += "0.45 0.5 0.55 rg\n";
     s += "35 34 Td\n";
-    s += "(RailDrishti Operational Audit Ledger - Section Controller Governance Compliance) Tj\n";
+    s += "(RailSanket Operational Audit Ledger - Section Controller Governance Compliance) Tj\n";
     s += "ET\n";
 
     pagesContent.push(s);
@@ -487,7 +487,7 @@ export function downloadAuditReportPdf(entries: AuditRecord[], title = "Controll
   const pdfBytes = buildPdfDocument(pagesContent);
   const blob = new Blob([pdfBytes as unknown as BlobPart], { type: "application/pdf" });
   const dateFileStr = now.toISOString().slice(0, 10);
-  triggerFileDownload(blob, `RailDrishti_Operational_Audit_${dateFileStr}.pdf`);
+  triggerFileDownload(blob, `RailSanket_Operational_Audit_${dateFileStr}.pdf`);
 }
 
 /**
@@ -537,7 +537,7 @@ export function downloadCaseReportCsv(cases: OperationalCase[]): void {
   const csvContent = "\uFEFF" + [headers.join(","), ...rows].join("\r\n");
   const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
   const dateStr = new Date().toISOString().slice(0, 10);
-  triggerFileDownload(blob, `RailDrishti_Operational_Cases_${dateStr}.csv`);
+  triggerFileDownload(blob, `RailSanket_Operational_Cases_${dateStr}.csv`);
 }
 
 /**
@@ -546,7 +546,7 @@ export function downloadCaseReportCsv(cases: OperationalCase[]): void {
 export function downloadCaseReportJson(cases: OperationalCase[]): void {
   const jsonContent = JSON.stringify(
     {
-      system: "RailDrishti Section Control Operational Incidents & Audit Desk",
+      system: "RailSanket Section Control Operational Incidents & Audit Desk",
       exportedAt: new Date().toISOString(),
       totalRecords: cases.length,
       cases,
@@ -556,7 +556,7 @@ export function downloadCaseReportJson(cases: OperationalCase[]): void {
   );
   const blob = new Blob([jsonContent], { type: "application/json;charset=utf-8;" });
   const dateStr = new Date().toISOString().slice(0, 10);
-  triggerFileDownload(blob, `RailDrishti_Operational_Cases_${dateStr}.json`);
+  triggerFileDownload(blob, `RailSanket_Operational_Cases_${dateStr}.json`);
 }
 
 /**
@@ -574,7 +574,7 @@ export async function downloadCaseReport(
     const res = await fetch(backendUrl);
     if (res.ok) {
       const blob = await res.blob();
-      const filename = `RailDrishti_Operational_Report_${dateStr}.${format}`;
+      const filename = `RailSanket_Operational_Report_${dateStr}.${format}`;
       triggerFileDownload(blob, filename);
       return true;
     }

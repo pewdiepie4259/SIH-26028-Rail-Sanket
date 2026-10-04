@@ -13,7 +13,8 @@ import {
   RotateCcw,
   Layout,
   AlertCircle,
-  Trash2
+  Trash2,
+  Volume2
 } from 'lucide-react';
 import { useLiveTelemetry } from '../hooks/useLiveTelemetry';
 
@@ -56,6 +57,9 @@ export default function Settings() {
   // 1. Telemetry & Refresh Settings
   const [streamInterval, setStreamInterval] = useState<number>(() => {
     return Number(localStorage.getItem('raildrishti_stream_interval')) || 4;
+  });
+  const [streamCompression, setStreamCompression] = useState<boolean>(() => {
+    return localStorage.getItem('raildrishti_stream_compression') !== 'false';
   });
 
   // 2. Alert Controls
@@ -130,9 +134,19 @@ export default function Settings() {
 
   // UI Feedback States
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [cacheClearedSuccess, setCacheClearedSuccess] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showClearCacheConfirm, setShowClearCacheConfirm] = useState(false);
   const [cacheSizeInfo, setCacheSizeInfo] = useState<string>("Calculating...");
+
+  // Check if cache was cleared before reload
+  useEffect(() => {
+    if (sessionStorage.getItem("raildrishti_cache_cleared_toast") === "true") {
+      sessionStorage.removeItem("raildrishti_cache_cleared_toast");
+      setCacheClearedSuccess(true);
+      setTimeout(() => setCacheClearedSuccess(false), 4500);
+    }
+  }, []);
 
   // Compute storage info
   useEffect(() => {
@@ -182,7 +196,7 @@ export default function Settings() {
 
         setHealthStatus({
           status: "healthy",
-          service: data.service || "RailDrishti Real-Time Telemetry API",
+          service: data.service || "RailSanket Real-Time Telemetry API",
           activeTrainsCount: activeCount,
           networkNodesCount: 14,
           lastSyncTime: new Date().toLocaleTimeString(),
@@ -211,6 +225,24 @@ export default function Settings() {
 
   useEffect(() => {
     pingBackend();
+    const handleSync = () => {
+      const savedFormat = localStorage.getItem('raildrishti_time_format') as "24h" | "12h";
+      if (savedFormat && (savedFormat === "24h" || savedFormat === "12h")) {
+        setTimeFormat(savedFormat);
+      }
+      const savedLang = localStorage.getItem('raildrishti_lang_code');
+      if (savedLang) {
+        setSelectedLanguageCode(savedLang);
+      }
+      const savedDensity = localStorage.getItem('raildrishti_density') as "comfortable" | "compact";
+      if (savedDensity) {
+        setDensity(savedDensity);
+      }
+    };
+    window.addEventListener("raildrishti_settings_updated", handleSync);
+    return () => {
+      window.removeEventListener("raildrishti_settings_updated", handleSync);
+    };
   }, []);
 
   // Handle Browser Notification Toggle
@@ -235,11 +267,44 @@ export default function Settings() {
     }
   };
 
+  // Play audio chime preview for bottleneck auditory alert
+  const playChimePreview = () => {
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(520, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(680, ctx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.12, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.35);
+    } catch {}
+  };
+
+  // Send real test desktop notification
+  const sendTestNotification = () => {
+    if ("Notification" in window && Notification.permission === "granted") {
+      new Notification("RailSanket Telemetry Alert", {
+        body: "Real-time dispatch alerts and section monitoring are active.",
+        icon: "/favicon.ico",
+      });
+    } else {
+      handleToggleNotifications(true);
+    }
+  };
+
   // Save all preferences
   const handleSaveSettings = () => {
     // 1. Refresh & Telemetry
     localStorage.setItem('raildrishti_stream_interval', String(streamInterval));
     localStorage.setItem('raildrishti_refresh_interval', String(streamInterval));
+    localStorage.setItem('raildrishti_stream_compression', String(streamCompression));
 
     // 2. Alerts
     localStorage.setItem('raildrishti_alert_critical', String(criticalAlerts));
@@ -264,6 +329,8 @@ export default function Settings() {
     localStorage.setItem('raildrishti_remember_filters', String(rememberFilters));
     localStorage.setItem('raildrishti_default_landing', defaultLanding);
 
+    document.documentElement.classList.toggle('density-compact', density === 'compact');
+
     // 5. Language
     const chosenLang = LANGUAGE_OPTIONS.find((l) => l.code === selectedLanguageCode);
     if (chosenLang) {
@@ -272,6 +339,12 @@ export default function Settings() {
       const cookieVal = chosenLang.code === "en" ? "" : `/en/${chosenLang.code}`;
       document.cookie = `googtrans=${cookieVal}; path=/;`;
       document.cookie = `googtrans=${cookieVal}; path=/; domain=${window.location.hostname};`;
+
+      const combo = document.querySelector<HTMLSelectElement>(".goog-te-combo");
+      if (combo) {
+        combo.value = chosenLang.code;
+        combo.dispatchEvent(new Event("change"));
+      }
     }
 
     // 6. Notifications
@@ -309,7 +382,7 @@ export default function Settings() {
     setBrowserNotifications(false);
     setNotificationLevel("critical");
 
-    // Remove only preference keys, keeping user account/login safe
+    // Remove preference keys, keeping user account/login safe
     const PREF_KEYS = [
       'raildrishti_stream_interval',
       'raildrishti_refresh_interval',
@@ -332,12 +405,54 @@ export default function Settings() {
       'raildrishti_default_landing',
       'raildrishti_browser_notifications',
       'raildrishti_notification_level',
+      'raildrishti_lang_code',
+      'raildrishti_lang_native',
+      'raildrishti_stream_compression',
     ];
 
     PREF_KEYS.forEach((k) => localStorage.removeItem(k));
+
+    // Reset state & preferences explicitly to system defaults
+    setStreamCompression(true);
+    localStorage.setItem('raildrishti_lang_code', 'en');
+    localStorage.setItem('raildrishti_lang_native', 'English');
+    localStorage.setItem('raildrishti_time_format', '24h');
+    localStorage.setItem('raildrishti_density', 'comfortable');
+    localStorage.setItem('raildrishti_stream_compression', 'true');
+
+    // Clear translation cookies
+    document.cookie = "googtrans=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+    document.cookie = `googtrans=; path=/; domain=${window.location.hostname}; expires=Thu, 01 Jan 1970 00:00:00 UTC;`;
+    document.cookie = "googtrans=/en/en; path=/;";
+    document.cookie = `googtrans=/en/en; path=/; domain=${window.location.hostname};`;
+
+    const combo = document.querySelector<HTMLSelectElement>(".goog-te-combo");
+    if (combo) {
+      combo.value = "en";
+      combo.dispatchEvent(new Event("change"));
+    }
+
+    try {
+      const bannerIframe = document.querySelector<HTMLIFrameElement>(".goog-te-banner-frame");
+      if (bannerIframe && bannerIframe.contentDocument) {
+        const restoreBtn = bannerIframe.contentDocument.querySelector<HTMLElement>(".goog-te-button button");
+        if (restoreBtn) restoreBtn.click();
+      }
+    } catch {}
+
+    document.documentElement.classList.remove("density-compact");
+
+    // Notify other components (PublicLayout clock, language indicator, etc.)
+    window.dispatchEvent(new Event("raildrishti_settings_updated"));
+
     setShowResetConfirm(false);
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 3000);
+
+    // If Google Translate combo was not found and page was translated, reload to guarantee English
+    if (!combo && selectedLanguageCode !== 'en') {
+      window.location.reload();
+    }
   };
 
   // Safe cache clear (preserves user session & account)
@@ -356,16 +471,16 @@ export default function Settings() {
     if (sessUser) sessionStorage.setItem("raildrishti_auth_user", sessUser);
 
     setShowClearCacheConfirm(false);
-    alert("Application cache cleared successfully. User account and authentication were preserved.");
+    sessionStorage.setItem("raildrishti_cache_cleared_toast", "true");
     window.location.reload();
   };
 
   return (
-    <div className="min-h-screen bg-[#F4F7FA] py-8 font-sans pb-16">
+    <div className="settings-page min-h-screen w-full max-w-full overflow-x-hidden bg-gradient-to-br from-[#FFF4E1] via-white to-[#FFF4E1] py-8 font-sans pb-16">
       <div className="mx-auto max-w-[1240px] px-4 sm:px-6 lg:px-8">
         
         {/* Page Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-200">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-amber-200/80">
           <div>
             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.15em] text-[#0E7C86]">
               <Sliders size={16} />
@@ -374,9 +489,6 @@ export default function Settings() {
             <h1 className="mt-1 text-2xl sm:text-3xl font-extrabold tracking-tight text-[#071A33]">
               Application Settings
             </h1>
-            <p className="mt-1 text-xs sm:text-sm text-slate-500">
-              Configure telemetry frequency, interactive map projection, and Section Controller parameters.
-            </p>
           </div>
 
           <div className="flex items-center gap-2.5">
@@ -411,6 +523,17 @@ export default function Settings() {
           </div>
         )}
 
+        {/* Cache Cleared Alert Toast */}
+        {cacheClearedSuccess && (
+          <div className="mt-4 p-3.5 rounded-2xl bg-sky-50 border border-sky-200 text-sky-900 text-xs font-semibold flex items-center justify-between shadow-xs animate-in fade-in slide-in-from-top-2">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 size={16} className="text-sky-600" />
+              <span>Application cache wiped successfully. Telemetry and buffer stores reset.</span>
+            </div>
+            <span className="text-[11px] text-sky-700 font-mono">CLEARED</span>
+          </div>
+        )}
+
         {/* 1. Real-Time Backend Connectivity & Health Status Card */}
         <div className="mt-6 p-5 sm:p-6 rounded-3xl bg-white border border-slate-200 shadow-sm flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
           <div className="flex items-start sm:items-center gap-4">
@@ -423,7 +546,7 @@ export default function Settings() {
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2.5">
-                <span className="font-bold text-slate-900 text-base">RailDrishti Unified Engine Core</span>
+                <span className="font-bold text-slate-900 text-base">RailSanket Unified Engine Core</span>
                 <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-mono font-bold tracking-wide uppercase border ${
                   healthStatus?.status === 'healthy' 
                     ? 'bg-emerald-100 text-emerald-800 border-emerald-300' 
@@ -515,9 +638,17 @@ export default function Settings() {
                   <div className="font-bold text-slate-800">Telemetry Stream Compression</div>
                   <div className="text-slate-500 text-[11px]">Gzip binary telemetry payload over WebSocket</div>
                 </div>
-                <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
-                  Enabled
-                </span>
+                <button
+                  type="button"
+                  onClick={() => setStreamCompression((prev) => !prev)}
+                  className={`text-[11px] font-bold px-3 py-1.5 rounded-xl border transition cursor-pointer ${
+                    streamCompression
+                      ? "text-emerald-700 bg-emerald-50 border-emerald-300 hover:bg-emerald-100"
+                      : "text-slate-500 bg-slate-100 border-slate-300 hover:bg-slate-200"
+                  }`}
+                >
+                  {streamCompression ? "Enabled (Gzip)" : "Disabled (Raw JSON)"}
+                </button>
               </div>
             </div>
           </div>
@@ -571,13 +702,27 @@ export default function Settings() {
 
               <div className="flex items-center justify-between pt-2 border-t border-slate-100">
                 <div>
-                  <span className="font-bold text-slate-800">Bottleneck Auditory Chimes</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-slate-800">Bottleneck Auditory Chimes</span>
+                    <button
+                      type="button"
+                      onClick={playChimePreview}
+                      title="Test Audio Chime"
+                      className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 cursor-pointer transition"
+                    >
+                      <Volume2 size={11} className="text-[#0E7C86]" />
+                      <span>Test Chime</span>
+                    </button>
+                  </div>
                   <p className="text-slate-500 text-[11px]">Play audio ping on Section Controller DSS bottleneck detection</p>
                 </div>
                 <input
                   type="checkbox"
                   checked={soundAlerts}
-                  onChange={(e) => setSoundAlerts(e.target.checked)}
+                  onChange={(e) => {
+                    setSoundAlerts(e.target.checked);
+                    if (e.target.checked) playChimePreview();
+                  }}
                   className="h-4 w-4 text-[#0E7C86] rounded border-slate-300 focus:ring-[#0E7C86] cursor-pointer"
                 />
               </div>
@@ -786,20 +931,37 @@ export default function Settings() {
               </div>
 
               {browserNotifications && (
-                <div className="flex items-center justify-between pt-3 border-t border-slate-100 animate-in fade-in">
-                  <div>
-                    <div className="font-bold text-slate-800">Dispatch Filter Level</div>
-                    <div className="text-slate-500 text-[11px]">Threshold for desktop alert notifications</div>
+                <>
+                  <div className="flex items-center justify-between pt-3 border-t border-slate-100 animate-in fade-in">
+                    <div>
+                      <div className="font-bold text-slate-800">Dispatch Filter Level</div>
+                      <div className="text-slate-500 text-[11px]">Threshold for desktop alert notifications</div>
+                    </div>
+                    <select
+                      value={notificationLevel}
+                      onChange={(e) => setNotificationLevel(e.target.value as "all" | "critical")}
+                      className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 font-bold text-slate-800 text-xs outline-none"
+                    >
+                      <option value="critical">Critical Only</option>
+                      <option value="all">All Operational Alerts</option>
+                    </select>
                   </div>
-                  <select
-                    value={notificationLevel}
-                    onChange={(e) => setNotificationLevel(e.target.value as "all" | "critical")}
-                    className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 font-bold text-slate-800 text-xs outline-none"
-                  >
-                    <option value="critical">Critical Only</option>
-                    <option value="all">All Operational Alerts</option>
-                  </select>
-                </div>
+
+                  <div className="flex items-center justify-between pt-3 border-t border-slate-100 animate-in fade-in">
+                    <div>
+                      <div className="font-bold text-slate-800">Test Notification</div>
+                      <div className="text-slate-500 text-[11px]">Send a sample desktop push alert to your system tray</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={sendTestNotification}
+                      className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold border border-slate-200 cursor-pointer transition flex items-center gap-1.5"
+                    >
+                      <Bell size={12} className="text-[#0E7C86]" />
+                      <span>Send Test</span>
+                    </button>
+                  </div>
+                </>
               )}
             </div>
           </div>

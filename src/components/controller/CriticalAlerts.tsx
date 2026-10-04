@@ -128,26 +128,25 @@ function CriticalAlerts({ alerts }: CriticalAlertsProps) {
   }
 
   return (
-    <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b border-[#164B5A] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-4 py-3">
-        <div className="flex items-center gap-2">
-          <ShieldAlert
-            size={16}
-            className="text-[#F59E0B]"
-          />
+    <section className="overflow-hidden rounded-2xl border border-[#164B5A] bg-[#071A33]/90 shadow-xl backdrop-blur-md flex flex-col justify-between">
+      <div className="flex items-center justify-between border-b border-[#164B5A] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-5 py-4">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#F59E0B]/20 border border-[#F59E0B]/40 text-[#F59E0B]">
+            <ShieldAlert size={16} />
+          </div>
 
           <div>
-            <h3 className="text-sm font-bold text-white">
+            <h3 className="text-sm font-bold text-white tracking-wide">
               Critical Operations
             </h3>
 
-            <p className="mt-0.5 text-[10px] text-teal-200/80">
-              Live operational alerts requiring attention
+            <p className="mt-0.5 text-[11px] text-teal-200/90 font-medium">
+              Live operational alerts requiring immediate attention
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2 bg-[#040E1B] px-3 py-1 rounded-full border border-[#164B5A]">
           <span
             className={`h-2 w-2 rounded-full ${
               unacknowledgedCount > 0
@@ -156,13 +155,13 @@ function CriticalAlerts({ alerts }: CriticalAlertsProps) {
             }`}
           />
 
-          <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-teal-200">
+          <span className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-teal-200">
             {unacknowledgedCount} active
           </span>
         </div>
       </div>
 
-      <div className="divide-y divide-slate-100 max-h-[360px] overflow-y-auto">
+      <div className="divide-y divide-[#164B5A]/60 overflow-y-auto">
         {displayAlerts.map((alert, index) => {
           let message = "Operational headway caution in effect across section"
           if (
@@ -225,90 +224,90 @@ function CriticalAlerts({ alerts }: CriticalAlertsProps) {
           return (
             <div
               key={`${alertId}-${index}`}
-              className={`p-4 transition-colors hover:bg-slate-50 ${
+              className={`p-5 transition-colors hover:bg-[#0A2036] ${
                 isAcknowledged ? "opacity-60" : ""
               }`}
             >
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div className="flex gap-3">
+              <div className="flex flex-col gap-3.5 lg:flex-row lg:items-start lg:justify-between">
+                <div className="flex items-start gap-3.5 min-w-0 flex-1">
                   <div
-                    className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${
+                    className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border shadow-sm ${
                       isCritical
-                        ? "border-red-200 bg-red-50 text-red-600"
-                        : "border-amber-200 bg-amber-50 text-[#F59E0B]"
+                        ? "border-rose-500/50 bg-rose-950/60 text-rose-400"
+                        : "border-amber-500/50 bg-amber-950/60 text-[#F59E0B]"
                     }`}
                   >
-                    <AlertTriangle size={16} />
+                    <AlertTriangle size={18} />
                   </div>
 
-                  <div className="min-w-0 flex-1">
+                  <div className="min-w-0 flex-1 space-y-1.5">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-mono text-[10px] font-bold text-slate-500">
+                      <span className="font-mono text-[11px] font-bold text-slate-300 bg-[#040E1B] px-2 py-0.5 rounded border border-[#164B5A]">
                         {alertId}
                       </span>
                       <span
-                        className={`rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${
+                        className={`rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
                           isCritical
-                            ? "bg-red-50 text-red-700 border border-red-200"
-                            : "bg-amber-50 text-amber-700 border border-amber-200"
+                            ? "bg-rose-950/80 text-rose-300 border border-rose-500/50"
+                            : "bg-amber-950/80 text-amber-300 border border-amber-500/50"
                         }`}
                       >
                         {type}
                       </span>
                       {isAcknowledged && (
-                        <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-700 border border-emerald-200">
+                        <span className="rounded bg-emerald-950/80 px-2 py-0.5 text-[10px] font-semibold text-emerald-300 border border-emerald-500/50">
                           Acknowledged
                         </span>
                       )}
                     </div>
 
-                    <p className="mt-1 text-xs font-bold leading-5 text-[#071A33]">
+                    <p className="text-xs sm:text-sm font-bold leading-relaxed text-white">
                       {message}
                     </p>
 
-                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-slate-500">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-1 text-[11px] text-slate-300">
                       {trainNumber && (
                         <Link
                           to={`/controller/trains/${trainNumber}`}
-                          className="font-semibold text-[#0E7C86] hover:text-[#F59E0B] transition-colors"
+                          className="font-semibold text-teal-300 hover:text-[#F59E0B] transition-colors"
                         >
                           Train {trainNumber}
                         </Link>
                       )}
 
-                      <span className="flex items-center gap-1">
-                        <Clock3 size={11} />
+                      <span className="flex items-center gap-1.5 text-slate-300">
+                        <Clock3 size={12} className="text-slate-400" />
                         {timestamp}
                       </span>
 
-                      <span className="text-slate-500">
-                        Destination: <span className="font-semibold text-slate-700">{destination.label}</span>
+                      <span className="text-slate-400">
+                        Destination: <span className="font-semibold text-teal-200">{destination.label}</span>
                       </span>
                     </div>
                   </div>
                 </div>
 
                 {/* Actions */}
-                <div className="flex shrink-0 items-center gap-2 self-end sm:self-center">
+                <div className="flex shrink-0 items-center gap-2.5 self-end lg:self-center pt-2 lg:pt-0">
                   <button
                     onClick={() => handleAcknowledge(alertId, message)}
                     disabled={isAcknowledged}
-                    className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wide transition-colors ${
+                    className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider transition-all ${
                       isAcknowledged
-                        ? "border-emerald-200 bg-emerald-50 text-emerald-700 cursor-default"
-                        : "border-slate-200 bg-white text-slate-700 hover:text-[#071A33] hover:border-[#F59E0B]"
+                        ? "border-emerald-500/40 bg-emerald-950/60 text-emerald-300 cursor-default"
+                        : "border-[#164B5A] bg-[#0A2036] text-slate-200 hover:text-white hover:border-[#F59E0B] hover:bg-[#16364A] cursor-pointer"
                     }`}
                   >
-                    <Check size={11} />
+                    <Check size={13} />
                     {isAcknowledged ? "Acknowledged" : "Acknowledge"}
                   </button>
 
                   <Link
                     to={destination.url}
-                    className="inline-flex items-center gap-1 rounded-lg border border-[#0E7C86] bg-[#0E7C86] hover:bg-[#0E5961] px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wide text-white transition-colors shadow-xs"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-teal-500/40 bg-[#0E7C86] hover:bg-[#0E5961] px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-white transition-all shadow-sm"
                   >
                     Review
-                    <ChevronRight size={12} />
+                    <ChevronRight size={14} />
                   </Link>
                 </div>
               </div>
@@ -317,13 +316,13 @@ function CriticalAlerts({ alerts }: CriticalAlertsProps) {
         })}
       </div>
 
-      <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50 px-4 py-2.5">
-        <span className="text-[10px] text-slate-500">
+      <div className="flex items-center justify-between border-t border-[#164B5A] bg-[#040E1B] px-5 py-3">
+        <span className="text-xs text-slate-400">
           Showing {displayAlerts.length} operational alerts
         </span>
 
-        <span className="text-[10px] font-semibold text-[#0E7C86]">
-          Real-time stream active
+        <span className="text-xs font-semibold text-teal-300">
+          Real-time telemetry active
         </span>
       </div>
     </section>

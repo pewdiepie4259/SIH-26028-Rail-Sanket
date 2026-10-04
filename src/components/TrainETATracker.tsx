@@ -30,7 +30,7 @@ try {
     console.warn(e);
 }
 
-// Custom Pulsing Train Marker with RailDrishti palette
+// Custom Pulsing Train Marker with RailSanket palette
 const trainIcon = new L.DivIcon({
     html: `
     <div style="position: relative; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; margin-left: -22px; margin-top: -22px;">
@@ -48,7 +48,7 @@ const trainIcon = new L.DivIcon({
     className: ''
 });
 
-// Station Marker Dot with RailDrishti palette
+// Station Marker Dot with RailSanket palette
 const createStationIcon = (isSelected: boolean, isCurrent: boolean) => new L.DivIcon({
     html: `<div style="width: ${isSelected ? '16px' : '11px'}; height: ${isSelected ? '16px' : '11px'}; border-radius: 50%; background: ${isSelected ? '#F59E0B' : isCurrent ? '#0E7C86' : '#071A33'}; border: 2px solid #ffffff; box-shadow: 0 0 ${isSelected ? '10px #F59E0B' : '4px rgba(7,26,51,0.5)'}; margin-left: ${isSelected ? '-8px' : '-5px'}; margin-top: ${isSelected ? '-8px' : '-5px'}; cursor: pointer;"></div>`,
     className: ''
@@ -593,7 +593,7 @@ export default function TrainETATracker() {
     }, [validStops, liveStatus]);
 
     return (
-        <div className="flex flex-col h-[calc(100vh-4rem)] w-full bg-gradient-to-br from-[#FFF4E1] via-white to-[#FFF4E1] text-[#071A33] overflow-hidden">
+        <div className="train-eta-page flex flex-col h-[calc(100vh-4rem)] w-full bg-gradient-to-br from-[#FFF4E1] via-white to-[#FFF4E1] text-[#071A33] overflow-hidden">
 
             {/* 1. TOP SUB-CONTROL BAR */}
             <div className="border-b border-slate-200 bg-white/95 px-4 py-2.5 sm:px-6 shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shrink-0 z-30">
@@ -618,7 +618,7 @@ export default function TrainETATracker() {
                     </div>
                 </div>
 
-                {/* SEARCH BAR with RailDrishti gradient button */}
+                {/* SEARCH BAR with RailSanket gradient button */}
                 <div className="relative w-full sm:w-[360px] z-40">
                     <form
                         onSubmit={(e) => {

@@ -37,20 +37,20 @@ const cascade: CascadeNode[] = [
 
 function DelayCascade() {
   return (
-    <section className="controller-panel overflow-hidden rounded-xl">
-      <div className="controller-header px-5 py-3.5">
-        <div className="flex items-center gap-2">
+    <section className="rounded-2xl border border-[#164B5A] bg-[#071A33]/90 shadow-xl backdrop-blur-md overflow-hidden">
+      <div className="border-b border-[#164B5A] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-5 py-4">
+        <div className="flex items-center gap-2.5">
           <Network
-            size={17}
+            size={18}
             className="text-[#F59E0B]"
           />
 
           <div>
-            <h3 className="text-sm font-bold text-white">
+            <h3 className="text-sm font-extrabold text-white">
               Delay Cascade
             </h3>
 
-            <p className="mt-0.5 text-xs text-[#D7E5EC]/80">
+            <p className="mt-0.5 text-xs font-medium text-slate-200">
               Predicted downstream impact from current network conditions.
             </p>
           </div>
@@ -58,80 +58,80 @@ function DelayCascade() {
       </div>
 
       <div className="p-5">
-        <div className="rounded-lg border border-amber-200 bg-amber-50/80 p-4">
+        <div className="rounded-xl border border-amber-500/40 bg-amber-950/40 p-3.5">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-amber-800">
+              <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-amber-300">
                 Network propagation
               </div>
 
-              <div className="mt-1 text-sm font-bold text-[#071A33]">
+              <div className="mt-0.5 text-xs sm:text-sm font-bold text-white">
                 Current disruption may affect 3 downstream movements
               </div>
             </div>
 
             <ArrowDownRight
               size={20}
-              className="shrink-0 text-amber-600"
+              className="shrink-0 text-[#FF8A3D]"
             />
           </div>
         </div>
 
-        <div className="mt-4 space-y-3">
+        <div className="mt-3.5 space-y-2.5">
           {cascade.map((node, index) => (
             <div key={node.train}>
-              <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-3 transition hover:bg-slate-50">
+              <div className="rounded-xl border border-[#164B5A] bg-[#040E1B]/90 p-3 transition hover:border-teal-400 hover:bg-[#071A33]">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <TrainFront
-                      size={14}
-                      className="text-[#0E5961]"
+                      size={15}
+                      className="text-teal-300"
                     />
 
-                    <span className="text-xs font-bold text-[#071A33]">
-                      {node.train}
+                    <span className="text-xs font-bold text-white tracking-wide">
+                      #{node.train}
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 font-mono">
                     <Clock3
-                      size={12}
-                      className="text-amber-600"
+                      size={13}
+                      className="text-amber-400"
                     />
 
-                    <span className="text-[10px] font-bold text-amber-700">
+                    <span className="text-[11px] font-bold text-[#FF8A3D]">
                       +{node.delay} min
                     </span>
                   </div>
                 </div>
 
-                <div className="mt-2 flex items-center gap-2 text-[10px] text-slate-600">
-                  <span className="font-semibold text-slate-800">{node.station}</span>
+                <div className="mt-1.5 flex items-center gap-2 text-xs font-medium text-slate-200">
+                  <span className="font-bold text-teal-300">{node.station}</span>
 
                   <ArrowRight
-                    size={11}
-                    className="text-slate-400"
+                    size={12}
+                    className="text-slate-400 shrink-0"
                   />
 
-                  <span>{node.consequence}</span>
+                  <span className="text-slate-100">{node.consequence}</span>
                 </div>
               </div>
 
               {index < cascade.length - 1 && (
-                <div className="ml-5 h-3 border-l border-dashed border-teal-300" />
+                <div className="ml-5 h-2.5 border-l border-dashed border-teal-500/50" />
               )}
             </div>
           ))}
         </div>
 
-        <div className="mt-4 flex items-center justify-between border-t border-slate-200 pt-4">
-          <span className="text-[10px] text-slate-500">
-            Forecast horizon: <span className="font-bold text-[#071A33]">Next 45 mins</span>
+        <div className="mt-4 flex items-center justify-between border-t border-[#164B5A] pt-3.5">
+          <span className="text-xs text-slate-300">
+            Forecast horizon: <span className="font-bold text-white">Next 45 mins</span>
           </span>
 
           <Link
             to="/controller/cascade"
-            className="text-[10px] font-bold uppercase tracking-wide text-[#0E5961] transition hover:text-[#F59E0B]"
+            className="text-xs font-bold uppercase tracking-wider text-teal-300 transition hover:text-[#FF8A3D]"
           >
             Full Cascade View →
           </Link>

@@ -300,7 +300,7 @@ export default function CaseDetail() {
       )}
 
       {/* Top Header Bar */}
-      <header className="sticky top-0 z-30 border-b border-[#16364A] bg-[#030E1A]/90 backdrop-blur-md px-4 py-3.5 sm:px-8">
+      <header className="sticky top-0 z-30 border-b border-[#164B5A] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-4 py-3.5 sm:px-8 shadow-lg">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
           <div className="flex items-center gap-3">
             <button
@@ -314,7 +314,7 @@ export default function CaseDetail() {
             <div className="h-4 w-px bg-[#16364A]" />
             <div className="flex items-center gap-2">
               <span className="text-xs font-mono font-bold uppercase tracking-wider text-[#0E7C86]">
-                RailDrishti Operational Case
+                RailSanket Operational Case
               </span>
               <span className="text-slate-500">•</span>
               <span className="font-mono text-sm font-black text-amber-400">{operationalCase.id}</span>

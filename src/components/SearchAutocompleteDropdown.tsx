@@ -19,7 +19,7 @@ export function SearchAutocompleteDropdown({
   return (
     <div
       role="listbox"
-      className="absolute left-0 right-0 top-full z-50 mt-1.5 max-h-80 overflow-y-auto rounded-xl border border-[#164B5A] bg-[#071A33] p-1.5 text-left shadow-2xl backdrop-blur-md"
+      className="absolute left-0 right-0 top-full z-[9999] mt-1.5 max-h-80 overflow-y-auto rounded-xl border border-[#164B5A] bg-[#071A33] p-1.5 text-left shadow-2xl backdrop-blur-md"
     >
       <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#F59E0B]">
         Matching Stations & Trains

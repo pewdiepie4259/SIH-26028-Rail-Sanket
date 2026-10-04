@@ -61,21 +61,21 @@ function AlertMarquee() {
   }
 
   return (
-    <section className="relative z-20 border-b border-[#F59E0B]/40 bg-[#FFF8EC]">
-      <div className="mx-auto flex h-12 max-w-[1600px] items-center px-6 lg:px-12">
-        <div className="z-10 flex h-full shrink-0 items-center gap-2 border-r border-[#F59E0B]/40 bg-[#FFF8EC] pr-5">
+    <section className="relative z-20 w-full max-w-full overflow-hidden border-b border-[#F59E0B]/40 bg-[#FFF8EC]">
+      <div className="mx-auto flex h-12 max-w-[1600px] w-full items-center px-4 sm:px-6 lg:px-12 min-w-0">
+        <div className="z-10 flex h-full shrink-0 items-center gap-2 border-r border-[#F59E0B]/40 bg-[#FFF8EC] pr-4 sm:pr-5">
           <Radio
             size={17}
             strokeWidth={2.5}
             className="text-[#F59E0B]"
           />
 
-          <span className="text-[13px] font-extrabold uppercase tracking-wider text-[#071A33]">
+          <span className="text-[13px] font-extrabold uppercase tracking-wider text-[#071A33] whitespace-nowrap">
             Live Alerts
           </span>
         </div>
 
-        <div className="relative flex-1 overflow-hidden">
+        <div className="relative flex-1 min-w-0 overflow-hidden">
           <div className="alert-marquee flex w-max items-center">
             {[...alerts, ...alerts].map((alert, index) => (
               <div

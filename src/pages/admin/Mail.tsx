@@ -195,7 +195,7 @@ export default function AdminMail() {
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold uppercase tracking-[0.18em] text-[#F59E0B]">
-                RailDrishti Directorate Desk
+                RailSanket Directorate Desk
               </span>
               <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-50 text-[#0E5961] border border-teal-200">
                 Official Oversight
@@ -204,9 +204,6 @@ export default function AdminMail() {
             <h1 className="text-xl sm:text-2xl font-black text-[#071A33] tracking-wide">
               Official Memos & Communications
             </h1>
-            <p className="text-xs text-slate-600">
-              Review and approve work completion memos, defect reports, and operational dispatches from Employees and Controllers
-            </p>
           </div>
         </div>
 

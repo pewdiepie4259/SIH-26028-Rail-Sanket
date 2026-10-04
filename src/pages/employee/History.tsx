@@ -33,6 +33,7 @@ import {
 } from "../../services/employeeHistoryService";
 import type { EmployeeNavItem } from "../../services/employee";
 import { caseService } from "../../services/caseService";
+import EmployeeSidebar from "../../components/employee/EmployeeSidebar";
 
 export default function EmployeeHistory() {
   const navigate = useNavigate();
@@ -164,19 +165,7 @@ export default function EmployeeHistory() {
     return groups;
   }, [filteredActivities]);
 
-  // Sidebar navigation menu items
-  const navItems: EmployeeNavItem[] = [
-    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/employee/dashboard", active: true },
-    { id: "duty", label: "My Duty", icon: CalendarCheck, path: "/employee/duty", active: true },
-    { id: "assignment", label: "My Train / My Section", icon: TrainFront, path: "/employee/assignment", active: true },
-    { id: "alerts", label: "Operational Alerts", icon: AlertTriangle, path: "/employee/alerts", active: true },
-    { id: "tasks", label: "Tasks", icon: CheckSquare, path: "/employee/tasks", active: true },
-    { id: "report_issue", label: "Report Issue", icon: FileWarning, path: "/employee/report", active: true },
-    { id: "incident", label: "Incident Reporting", icon: Flame, path: "/employee/incidents", active: true },
-    { id: "notifications", label: "Notifications", icon: Bell, path: "/employee/notifications", active: true },
-    { id: "history", label: "Activity / History", icon: History, path: "/employee/history", active: true },
-    { id: "profile", label: "Profile", icon: User, path: "/employee/profile", active: true },
-  ];
+
 
   const renderCategoryIcon = (category: ActivityCategory) => {
     switch (category) {
@@ -225,7 +214,7 @@ export default function EmployeeHistory() {
   return (
     <div className="min-h-screen bg-[#031426] text-slate-100 flex flex-col font-sans selection:bg-[#0E7C86]/30 selection:text-white">
       {/* TOP HEADER */}
-      <header className="sticky top-0 z-40 flex h-[72px] shrink-0 items-center justify-between border-b border-[#16364A] bg-[#071A33]/95 backdrop-blur-md px-4 sm:px-6">
+      <header className="sticky top-0 z-40 flex h-[72px] shrink-0 items-center justify-between border-b border-[#164B5A] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-4 sm:px-6 shadow-lg">
         <div className="flex items-center gap-3">
           <button
             type="button"
@@ -240,15 +229,15 @@ export default function EmployeeHistory() {
             <div className="h-11 w-11 shrink-0 overflow-hidden rounded-full border border-[#294665] bg-[#071A33] shadow-md">
               <img
                 src="/logos/raildrishti-dark.png"
-                alt="RailDrishti"
+                alt="RailSanket"
                 className="h-full w-full object-contain p-0.5"
               />
             </div>
 
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-mono text-xs font-semibold uppercase tracking-wider text-[#0E7C86]">
-                  RailDrishti
+                <span translate="no" className="notranslate text-xs font-bold uppercase tracking-[0.16em] text-white">
+                  Rail<span className="text-[#F59E0B]">Sanket</span>
                 </span>
                 <span className="rounded bg-[#0E7C86]/20 border border-[#0E7C86]/40 px-1.5 py-0.5 text-[10px] font-bold text-cyan-300">
                   EMPLOYEE PORTAL
@@ -298,71 +287,17 @@ export default function EmployeeHistory() {
 
       {/* BODY CONTAINER */}
       <div className="flex flex-1 overflow-hidden">
-        {sidebarOpen && (
-          <div
-            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
-
-        <aside
-          className={`fixed inset-y-0 left-0 z-50 flex flex-col border-r border-[#16364A] bg-[#071A33] transition-all duration-300 ease-in-out lg:static ${
-            sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
-          } ${sidebarCollapsed ? "lg:w-20" : "lg:w-64"} w-64`}
-        >
-          <div className="flex h-[72px] items-center justify-between border-b border-[#16364A] px-4 lg:hidden">
-            <span className="font-semibold text-white text-sm">Navigation Menu</span>
-            <button
-              type="button"
-              onClick={() => setSidebarOpen(false)}
-              className="rounded-lg p-2 text-slate-400 hover:bg-[#0A2036] hover:text-white"
-            >
-              <X size={20} />
-            </button>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-3 space-y-1">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isCurrent = item.id === "history";
-
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => {
-                    if (item.path) {
-                      navigate(item.path);
-                      setSidebarOpen(false);
-                    }
-                  }}
-                  className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium transition-all ${
-                    isCurrent
-                      ? "border border-[#0E7C86] bg-[#0E7C86] text-white shadow-lg shadow-[#0E7C86]/20 font-semibold"
-                      : "text-slate-300 hover:bg-[#0A2036] hover:text-white border border-transparent"
-                  }`}
-                >
-                  <Icon
-                    size={18}
-                    className={`shrink-0 ${isCurrent ? "text-cyan-200" : "text-[#0E7C86]"}`}
-                  />
-                  {!sidebarCollapsed && <span className="flex-1 text-left truncate">{item.label}</span>}
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="hidden border-t border-[#16364A] p-3 lg:block">
-            <button
-              type="button"
-              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#16364A] bg-[#0A2036] py-2 text-xs text-slate-300 transition hover:bg-[#16364A] hover:text-white"
-            >
-              {sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-              {!sidebarCollapsed && <span>Collapse Sidebar</span>}
-            </button>
-          </div>
-        </aside>
+        {/* SIDEBAR */}
+        <EmployeeSidebar
+          sidebarOpen={sidebarOpen}
+          setSidebarOpen={setSidebarOpen}
+          sidebarCollapsed={sidebarCollapsed}
+          setSidebarCollapsed={setSidebarCollapsed}
+          activeTab="history"
+          departmentName={historyViewData.department}
+          roleDisplayTitle={historyViewData.roleTitle}
+          onShowToast={() => {}}
+        />
 
         <main className="flex-1 overflow-y-auto bg-[#031426] p-4 sm:p-6 lg:p-8">
           <div className="mx-auto max-w-6xl space-y-6">

@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import {
   login,
+  getCurrentUser,
   requestOTP,
   handleGoogleSignIn,
   DEMO_TEAM_CREDENTIALS,
@@ -46,6 +47,22 @@ export default function Login() {
     return () => clearInterval(interval);
   }, []);
 
+  // Enforce light mode on Login page
+  useEffect(() => {
+    const root = document.documentElement;
+    const prevHadDark = root.classList.contains("dark");
+    const prevHadDarkContrast = root.classList.contains("accessibility-dark-contrast");
+    const prevHadInvert = root.classList.contains("accessibility-invert");
+
+    root.classList.remove("dark", "accessibility-dark-contrast", "accessibility-invert");
+
+    return () => {
+      if (prevHadDark) root.classList.add("dark");
+      if (prevHadDarkContrast) root.classList.add("accessibility-dark-contrast");
+      if (prevHadInvert) root.classList.add("accessibility-invert");
+    };
+  }, []);
+
   // Role & Method state - Auto-select role based on route
   const [selectedRole, setSelectedRole] = useState<UserRole>(() => {
     if (location.pathname.includes("employee")) return "employee";
@@ -63,6 +80,18 @@ export default function Login() {
       setSelectedRole("admin");
     }
   }, [location.pathname]);
+
+  // If already logged in, redirect to respective role dashboard
+  useEffect(() => {
+    const user = getCurrentUser();
+    if (user?.role === "employee") {
+      navigate("/employee/dashboard", { replace: true });
+    } else if (user?.role === "controller") {
+      navigate("/controller/dashboard", { replace: true });
+    } else if (user?.role === "admin") {
+      navigate("/admin", { replace: true });
+    }
+  }, [navigate]);
 
   const [userLoginMethod, setUserLoginMethod] = useState<LoginMethod>("password");
 
@@ -306,7 +335,7 @@ export default function Login() {
   const currentRoleConfig = roleConfig[selectedRole];
 
   return (
-    <div className="relative flex min-h-[calc(100vh-4rem)] items-center justify-center overflow-hidden bg-slate-950">
+    <div className="auth-page-no-dark relative flex min-h-[calc(100vh-4rem)] items-center justify-center overflow-hidden bg-slate-950">
       {/* Background Image Slideshow (2-second rotation) */}
       {BACKGROUND_SLIDES.map((slide, idx) => (
         <div
@@ -330,8 +359,8 @@ export default function Login() {
             <div className="mb-1 text-xs font-bold uppercase tracking-[0.2em] text-[#F59E0B]">
               Welcome to
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#071A33]">
-              Rail<span className="text-[#F59E0B]">Drishti</span>
+            <h1 translate="no" className="notranslate text-2xl sm:text-3xl font-extrabold tracking-tight text-[#071A33]">
+              Rail<span className="text-[#F59E0B]">Sanket</span>
             </h1>
           </div>
 
@@ -744,7 +773,7 @@ export default function Login() {
                         ? "Sign In with Employee ID"
                         : userLoginMethod === "otp"
                         ? "Verify OTP & Sign In"
-                        : "Sign In to RailDrishti"}
+                        : "Sign In to RailSanket"}
                     </span>
                     <ArrowRight className="w-4 h-4 text-[#F59E0B]" />
                   </>
@@ -799,51 +828,7 @@ export default function Login() {
               </div>
             )}
 
-            {/* Quick Team Member Credentials Helper for Frontend Teammates */}
-            <div className="mt-5 pt-3 border-t border-[#F59E0B]/25">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-[#071A33] flex items-center gap-1.5">
-                  <Briefcase className="w-3.5 h-3.5 text-[#F59E0B]" />
-                  Team Quick-Login Fill
-                </span>
-                <span className="text-[10px] text-[#0E5961] font-semibold bg-[#0E5961]/10 px-2 py-0.5 rounded-full">
-                  1-Click Test
-                </span>
-              </div>
-              <div className="grid grid-cols-2 gap-1.5 max-h-48 overflow-y-auto pr-0.5">
-                {DEMO_TEAM_CREDENTIALS.map((acc) => (
-                  <button
-                    key={acc.name}
-                    type="button"
-                    onClick={() => handleQuickFill(acc)}
-                    className="flex items-center justify-between p-2 text-left rounded-xl border border-slate-200 bg-white/90 hover:bg-amber-50 hover:border-[#F59E0B] transition-all text-xs cursor-pointer shadow-2xs group"
-                    title={`Click to auto-fill: ${acc.identifier} / ${acc.password}`}
-                  >
-                    <div className="truncate mr-1">
-                      <div className="font-semibold text-[11px] text-[#071A33] group-hover:text-[#0E5961] truncate">
-                        {acc.name}
-                      </div>
-                      <div className="text-[10px] text-slate-500 font-mono truncate">
-                        {acc.identifier}
-                      </div>
-                    </div>
-                    <span
-                      className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded shrink-0 ${
-                        acc.role === "admin"
-                          ? "bg-purple-100 text-purple-800"
-                          : acc.role === "controller"
-                          ? "bg-blue-100 text-blue-800"
-                          : acc.role === "employee"
-                          ? "bg-emerald-100 text-emerald-800"
-                          : "bg-amber-100 text-amber-800"
-                      }`}
-                    >
-                      {acc.badge || acc.role}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
+
 
             {/* Footer Navigation Link */}
             <div className="mt-4 pt-3 border-t border-[#0E5961]/20 text-center text-xs text-[#465B6B]">
@@ -879,7 +864,7 @@ export default function Login() {
           <div className="w-full max-w-md rounded-2xl border border-[#F59E0B] bg-gradient-to-br from-[#FFF8EC] via-white to-[#FFF4E1] p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
             <h3 className="text-lg font-bold text-[#071A33]">Password Assistance</h3>
             <p className="text-xs text-[#465B6B] mt-1">
-              Enter your registered RailDrishti identifier to receive verification instructions.
+              Enter your registered RailSanket identifier to receive verification instructions.
             </p>
 
             <form onSubmit={handleForgotSubmit} className="mt-4 space-y-3">

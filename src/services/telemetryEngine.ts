@@ -72,6 +72,102 @@ interface InternalTrainState {
 
 const INITIAL_TRAINS: InternalTrainState[] = [
   {
+    trainNumber: "12245",
+    name: "Howrah - SMVT Bengaluru Duronto Express",
+    priority: 1,
+    currentSegment: 2,
+    progress: 0.42,
+    direction: -1,
+    speedKmh: 82.5,
+    signal: "GREEN",
+    delayMin: 12,
+    cascadeRisk: 0.45,
+  },
+  {
+    trainNumber: "12246",
+    name: "SMVT Bengaluru - Howrah Duronto Express",
+    priority: 1,
+    currentSegment: 1,
+    progress: 0.18,
+    direction: 1,
+    speedKmh: 88.0,
+    signal: "GREEN",
+    delayMin: 8,
+    cascadeRisk: 0.30,
+  },
+  {
+    trainNumber: "12860",
+    name: "Gitanjali Express",
+    priority: 2,
+    currentSegment: 3,
+    progress: 0.65,
+    direction: -1,
+    speedKmh: 74.2,
+    signal: "YELLOW",
+    delayMin: 16,
+    cascadeRisk: 0.58,
+  },
+  {
+    trainNumber: "20608",
+    name: "Vande Bharat Express (SBC - MAS)",
+    priority: 1,
+    currentSegment: 0,
+    progress: 0.55,
+    direction: 1,
+    speedKmh: 94.0,
+    signal: "GREEN",
+    delayMin: 4,
+    cascadeRisk: 0.10,
+  },
+  {
+    trainNumber: "12301",
+    name: "Howrah Rajdhani Express",
+    priority: 1,
+    currentSegment: 2,
+    progress: 0.82,
+    direction: -1,
+    speedKmh: 86.4,
+    signal: "GREEN",
+    delayMin: 6,
+    cascadeRisk: 0.22,
+  },
+  {
+    trainNumber: "12610",
+    name: "Mysuru - Chennai Central Superfast",
+    priority: 2,
+    currentSegment: 1,
+    progress: 0.30,
+    direction: 1,
+    speedKmh: 68.0,
+    signal: "GREEN",
+    delayMin: 5,
+    cascadeRisk: 0.20,
+  },
+  {
+    trainNumber: "12613",
+    name: "Wodeyar Superfast Express",
+    priority: 2,
+    currentSegment: 0,
+    progress: 0.15,
+    direction: -1,
+    speedKmh: 65.5,
+    signal: "GREEN",
+    delayMin: 3,
+    cascadeRisk: 0.14,
+  },
+  {
+    trainNumber: "12608",
+    name: "Lalbagh Express",
+    priority: 2,
+    currentSegment: 3,
+    progress: 0.40,
+    direction: -1,
+    speedKmh: 71.0,
+    signal: "GREEN",
+    delayMin: 4,
+    cascadeRisk: 0.18,
+  },
+  {
     trainNumber: "12628",
     name: "Karnataka Express (Down)",
     priority: 1,
@@ -285,53 +381,68 @@ export function advanceSimulationStep(): {
 } {
   // 1. Advance trains along track segments
   trainStates = trainStates.map((train) => {
-    // Progress speed: ~0.003 - 0.007 progress per tick
-    const speedVariation = (Math.random() - 0.5) * 1.5;
-    const newSpeed = Math.max(38, Math.min(88, train.speedKmh + speedVariation));
-    const stepDelta = (newSpeed / 3600) * 0.15; // smooth spatial step
+    // Kinematic speed variation (acceleration / deceleration curves)
+    const speedVariation = (Math.random() - 0.48) * 2.2;
+    const newSpeed = Math.max(42, Math.min(88, Math.round((train.speedKmh + speedVariation) * 10) / 10));
+    
+    // Spatial step proportional to velocity (realistic real-time RTIS block traversal)
+    // Segment length avg ~4.5 km. (newSpeed km/h / 3600 s) * 1.8s / 4.5km => ~0.001 progress per tick
+    const stepDelta = Math.max(0.0005, Math.min(0.0016, (newSpeed / 3600) * 0.045));
 
-    let newProgress = train.progress + stepDelta;
-    let newSegment = train.currentSegment;
     let newDir = train.direction;
+    let newSegment = train.currentSegment;
+    // Advance progress based on current travel direction
+    let newProgress = train.progress + (stepDelta * newDir);
+
+    const maxSegment = STATIONS_COORDS.length - 2; // e.g. 5 stations = 4 segments (0 to 3)
 
     if (newProgress >= 1) {
-      if (newSegment < STATIONS_COORDS.length - 2) {
+      if (newSegment < maxSegment) {
         newSegment += 1;
-        newProgress = 0;
+        newProgress = 0.02;
       } else {
-        // Reverse direction at terminal
+        // Reached eastern terminal (Whitefield), reverse towards SBC
         newDir = -1;
-        newProgress = 0.99;
+        newSegment = maxSegment;
+        newProgress = 0.98;
       }
     } else if (newProgress <= 0) {
       if (newSegment > 0) {
         newSegment -= 1;
-        newProgress = 0.99;
+        newProgress = 0.98;
       } else {
-        // Reverse direction at terminal
+        // Reached western terminal (KSR Bengaluru), reverse towards Whitefield
         newDir = 1;
-        newProgress = 0.01;
+        newSegment = 0;
+        newProgress = 0.02;
       }
     }
 
-    // Dynamic signal based on progress
+    // Signal aspect calculation strictly aligned with speed criteria:
+    // Speed > 70 km/h (including > 100) => GREEN
+    // Speed 50 - 70 km/h => YELLOW (30 - 50 => DOUBLE_YELLOW)
+    // Speed < 30 km/h => RED
     let newSignal: "GREEN" | "YELLOW" | "DOUBLE_YELLOW" | "RED" = "GREEN";
-    if (newProgress > 0.85) {
-      newSignal = train.delayMin > 8 ? "RED" : "YELLOW";
-    } else if (newProgress > 0.6) {
-      newSignal = train.delayMin > 5 ? "DOUBLE_YELLOW" : "GREEN";
+    if (newSpeed < 30) {
+      newSignal = "RED";
+    } else if (newSpeed >= 30 && newSpeed < 50) {
+      newSignal = "DOUBLE_YELLOW";
+    } else if (newSpeed >= 50 && newSpeed <= 70) {
+      newSignal = "YELLOW";
+    } else {
+      newSignal = "GREEN";
     }
 
-    // Subtle fluctuating delay
-    const delayDelta = (Math.random() - 0.48) * 0.2;
+    // Dynamic fluctuating delay (simulating station dwell, signal checks, and recovery)
+    const delayDelta = (Math.random() - 0.49) * 0.25;
     const newDelay = Math.max(0, Math.round((train.delayMin + delayDelta) * 10) / 10);
 
     return {
       ...train,
-      progress: newProgress,
+      progress: Math.max(0.01, Math.min(0.99, Math.round(newProgress * 1000) / 1000)),
       currentSegment: newSegment,
       direction: newDir,
-      speedKmh: Math.round(newSpeed * 10) / 10,
+      speedKmh: newSpeed,
       signal: newSignal,
       delayMin: newDelay,
     };
@@ -348,14 +459,23 @@ export function advanceSimulationStep(): {
     const nextStationCode = t.direction === 1 ? toStation.code : fromStation.code;
     const nextStationName = t.direction === 1 ? toStation.name : fromStation.name;
 
+    const blockNum = Math.min(4, Math.max(1, Math.floor(t.progress * 4) + 1));
+    const distRemaining = Math.max(0.5, Math.round((t.direction === 1 ? (1 - t.progress) : t.progress) * 14 * 10) / 10);
+    const etaMinutes = Math.max(1, Math.round((distRemaining / (t.speedKmh || 60)) * 60));
+    const now = Date.now();
+
+    const confidence = Math.max(72, Math.min(98, Math.round(96 - (t.delayMin * 1.4) + Math.sin(now / 5000 + Number(t.trainNumber || 1)) * 2)));
+    const stability: "HIGH" | "MODERATE" | "VOLATILE" = confidence >= 88 ? "HIGH" : confidence >= 76 ? "MODERATE" : "VOLATILE";
+    const variance = confidence >= 88 ? 1.8 : confidence >= 76 ? 3.8 : 7.2;
+
     liveTrainsRecord[t.trainNumber] = {
       trainNumber: t.trainNumber,
       name: t.name,
       priority: t.priority,
-      currentBlock: `${fromStation.code}-${toStation.code} Block ${Math.floor(t.progress * 4) + 1}`,
+      currentBlock: `${fromStation.code}-${toStation.code} Block ${blockNum}`,
       telemetry: {
-        lat: coords.lat,
-        lon: coords.lon,
+        lat: parseFloat(coords.lat.toFixed(5)),
+        lon: parseFloat(coords.lon.toFixed(5)),
         speed_kmh: t.speedKmh,
         signal: t.signal,
       },
@@ -363,14 +483,17 @@ export function advanceSimulationStep(): {
         {
           station: nextStationCode,
           station_name: nextStationName,
-          distance_remaining_km: Math.round((1 - t.progress) * 14 * 10) / 10,
-          baseline_static_eta: new Date(Date.now() + 15 * 60000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-          dynamic_gnn_eta: new Date(Date.now() + (15 + t.delayMin) * 60000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          distance_remaining_km: distRemaining,
+          baseline_static_eta: new Date(now + etaMinutes * 60000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          dynamic_gnn_eta: new Date(now + (etaMinutes + Math.round(t.delayMin)) * 60000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
           predicted_delay_min: t.delayMin,
           cascade_risk: t.cascadeRisk,
         },
       ],
-      updatedAt: "Just now",
+      updatedAt: new Date().toLocaleTimeString(),
+      eta_confidence: confidence,
+      eta_stability: stability,
+      eta_variance_mins: variance,
     };
   });
 

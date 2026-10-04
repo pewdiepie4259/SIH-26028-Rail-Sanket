@@ -133,8 +133,8 @@ export default function AdminDashboard() {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-lg font-bold text-white tracking-wide">
-                  Rail<span className="text-[#F59E0B]">Drishti</span> Central Admin
+                <h1 translate="no" className="notranslate text-lg font-bold text-white tracking-wide">
+                  Rail<span className="text-[#F59E0B]">Sanket</span> Central Admin
                 </h1>
                 <span className="rounded-full bg-red-500/20 px-2 py-0.5 text-[10px] font-bold text-red-300 border border-red-500/30 uppercase tracking-wider">
                   Admin Gateway

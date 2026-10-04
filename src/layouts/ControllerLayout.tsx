@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import {
   BarChart3,
   Bell,
@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   LogOut,
   Mail,
+  Map,
   Menu,
   Settings,
   TrainFront,
@@ -23,6 +24,11 @@ const navOperations = [
     label: "Network Operations",
     path: "/controller/dashboard",
     icon: LayoutDashboard,
+  },
+  {
+    label: "Live Map",
+    path: "/controller/map",
+    icon: Map,
   },
   {
     label: "Train Operations",
@@ -67,12 +73,6 @@ const navSystem = [
   },
 ]
 
-const allControllerNav = [
-  ...navOperations,
-  ...navAnalysis,
-  ...navSystem,
-]
-
 function NavSection({
   label,
   items,
@@ -95,7 +95,7 @@ function NavSection({
           const isActive =
             item.path === "/controller/dashboard"
               ? location.pathname === "/controller/dashboard" ||
-                location.pathname === "/controller"
+              location.pathname === "/controller"
               : location.pathname.startsWith(item.path)
 
           return (
@@ -122,36 +122,9 @@ function NavSection({
 
 function ControllerLayout() {
   const navigate = useNavigate()
-  const location = useLocation()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const [currentUser, setCurrentUser] = useState(getCurrentUser())
-
-  // Hover Sub-Header navigation state
-  const [subHeaderOpen, setSubHeaderOpen] = useState(false)
-  const subHeaderTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  const handleOpenSubHeader = () => {
-    if (subHeaderTimerRef.current) {
-      clearTimeout(subHeaderTimerRef.current)
-      subHeaderTimerRef.current = null
-    }
-    setSubHeaderOpen(true)
-  }
-
-  const handleCloseSubHeader = () => {
-    if (subHeaderTimerRef.current) {
-      clearTimeout(subHeaderTimerRef.current)
-    }
-    subHeaderTimerRef.current = setTimeout(() => {
-      setSubHeaderOpen(false)
-    }, 250)
-  }
-
-  const handleNavClick = () => {
-    setSubHeaderOpen(false)
-    setMobileOpen(false)
-  }
 
   useEffect(() => {
     const handleAuthChange = () => {
@@ -166,15 +139,8 @@ function ControllerLayout() {
     navigate("/login", { replace: true })
   }
 
-  const subHeaderNavLinkClass = ({ isActive }: { isActive: boolean }) =>
-    `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${
-      isActive
-        ? "bg-white/20 text-[#F59E0B] shadow-sm font-bold border border-white/10"
-        : "text-slate-200 hover:text-white hover:bg-white/10"
-    }`
-
   return (
-    <div className="min-h-screen bg-[#F4F7FA] text-slate-900 font-sans">
+    <div className="min-h-screen bg-[#071A33] text-slate-100 font-sans">
       {/* ── UNIFIED RAILDRISHTI HEADER ───────────────────────── */}
       <header className="border-b border-[#164B5A] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] fixed inset-x-0 top-0 z-50 shadow-lg">
         <div className="flex h-16 items-center justify-between px-4 lg:px-6 gap-3">
@@ -193,48 +159,20 @@ function ControllerLayout() {
               <div className="h-11 w-11 shrink-0 overflow-hidden rounded-full border border-[#294665] bg-[#071A33] shadow-sm">
                 <img
                   src="/logos/raildrishti-dark.png"
-                  alt="RailDrishti"
+                  alt="RailSanket"
                   className="h-full w-full object-contain p-0.5"
                 />
               </div>
 
               <div>
-                <div className="text-xl font-extrabold leading-none tracking-tight text-white flex items-center">
-                  Rail<span className="text-[#F59E0B]">Drishti</span>
+                <div translate="no" className="notranslate text-xl font-extrabold leading-none tracking-tight text-white flex items-center">
+                  Rail<span className="text-[#F59E0B]">Sanket</span>
                 </div>
                 <div className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-[#F59E0B]">
                   Section Control Centre
                 </div>
               </div>
             </Link>
-          </div>
-
-          {/* Navigation Area / Menu Trigger - Triggers Hover Sub-Header */}
-          <div
-            onMouseEnter={handleOpenSubHeader}
-            onMouseLeave={handleCloseSubHeader}
-            className="flex items-center"
-          >
-            <button
-              type="button"
-              onClick={() => setSubHeaderOpen((prev) => !prev)}
-              aria-expanded={subHeaderOpen}
-              aria-label="Controller Operations Menu"
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg border text-xs font-semibold transition-all duration-200 cursor-pointer ${
-                subHeaderOpen
-                  ? "border-[#F59E0B] bg-white/15 text-[#F59E0B] shadow-[0_2px_10px_rgba(245,158,11,0.2)]"
-                  : "border-teal-500/40 bg-teal-950/40 text-teal-100 hover:border-[#F59E0B]/70 hover:bg-white/10 hover:text-white"
-              }`}
-            >
-              <Menu size={15} className="text-[#F59E0B]" />
-              <span className="font-semibold tracking-wide">Operations Menu</span>
-              <ChevronDown
-                size={13}
-                className={`transition-transform duration-200 ${
-                  subHeaderOpen ? "rotate-180 text-[#F59E0B]" : "text-teal-300"
-                }`}
-              />
-            </button>
           </div>
 
           {/* Right actions: Weather Warning Indicator, Notifications, Profile, Sign Out */}
@@ -273,9 +211,8 @@ function ControllerLayout() {
                 </div>
                 <ChevronDown
                   size={12}
-                  className={`hidden text-teal-300 sm:block transition-transform duration-200 ${
-                    profileOpen ? "rotate-180" : ""
-                  }`}
+                  className={`hidden text-teal-300 sm:block transition-transform duration-200 ${profileOpen ? "rotate-180" : ""
+                    }`}
                 />
               </button>
 
@@ -348,59 +285,9 @@ function ControllerLayout() {
                 </>
               )}
             </div>
-
-            {/* Quick Public Portal Link */}
-            <button
-              onClick={() => navigate("/")}
-              title="Return to Public Portal"
-              className="hidden md:flex h-9 items-center gap-1.5 rounded-lg border border-[#F59E0B]/80 bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-3 text-xs font-semibold text-white shadow-sm transition hover:scale-[1.02] cursor-pointer"
-            >
-              <span>Public Portal</span>
-            </button>
           </div>
         </div>
 
-        {/* 6. HOVER SUB-HEADER FOR CONTROLLER DASHBOARD */}
-        <div
-          onMouseEnter={handleOpenSubHeader}
-          onMouseLeave={handleCloseSubHeader}
-          className={`border-t border-[#164B5A]/80 bg-[#071A33]/98 backdrop-blur-md transition-all duration-300 ease-out overflow-hidden shadow-xl ${
-            subHeaderOpen
-              ? "max-h-24 opacity-100 py-2.5 pointer-events-auto"
-              : "max-h-0 opacity-0 py-0 pointer-events-none"
-          }`}
-        >
-          <div className="mx-auto flex max-w-[1600px] items-center justify-between px-4 sm:px-6 lg:px-8 gap-3">
-            {/* Left side label */}
-            <div className="hidden sm:flex items-center gap-2 text-xs font-semibold text-teal-200">
-              <span className="h-2 w-2 rounded-full bg-[#F59E0B]" />
-              <span className="text-white font-bold tracking-wide">Controller DSS Operations</span>
-              <span className="text-slate-400 font-normal">• Live Interlocking Directives</span>
-            </div>
-
-            {/* Sub-Header Navigation Items */}
-            <nav className="flex w-full sm:w-auto items-center justify-end gap-1 flex-wrap">
-              {allControllerNav.map((item) => {
-                const isActive =
-                  item.path === "/controller/dashboard"
-                    ? location.pathname === "/controller/dashboard" ||
-                      location.pathname === "/controller"
-                    : location.pathname.startsWith(item.path)
-
-                return (
-                  <NavLink
-                    key={item.label}
-                    to={item.path}
-                    onClick={handleNavClick}
-                    className={subHeaderNavLinkClass({ isActive })}
-                  >
-                    <span>{item.label}</span>
-                  </NavLink>
-                )
-              })}
-            </nav>
-          </div>
-        </div>
       </header>
 
       {/* ── BODY ────────────────────────────────────────────── */}
@@ -450,8 +337,8 @@ function ControllerLayout() {
           </div>
         </aside>
 
-        {/* ── 4. LIGHT-MODE MAIN CONTENT AREA ───────────────── */}
-        <main className="min-w-0 flex-1 bg-gradient-to-br from-[#FFF4E1] via-white to-[#FFF4E1] text-slate-900 lg:ml-64 min-h-[calc(100vh-4rem)]">
+        {/* ── 4. DARK-MODE MAIN CONTENT AREA ───────────────── */}
+        <main className="min-w-0 flex-1 bg-gradient-to-b from-[#0A2D3B] via-[#020810] to-[#0A2D3B] text-slate-100 lg:ml-64 min-h-[calc(100vh-4rem)]">
           <Outlet />
         </main>
       </div>

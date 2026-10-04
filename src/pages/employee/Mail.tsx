@@ -42,6 +42,8 @@ import {
   type DispatchCategory,
 } from "../../services/mailService";
 import type { EmployeeNavItem } from "../../services/employee";
+import EmployeeSidebar from "../../components/employee/EmployeeSidebar";
+import LanguageAndA11yControls from "../../components/LanguageAndA11yControls";
 
 export default function EmployeeMail() {
   const navigate = useNavigate();
@@ -51,6 +53,7 @@ export default function EmployeeMail() {
   const [is24Hour, setIs24Hour] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Tab State: 'inbox' | 'sent' | 'compose'
@@ -191,20 +194,7 @@ export default function EmployeeMail() {
     }
   };
 
-  // Navigation Items
-  const navItems: EmployeeNavItem[] = [
-    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/employee/dashboard", active: true },
-    { id: "duty", label: "My Duty", icon: CalendarCheck, path: "/employee/duty", active: true },
-    { id: "assignment", label: "My Train / Section", icon: TrainFront, path: "/employee/assignment", active: true },
-    { id: "alerts", label: "Alerts", icon: AlertTriangle, path: "/employee/alerts", active: true },
-    { id: "tasks", label: "Tasks", icon: CheckSquare, path: "/employee/tasks", active: true },
-    { id: "report_issue", label: "Report Issue", icon: FileWarning, path: "/employee/report", active: true },
-    { id: "mail", label: "Official Mail & Directives", icon: Mail, path: "/employee/mail", active: true, badge: inboxItems.filter((i) => i.status !== "acknowledged").length },
-    { id: "incident", label: "Incident Reporting", icon: Flame, path: "/employee/incidents", active: true },
-    { id: "notifications", label: "Notifications", icon: Bell, path: "/employee/notifications", active: true },
-    { id: "history", label: "Activity / History", icon: History, path: "/employee/history", active: true },
-    { id: "profile", label: "Profile", icon: User, path: "/employee/profile", active: true },
-  ];
+
 
   // Filtered inbox
   const filteredInbox = useMemo(() => {
@@ -227,7 +217,7 @@ export default function EmployeeMail() {
       )}
 
       {/* HEADER */}
-      <header className="sticky top-0 z-40 flex h-[72px] shrink-0 items-center justify-between border-b border-[#16364A] bg-[#071A33] px-4 sm:px-6">
+      <header className="sticky top-0 z-40 flex h-[72px] shrink-0 items-center justify-between border-b border-[#164B5A] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-4 sm:px-6 shadow-lg">
         <div className="flex items-center gap-3">
           <button
             type="button"
@@ -238,11 +228,11 @@ export default function EmployeeMail() {
           </button>
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-full border border-[#294665] bg-[#0A2036] flex items-center justify-center font-black text-amber-400 text-lg">
-              RD
+              RS
             </div>
             <div>
-              <div className="text-base font-black tracking-tight text-white sm:text-lg">
-                Rail<span className="text-[#F59E0B]">Drishti</span>
+              <div translate="no" className="notranslate text-base font-black tracking-tight text-white sm:text-lg">
+                Rail<span className="text-[#F59E0B]">Sanket</span>
               </div>
               <div className="text-[10px] font-bold uppercase tracking-widest text-[#0E7C86]">
                 Official Dispatch & Communications Architecture
@@ -251,24 +241,32 @@ export default function EmployeeMail() {
           </div>
         </div>
 
-        {/* Live Clock & Staff Badge */}
-        <div className="flex items-center gap-4">
-          <button
-            type="button"
-            onClick={() => setIs24Hour(!is24Hour)}
-            className="hidden items-center gap-2 rounded-lg border border-[#16364A] bg-[#0A2036] px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:border-[#0E7C86] sm:flex"
-          >
-            <Clock size={14} className="text-[#0E7C86]" />
-            <span>
+        {/* Live Clock, Language Selector, A11y & Staff Badge */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Live IST Clock Capsule */}
+          <div className="hidden sm:flex h-9 items-center gap-2 rounded-full border border-[#F59E0B] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-3 text-xs text-white shadow-sm transition-all duration-300">
+            <Clock size={15} className="text-[#F59E0B]" />
+            <div className="font-mono font-bold tracking-wider text-white">
               {currentTime.toLocaleTimeString([], {
                 hour: "2-digit",
                 minute: "2-digit",
                 second: "2-digit",
                 hour12: !is24Hour,
-              })}{" "}
-              IST
-            </span>
-          </button>
+              })} <span className="text-[#F59E0B] text-[10px] font-bold">IST</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIs24Hour(!is24Hour)}
+              className="ml-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-white hover:bg-[#F59E0B] hover:text-[#071A33] transition cursor-pointer border border-white/20"
+              title="Toggle 12H / 24H clock"
+            >
+              {is24Hour ? "24H" : "12H"}
+            </button>
+          </div>
+
+          {/* Language Selector & Accessibility Tools */}
+          <LanguageAndA11yControls buttonHeightClass="h-9" />
+
           <div className="flex items-center gap-2 border-l border-[#16364A] pl-3">
             <div className="h-8 w-8 rounded-full bg-[#0E7C86]/30 border border-[#0E7C86] flex items-center justify-center text-teal-300 font-bold text-xs">
               {currentUser?.name?.slice(0, 2).toUpperCase() || "IR"}
@@ -284,68 +282,20 @@ export default function EmployeeMail() {
       {/* MAIN CONTAINER */}
       <div className="flex flex-1 overflow-hidden">
         {/* SIDEBAR NAVIGATION */}
-        <aside
-          className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-[#16364A] bg-[#071A33] transition-transform duration-300 lg:static lg:translate-x-0 ${
-            sidebarOpen ? "translate-x-0" : "-translate-x-full"
-          }`}
-        >
-          <div className="flex h-[72px] items-center justify-between border-b border-[#16364A] px-4 lg:hidden">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Navigation</span>
-            <button
-              type="button"
-              onClick={() => setSidebarOpen(false)}
-              className="text-slate-400 hover:text-white"
-            >
-              <X size={20} />
-            </button>
-          </div>
-
-          <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isCurrent = item.id === "mail";
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => {
-                    if (item.path) navigate(item.path);
-                    setSidebarOpen(false);
-                  }}
-                  className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-xs font-medium transition ${
-                    isCurrent
-                      ? "bg-[#0E5961] text-white shadow-md border-l-4 border-amber-400"
-                      : "text-slate-300 hover:bg-[#0A2036] hover:text-white"
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <Icon size={16} className={isCurrent ? "text-amber-400" : "text-slate-400"} />
-                    <span>{item.label}</span>
-                  </div>
-                  {item.badge !== undefined && item.badge > 0 && (
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-[10px] font-extrabold text-slate-950">
-                      {item.badge}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </nav>
-
-          <div className="border-t border-[#16364A] p-3">
-            <button
-              type="button"
-              onClick={() => {
-                logout();
-                navigate("/login");
-              }}
-              className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-xs font-medium text-rose-300 transition hover:bg-rose-950/40"
-            >
-              <LogOut size={16} />
-              <span>Log Out</span>
-            </button>
-          </div>
-        </aside>
+        <EmployeeSidebar
+          sidebarOpen={sidebarOpen}
+          setSidebarOpen={setSidebarOpen}
+          sidebarCollapsed={sidebarCollapsed}
+          setSidebarCollapsed={setSidebarCollapsed}
+          activeTab="mail"
+          departmentName={currentUser?.department || "Indian Railways"}
+          roleDisplayTitle={currentUser?.role || "Operational Employee"}
+          badges={{
+            alerts: 0,
+            tasks: 0,
+          }}
+          onShowToast={showToast}
+        />
 
         {/* CONTENT AREA */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 bg-[#031426]">

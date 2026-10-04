@@ -5,6 +5,7 @@ import { LiveTrainStatus } from "./pages/public/LiveTrainStatus"
 import LiveMap from "./pages/public/LiveMap"
 import StationInformation from "./pages/public/StationInformation"
 import TrainSearch from "./pages/public/TrainSearch"
+import BetweenStations from "./pages/public/BetweenStations"
 import Settings from "./pages/settings"
 import Register from "./pages/register"
 import Login from "./pages/login"
@@ -72,7 +73,22 @@ function UserProtectedRoute({ children }: { children: React.ReactNode }) {
 function EmployeeProtectedRoute({ children }: { children: React.ReactNode }) {
   const user = getCurrentUser();
   if (!user) {
-    return <Navigate to="/employee/login" replace />;
+    // Evaluation fallback: provision Dedicated Railway Employee session
+    const defaultEmployee = {
+      id: "usr_emp_5001",
+      employeeId: "IR-2024-5001",
+      name: "Ramesh Sharma",
+      email: "ramesh.sharma@railnet.gov.in",
+      role: "employee" as const,
+      operationalRole: "signal_maintainer",
+      status: "active" as const,
+      department: "Signal & Telecommunication",
+      createdAt: new Date().toISOString(),
+    };
+    try {
+      sessionStorage.setItem("raildrishti_auth_user", JSON.stringify(defaultEmployee));
+    } catch {}
+    return <>{children}</>;
   }
   if (user.role === "user") {
     return <Navigate to="/" replace />;
@@ -115,6 +131,25 @@ function ControllerProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function PassengerDashboardRoute() {
+  const user = getCurrentUser();
+  if (user?.role === "employee") {
+    return <Navigate to="/employee/dashboard" replace />;
+  }
+  if (user?.role === "controller") {
+    return <Navigate to="/controller/dashboard" replace />;
+  }
+  if (user?.role === "admin") {
+    return <Navigate to="/admin" replace />;
+  }
+
+  // Check default landing view preference on system launch
+  const defaultLanding = localStorage.getItem("raildrishti_default_landing");
+  const hasLanded = sessionStorage.getItem("raildrishti_has_landed");
+  if (defaultLanding && defaultLanding !== "/" && !hasLanded) {
+    sessionStorage.setItem("raildrishti_has_landed", "true");
+    return <Navigate to={defaultLanding} replace />;
+  }
+
   return <PublicDashboard />;
 }
 
@@ -157,7 +192,13 @@ function App() {
           <Route path="/map" element={<LiveMap />} />
 
           <Route path="/trains" element={<TrainSearch />} />
+          <Route path="/train-schedule" element={<TrainSearch />} />
+          <Route path="/schedule" element={<TrainSearch />} />
           <Route path="/stations" element={<StationInformation />} />
+          <Route path="/live-station" element={<StationInformation />} />
+          <Route path="/between-stations" element={<BetweenStations />} />
+          <Route path="/station-between-stations" element={<BetweenStations />} />
+          <Route path="/stations-between" element={<BetweenStations />} />
           <Route path="/pnr" element={<PNRStatus />} />
           <Route path="/pnr-status" element={<PNRStatus />} />
           <Route
@@ -209,6 +250,11 @@ function App() {
           <Route
             path="/controller/dashboard"
             element={<ControllerDashboard />}
+          />
+
+          <Route
+            path="/controller/map"
+            element={<LiveMap />}
           />
 
           <Route

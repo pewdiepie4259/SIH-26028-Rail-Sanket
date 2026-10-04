@@ -5,6 +5,8 @@ export type IntegrationStatus =
   | "Not Configured"
 
 export type DataDirection =
+  | "External → RailSanket"
+  | "RailSanket → External"
   | "External → RailDrishti"
   | "RailDrishti → External"
   | "Bidirectional"

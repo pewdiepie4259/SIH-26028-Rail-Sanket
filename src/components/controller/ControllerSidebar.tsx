@@ -144,8 +144,8 @@ function ControllerSidebar({
 
             {!collapsed && (
               <div className="min-w-0">
-                <div className="truncate text-[15px] font-extrabold tracking-wide text-white">
-                  RailDrishti
+                <div translate="no" className="notranslate truncate text-[15px] font-extrabold tracking-wide text-white">
+                  Rail<span className="text-[#F59E0B]">Sanket</span>
                 </div>
                 <div className="truncate text-[10px] font-semibold uppercase tracking-[0.16em] text-[#AFC0D4]">
                   Section Control

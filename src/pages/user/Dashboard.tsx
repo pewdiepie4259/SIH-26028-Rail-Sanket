@@ -335,9 +335,9 @@ export default function UserDashboard() {
               Search trains, stations or train numbers
             </div>
 
-            <div className="flex flex-col overflow-hidden rounded-xl border border-[#F59E0B] bg-white/95 shadow-2xl backdrop-blur-xl sm:flex-row">
+            <div className="train-hero-search flex flex-col overflow-hidden rounded-xl border border-[#F59E0B] bg-white dark:bg-[#071A33] shadow-2xl backdrop-blur-xl sm:flex-row">
               <div className="flex min-h-[52px] flex-1 items-center gap-3 px-4 sm:px-5">
-                <Search size={20} className="shrink-0 text-[#0E7C86]" />
+                <Search size={20} className="shrink-0 text-[#0E7C86] search-icon" />
                 <input
                   type="text"
                   value={searchQuery}
@@ -351,7 +351,8 @@ export default function UserDashboard() {
                     }
                   }}
                   placeholder="Search train number, train name or station (e.g. 12627, 12245, SBC, YPR)..."
-                  className="w-full bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-500 sm:text-base font-medium"
+                  style={{ backgroundColor: 'transparent', background: 'transparent', border: 'none', outline: 'none', boxShadow: 'none' }}
+                  className="train-hero-input w-full bg-transparent text-sm text-slate-900 dark:text-white outline-none focus:ring-0 border-0 shadow-none placeholder:text-slate-500 dark:placeholder:text-slate-300 sm:text-base font-medium"
                 />
               </div>
 
@@ -456,7 +457,7 @@ export default function UserDashboard() {
         </div>
       ) : (
         /* 4. TRAINS ON THE MOVE & NETWORK SEARCH */
-        <section className="bg-gradient-to-r from-[#FFF4E1] via-white to-[#FFF4E1] py-8 border-y border-amber-100/60">
+        <section className="bg-gradient-to-r from-[#FFF4E1] via-white to-[#FFF4E1] py-8 border-y border-blue-500/40 dark:border-blue-500/50">
           <div className="mx-auto max-w-[1600px] px-6 lg:px-12">
             <div className="mb-6 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
               <div>
@@ -651,7 +652,7 @@ export default function UserDashboard() {
         </div>
       </section>
 
-      {/* Floating RailDrishti AI RTIS Copilot */}
+      {/* Floating RailSanket AI RTIS Copilot */}
       <WhatsAppChatModal
         initialTrainNumber={botTrainNumber}
         initialTrainName={botTrainName}

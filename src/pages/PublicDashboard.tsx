@@ -30,7 +30,7 @@ import {
   type PanIndiaStation,
   PAN_INDIA_STATIONS,
   findNearestPanIndiaStation,
-  DEFAULT_RAILWAY_FALLBACK_IMAGE,
+  resolveNearestStation,
 } from "../data/panIndiaStations";
 import {
   type AutocompleteItem,
@@ -190,7 +190,16 @@ export default function PublicDashboard() {
 
 
 
-  const [station, setStation] = useState<PanIndiaStation>(defaultStation);
+  const [station, setStation] = useState<PanIndiaStation>(() => {
+    try {
+      const saved = localStorage.getItem("raildrishti_nearest_station");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.name && parsed.code) return parsed;
+      }
+    } catch {}
+    return defaultStation;
+  });
   const [locationStatus, setLocationStatus] = useState("Nearest railway station");
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -220,7 +229,7 @@ export default function PublicDashboard() {
           return parsed;
         }
       }
-    } catch {}
+    } catch { }
     return defaultRecentSearches;
   });
 
@@ -233,12 +242,12 @@ export default function PublicDashboard() {
       const updated = [item, ...filtered].slice(0, 4);
       try {
         localStorage.setItem("raildrishti_recent_searches", JSON.stringify(updated));
-      } catch {}
+      } catch { }
       return updated;
     });
   };
 
-  // Detect Geolocation for nearest station anywhere in India
+  // Detect Geolocation for nearest station anywhere in India across complete station database
   useEffect(() => {
     if (!navigator.geolocation) {
       setLocationStatus("Nearest railway station");
@@ -246,17 +255,42 @@ export default function PublicDashboard() {
     }
 
     navigator.geolocation.getCurrentPosition(
-      (position) => {
+      async (position) => {
         const { latitude, longitude } = position.coords;
-        const nearest = findNearestPanIndiaStation(latitude, longitude);
-        setStation(nearest);
+        try {
+          const nearest = await resolveNearestStation(latitude, longitude);
+          if (nearest && nearest.code) {
+            setStation((prev) => {
+              if (prev && prev.code?.toUpperCase() === nearest.code?.toUpperCase()) {
+                return prev; // Station unchanged - keep constant reference
+              }
+              try {
+                localStorage.setItem("raildrishti_nearest_station", JSON.stringify(nearest));
+              } catch {}
+              return nearest;
+            });
+          }
+        } catch {
+          const nearest = findNearestPanIndiaStation(latitude, longitude);
+          if (nearest && nearest.code) {
+            setStation((prev) => {
+              if (prev && prev.code?.toUpperCase() === nearest.code?.toUpperCase()) {
+                return prev;
+              }
+              try {
+                localStorage.setItem("raildrishti_nearest_station", JSON.stringify(nearest));
+              } catch {}
+              return nearest;
+            });
+          }
+        }
         setLocationStatus("Nearest railway station");
       },
       () => {
-        setStation(defaultStation);
+        // Geolocation denied or unavailable - keep persisted station without resetting
         setLocationStatus("Nearest railway station");
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 5 * 60 * 1000 }
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 10 * 60 * 1000 }
     );
   }, []);
 
@@ -353,15 +387,9 @@ export default function PublicDashboard() {
         navigate(`/eta?train=${item.codeOrNumber}`);
       }
     } else {
-      // Station selected
+      // Station selected from search - keep search query active without altering user's physical nearest station
       setSearchQuery(item.codeOrNumber);
       addRecentSearch({ name: item.title, number: item.codeOrNumber });
-      const foundStation = PAN_INDIA_STATIONS.find(
-        (s) => s.code.toLowerCase() === item.codeOrNumber.toLowerCase()
-      );
-      if (foundStation) {
-        setStation(foundStation);
-      }
     }
   };
 
@@ -441,19 +469,44 @@ export default function PublicDashboard() {
     setBotTrainName(train.train_name);
   };
 
+  // Resolves the correlated background image matching the detected nearest railway station
+  const getStationBackgroundImage = (st: PanIndiaStation | null | undefined): string => {
+    if (!st) return "/images/stations/yelahanka.jpg";
+    const code = (st.code || "").toUpperCase();
+    const name = (st.name || "").toLowerCase();
+
+    // Directly correlate Yelahanka Junction to its authentic local station photograph
+    if (code === "YNK" || name.includes("yelahanka")) {
+      return "/images/stations/yelahanka.jpg";
+    }
+
+    if (
+      st.image &&
+      !st.image.includes("544620347") &&
+      !st.image.includes("Yelahanka_Junction")
+    ) {
+      return st.image;
+    }
+
+    return "/images/stations/yelahanka.jpg";
+  };
+
   return (
-    <div className="min-h-screen bg-[#F4F7FA]">
-      {/* 1. HERO SECTION (Pan-India station background + dark overlay, no glowing blobs) */}
-      <section className="relative min-h-[360px] overflow-hidden sm:min-h-[370px] lg:min-h-[380px]">
-        <img
-          src={station.image || DEFAULT_RAILWAY_FALLBACK_IMAGE}
-          onError={(e) => {
-            (e.target as HTMLImageElement).src = DEFAULT_RAILWAY_FALLBACK_IMAGE;
-          }}
-          alt={station.name}
-          className="absolute inset-0 h-full w-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#031426]/95 via-[#06283B]/75 to-[#031426]/60" />
+    <div className="min-h-screen bg-[#F4F7FA] w-full max-w-full overflow-x-hidden">
+      {/* 1. HERO SECTION (Railway station picture according to location) */}
+      <section className="relative min-h-[360px] sm:min-h-[370px] lg:min-h-[380px] z-30 w-full max-w-full overflow-hidden">
+        <div className="absolute inset-0 overflow-hidden">
+          <img
+            key={station.code || station.name}
+            src={getStationBackgroundImage(station)}
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = "/images/stations/yelahanka.jpg";
+            }}
+            alt={station.name}
+            className="h-full w-full object-cover transition-all duration-700"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#031426]/95 via-[#06283B]/80 to-[#031426]/70" />
+        </div>
 
         <div className="relative z-10 mx-auto flex min-h-[340px] max-w-[1600px] flex-col justify-center px-6 py-8 sm:min-h-[350px] lg:min-h-[360px] lg:px-12">
           <div className="w-full max-w-4xl">
@@ -461,8 +514,8 @@ export default function PublicDashboard() {
               <div className="mb-1 text-xs font-bold uppercase tracking-[0.2em] text-[#F59E0B]">
                 WELCOME TO
               </div>
-              <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl">
-                Rail<span className="text-[#F59E0B]">Drishti</span>
+              <h1 translate="no" className="notranslate text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl">
+                Rail<span translate="no" className="notranslate text-[#F59E0B]">Sanket</span>
               </h1>
               <p className="mt-2 max-w-xl text-sm leading-6 text-[#D7E5EC] sm:text-base">
                 Dynamic Estimated Time of Arrival System for Indian Coaching Trains.
@@ -476,14 +529,14 @@ export default function PublicDashboard() {
             </div>
 
             {/* Main Train / Station Search Box with Dynamic Autocomplete */}
-            <div className="relative mt-6 w-full max-w-4xl">
+            <div className="relative z-50 mt-6 w-full max-w-4xl">
               <div className="mb-2 text-xs font-semibold text-white sm:text-sm">
                 Search trains, stations or train numbers
               </div>
 
-              <div className="relative flex flex-col overflow-visible rounded-xl border border-[#F59E0B] bg-white/95 shadow-2xl backdrop-blur-xl sm:flex-row">
+              <div className="train-hero-search relative z-50 flex flex-col overflow-visible rounded-xl border border-[#F59E0B] bg-white dark:bg-[#071A33] shadow-2xl backdrop-blur-xl sm:flex-row">
                 <div className="flex min-h-[52px] flex-1 items-center gap-3 px-4 sm:px-5">
-                  <Search size={20} className="shrink-0 text-[#0E7C86]" />
+                  <Search size={20} className="shrink-0 text-[#0E7C86] dark:text-[#2DD4BF] search-icon" />
                   <input
                     type="text"
                     value={searchQuery}
@@ -499,7 +552,8 @@ export default function PublicDashboard() {
                     }}
                     onKeyDown={handleInputKeyDown}
                     placeholder="Search train number, train name or station (e.g. 12627, 12245, SBC, YPR, Rajahmundry)..."
-                    className="w-full bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-500 sm:text-base font-medium"
+                    style={{ backgroundColor: 'transparent', background: 'transparent', border: 'none', outline: 'none', boxShadow: 'none' }}
+                    className="train-hero-input w-full bg-transparent text-sm text-slate-900 dark:text-white outline-none focus:ring-0 border-0 shadow-none placeholder:text-slate-500 dark:placeholder:text-slate-300 sm:text-base font-medium"
                   />
                 </div>
 
@@ -522,7 +576,7 @@ export default function PublicDashboard() {
               </div>
 
               {/* Dynamic Recent Searches */}
-              <div className="mt-3">
+              <div className="relative z-10 mt-3">
                 <div className="mb-2 text-[11px] font-semibold text-white sm:text-xs">
                   Recent Searches
                 </div>
@@ -545,7 +599,7 @@ export default function PublicDashboard() {
               </div>
 
               {/* 8. FEATURE INDICATORS WITH UPDATED CLEAR ICONS */}
-              <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-[11px] text-[#D0DEE5] sm:text-xs">
+              <div className="relative z-10 mt-2 flex flex-wrap gap-x-6 gap-y-1 text-[11px] text-[#D0DEE5] sm:text-xs">
                 <span
                   className="flex items-center gap-1.5 cursor-pointer hover:text-white"
                   onClick={() => navigate('/live')}
@@ -574,12 +628,12 @@ export default function PublicDashboard() {
       </section>
 
       {/* 2. LIVE ALERTS MARQUEE */}
-      <div id="alerts" className="mb-2">
+      <div id="alerts" className="mb-2 w-full max-w-full overflow-hidden">
         <AlertMarquee />
       </div>
 
       {/* 3. FLEET / NETWORK SNAPSHOT & WEATHER IMPACT */}
-      <section className="mx-auto max-w-[1600px] px-6 pt-4 pb-6 lg:px-12">
+      <section className="mx-auto max-w-[1600px] w-full px-6 pt-4 pb-6 lg:px-12">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           {/* Network Snapshot Column (2/3 width on large screens) */}
           <div className="lg:col-span-2 space-y-3">
@@ -683,8 +737,8 @@ export default function PublicDashboard() {
         </div>
       ) : (
         /* 4. TRAINS ON THE MOVE & NETWORK SEARCH */
-        <section className="bg-gradient-to-r from-[#FFF4E1] via-white to-[#FFF4E1] py-8 border-y border-amber-100/60">
-          <div className="mx-auto max-w-[1600px] px-6 lg:px-12">
+        <section className="bg-gradient-to-r from-[#FFF4E1] via-white to-[#FFF4E1] py-8 border-y border-blue-500/40 dark:border-blue-500/50 w-full max-w-full overflow-hidden">
+          <div className="mx-auto max-w-[1600px] w-full px-6 lg:px-12">
             {/* Header & Filter Tabs */}
             <div className="mb-6 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
               <div>
@@ -708,11 +762,10 @@ export default function PublicDashboard() {
                 <button
                   type="button"
                   onClick={() => setFilterClass("all")}
-                  className={`rounded-full px-3.5 py-1 text-xs font-bold transition-all cursor-pointer ${
-                    filterClass === "all"
-                      ? "bg-[#071A33] text-white shadow-xs"
-                      : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50"
-                  }`}
+                  className={`rounded-full px-3.5 py-1 text-xs font-bold transition-all cursor-pointer ${filterClass === "all"
+                    ? "bg-[#071A33] text-white shadow-xs"
+                    : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50"
+                    }`}
                 >
                   All Classes
                 </button>
@@ -720,11 +773,10 @@ export default function PublicDashboard() {
                 <button
                   type="button"
                   onClick={() => setFilterClass("premium")}
-                  className={`rounded-full px-3.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
-                    filterClass === "premium"
-                      ? "bg-[#071A33] text-white shadow-xs font-bold"
-                      : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50"
-                  }`}
+                  className={`rounded-full px-3.5 py-1 text-xs font-semibold transition-all cursor-pointer ${filterClass === "premium"
+                    ? "bg-[#071A33] text-white shadow-xs font-bold"
+                    : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50"
+                    }`}
                 >
                   Vande Bharat / Duronto / Rajdhani
                 </button>
@@ -732,11 +784,10 @@ export default function PublicDashboard() {
                 <button
                   type="button"
                   onClick={() => setFilterClass("sf_exp")}
-                  className={`rounded-full px-3.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
-                    filterClass === "sf_exp"
-                      ? "bg-[#071A33] text-white shadow-xs font-bold"
-                      : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50"
-                  }`}
+                  className={`rounded-full px-3.5 py-1 text-xs font-semibold transition-all cursor-pointer ${filterClass === "sf_exp"
+                    ? "bg-[#071A33] text-white shadow-xs font-bold"
+                    : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50"
+                    }`}
                 >
                   Superfast / Express
                 </button>
@@ -744,11 +795,10 @@ export default function PublicDashboard() {
                 <button
                   type="button"
                   onClick={() => setFilterClass("suburban")}
-                  className={`rounded-full px-3.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
-                    filterClass === "suburban"
-                      ? "bg-[#071A33] text-white shadow-xs font-bold"
-                      : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50"
-                  }`}
+                  className={`rounded-full px-3.5 py-1 text-xs font-semibold transition-all cursor-pointer ${filterClass === "suburban"
+                    ? "bg-[#071A33] text-white shadow-xs font-bold"
+                    : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50"
+                    }`}
                 >
                   Suburban MEMU
                 </button>
@@ -792,7 +842,7 @@ export default function PublicDashboard() {
         </section>
       )}
 
-      {/* Floating RailDrishti AI RTIS Copilot / WhatsApp Bot Simulator */}
+      {/* Floating RailSanket AI RTIS Copilot / WhatsApp Bot Simulator */}
       <WhatsAppChatModal
         initialTrainNumber={botTrainNumber}
         initialTrainName={botTrainName}

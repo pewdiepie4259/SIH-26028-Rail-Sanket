@@ -46,7 +46,7 @@ export const WhatsAppChatModal: React.FC<WhatsAppChatModalProps> = ({
         {
             id: '1',
             sender: 'bot',
-            text: "👋 **Namaste! Welcome to RailDrishti AI Assistant** 🤖\n\nI track real-time **RTIS GPS telemetry**, kinematic velocity, signal aspects, and **ST-GNN delay projections** across all 5,207 trains on Indian Railways.\n\nSend **'Hi'** to view the main menu, or enter any Train Number / Station Code for instant live telemetry.",
+            text: "👋 **Namaste! Welcome to RailSanket AI Assistant** 🤖\n\nI track real-time **RTIS GPS telemetry**, kinematic velocity, signal aspects, and **ST-GNN delay projections** across all 5,207 trains on Indian Railways.\n\nSend **'Hi'** to view the main menu, or enter any Train Number / Station Code for instant live telemetry.",
             time: 'Just now'
         }
     ]);
@@ -111,7 +111,7 @@ export const WhatsAppChatModal: React.FC<WhatsAppChatModalProps> = ({
                 const botMsg: ChatMessage = {
                     id: (Date.now() + 1).toString(),
                     sender: 'bot',
-                    text: "👋 **Namaste! Welcome back to RailDrishti AI Assistant** 🤖\n\nHow can I assist you with Indian Railways live telemetry? Select a menu option or type your query below:",
+                    text: "👋 **Namaste! Welcome back to RailSanket AI Assistant** 🤖\n\nHow can I assist you with Indian Railways live telemetry? Select a menu option or type your query below:",
                     time: replyTime,
                     actions: MAIN_MENU_ACTIONS
                 };
@@ -240,7 +240,7 @@ export const WhatsAppChatModal: React.FC<WhatsAppChatModalProps> = ({
                 const botMsg: ChatMessage = {
                     id: (Date.now() + 1).toString(),
                     sender: 'bot',
-                    text: `🚉 **Live Station Board: ${name} (${stationCode})**\n━━━━━━━━━━━━━━━━━━━━\n📍 **Division:** Active Telemetry Synchronized\n📶 **Platform Status:** All 10 platforms active\n\n🚆 **Upcoming Movements:**\n• **12245 SMVB-HWH Duronto** — Plat 7 (Live: Right Time)\n• **20608 MAS Vande Bharat** — Plat 1 (Live: Dep on schedule)\n• **12627 Karnataka Exp** — Plat 3 (Live: Arr in 18m)\n━━━━━━━━━━━━━━━━━━━━\n🤖 _Source: RailDrishti Station Telemetry Engine_`,
+                    text: `🚉 **Live Station Board: ${name} (${stationCode})**\n━━━━━━━━━━━━━━━━━━━━\n📍 **Division:** Active Telemetry Synchronized\n📶 **Platform Status:** All 10 platforms active\n\n🚆 **Upcoming Movements:**\n• **12245 SMVB-HWH Duronto** — Plat 7 (Live: Right Time)\n• **20608 MAS Vande Bharat** — Plat 1 (Live: Dep on schedule)\n• **12627 Karnataka Exp** — Plat 3 (Live: Arr in 18m)\n━━━━━━━━━━━━━━━━━━━━\n🤖 _Source: RailSanket Station Telemetry Engine_`,
                     time: replyTime,
                     actions: [
                         { label: "⚡ Track 12245", value: "12245" },
@@ -272,7 +272,7 @@ export const WhatsAppChatModal: React.FC<WhatsAppChatModalProps> = ({
             const botMsg: ChatMessage = {
                 id: (Date.now() + 1).toString(),
                 sender: 'bot',
-                text: `🚆 **RailDrishti AI Assistant**\n━━━━━━━━━━━━━━━━━━━━\n📌 **Query:** #${textToSend}\n📍 **Status:** Live Telemetry Synchronized\n⚡ **Kinematic Speed:** 82 km/h\n🟢 **Signal Aspect:** CLEAR (GREEN)\n⏱️ **GNN Delay:** Right Time (0m delay)\n━━━━━━━━━━━━━━━━━━━━\n🤖 _Source: Indian Railways RTIS Engine_`,
+                text: `🚆 **RailSanket AI Assistant**\n━━━━━━━━━━━━━━━━━━━━\n📌 **Query:** #${textToSend}\n📍 **Status:** Live Telemetry Synchronized\n⚡ **Kinematic Speed:** 82 km/h\n🟢 **Signal Aspect:** CLEAR (GREEN)\n⏱️ **GNN Delay:** Right Time (0m delay)\n━━━━━━━━━━━━━━━━━━━━\n🤖 _Source: Indian Railways RTIS Engine_`,
                 time: replyTime,
                 actions: [
                     { label: "🚉 Station Live Board", value: "menu_stations" },
@@ -325,17 +325,18 @@ export const WhatsAppChatModal: React.FC<WhatsAppChatModalProps> = ({
             {/* Floating Trigger Button (RailDrishti Theme) */}
             {!isOpen && (
                 <button
+                    translate="no"
                     onClick={() => setIsOpen(true)}
-                    className="group flex items-center gap-3 rounded-full border border-[#F59E0B] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-5 py-3 text-white shadow-[0_8px_25px_rgba(7,26,51,0.6),0_0_15px_rgba(245,158,11,0.25)] transition-all duration-300 hover:scale-105 hover:border-[#F59E0B] hover:shadow-[0_12px_32px_rgba(245,158,11,0.35)] active:scale-95 cursor-pointer"
+                    className="notranslate group flex items-center gap-3 rounded-full border border-[#F59E0B] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-5 py-3 text-white shadow-[0_8px_25px_rgba(7,26,51,0.6),0_0_15px_rgba(245,158,11,0.25)] transition-all duration-300 hover:scale-105 hover:border-[#F59E0B] hover:shadow-[0_12px_32px_rgba(245,158,11,0.35)] active:scale-95 cursor-pointer"
                 >
                     <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#F59E0B]/20 text-[#F59E0B] border border-[#F59E0B]/50 group-hover:bg-[#F59E0B] group-hover:text-[#071A33] transition-colors">
                         <Sparkles className="h-4 w-4" />
                     </div>
-                    <div className="flex flex-col text-left">
-                        <span className="text-xs font-extrabold tracking-wide text-white flex items-center gap-1">
-                            Rail<span className="text-[#F59E0B]">Drishti</span> AI
+                    <div translate="no" className="notranslate flex flex-col text-left">
+                        <span translate="no" className="notranslate text-xs font-extrabold tracking-wide text-white flex items-center">
+                            Rail<span translate="no" className="notranslate text-[#F59E0B]">Sanket</span>&nbsp;AI
                         </span>
-                        <span className="text-[10px] text-teal-300 font-medium">RTIS Assistant</span>
+                        <span translate="no" className="notranslate text-[10px] text-teal-300 font-medium">RTIS Assistant</span>
                     </div>
                     <span className="relative flex h-2.5 w-2.5 ml-1">
                         <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
@@ -360,8 +361,8 @@ export const WhatsAppChatModal: React.FC<WhatsAppChatModalProps> = ({
                                 <Bot className="w-5 h-5 text-[#F59E0B]" />
                             </div>
                             <div>
-                                <h4 className="font-extrabold text-sm leading-none flex items-center gap-2 text-white">
-                                    <span>Rail<span className="text-[#F59E0B]">Drishti</span> AI</span>
+                                <h4 translate="no" className="notranslate font-extrabold text-sm leading-none flex items-center gap-2 text-white">
+                                    <span translate="no" className="notranslate">Rail<span translate="no" className="notranslate text-[#F59E0B]">Sanket</span>&nbsp;AI</span>
                                     <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#F59E0B] text-[#071A33] font-mono font-black shadow-xs">
                                         RTIS 2.0
                                     </span>
@@ -448,8 +449,8 @@ export const WhatsAppChatModal: React.FC<WhatsAppChatModalProps> = ({
                                                 ? 'bg-gradient-to-r from-[#0E7C86] to-[#0E5961] text-white rounded-tr-xs border border-[#2DD4BF]/40'
                                                 : 'bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] text-white rounded-tr-xs border border-transparent'
                                             : isDarkMode
-                                            ? 'bg-[#0B2238] text-slate-100 rounded-tl-xs border border-slate-700/70'
-                                            : 'bg-white text-slate-800 rounded-tl-xs border border-slate-200 shadow-sm'
+                                            ? 'bg-gradient-to-br from-[#1C2638] via-[#162030] to-[#0B2238] text-slate-100 rounded-tl-xs border border-amber-500/30'
+                                            : 'bg-gradient-to-r from-[#FFF5E6] via-[#FFFDF9] to-white text-slate-800 rounded-tl-xs border border-amber-200/80 shadow-sm'
                                     }`}
                                 >
                                     {renderFormattedText(m.text)}

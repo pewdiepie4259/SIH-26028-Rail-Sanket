@@ -69,39 +69,39 @@ function JunctionStatus({ junctionsData }: JunctionStatusProps) {
         </div>
       </div>
 
-      <div className="divide-y divide-slate-100">
+      <div className="divide-y divide-[#164B5A]/60">
         {junctions.map((junction) => (
           <div
             key={junction.code}
-            className="p-4 transition-colors hover:bg-slate-50/80"
+            className="p-4 transition-colors hover:bg-[#0A2036]"
           >
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <h4 className="truncate text-xs font-bold text-[#071A33]">
+                  <h4 className="truncate text-xs font-bold text-white">
                     {junction.name}
                   </h4>
 
-                  <span className="rounded border border-slate-200 bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-slate-700">
+                  <span className="rounded border border-[#164B5A] bg-[#0A2036] px-1.5 py-0.5 text-[9px] font-bold text-teal-300">
                     {junction.code}
                   </span>
                 </div>
 
                 <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
-                  <div className="flex items-center gap-1.5 text-[10px] text-slate-600">
+                  <div className="flex items-center gap-1.5 text-[10px] text-slate-300">
                     <TrainFront
                       size={12}
-                      className="text-[#0E5961]"
+                      className="text-teal-300"
                     />
-                    <span className="font-semibold text-[#071A33]">{junction.approaching}</span> approaching
+                    <span className="font-semibold text-white">{junction.approaching}</span> approaching
                   </div>
 
-                  <div className="flex items-center gap-1.5 text-[10px] text-slate-600">
+                  <div className="flex items-center gap-1.5 text-[10px] text-slate-300">
                     <GitBranch
                       size={12}
-                      className="text-[#0E5961]"
+                      className="text-teal-300"
                     />
-                    <span className="font-semibold text-[#071A33]">{junction.activeRoutes}</span> active routes
+                    <span className="font-semibold text-white">{junction.activeRoutes}</span> active routes
                   </div>
                 </div>
               </div>
@@ -109,10 +109,10 @@ function JunctionStatus({ junctionsData }: JunctionStatusProps) {
               <span
                 className={`shrink-0 rounded-md border px-2 py-1 text-[9px] font-bold uppercase tracking-wide transition-colors duration-300 ${
                   junction.status === "Congested"
-                    ? "border-red-200 bg-red-50 text-red-700"
+                    ? "border-rose-500/50 bg-rose-950/80 text-rose-300"
                     : junction.status === "Busy"
-                      ? "border-amber-200 bg-amber-50 text-amber-800"
-                      : "border-emerald-200 bg-emerald-50 text-emerald-700"
+                      ? "border-amber-500/50 bg-amber-950/80 text-amber-300"
+                      : "border-emerald-500/50 bg-emerald-950/80 text-emerald-300"
                 }`}
               >
                 {junction.status}
@@ -124,27 +124,27 @@ function JunctionStatus({ junctionsData }: JunctionStatusProps) {
                 <div className="flex items-center gap-1.5">
                   <Gauge
                     size={12}
-                    className="text-slate-500"
+                    className="text-slate-400"
                   />
 
-                  <span className="text-[10px] font-semibold text-slate-600">
+                  <span className="text-[10px] font-semibold text-slate-300">
                     Junction load
                   </span>
                 </div>
 
-                <span className="text-[10px] font-bold text-[#071A33] transition-all">
+                <span className="text-[10px] font-bold text-white transition-all">
                   {junction.load}%
                 </span>
               </div>
 
-              <div className="h-2 overflow-hidden rounded-full bg-slate-100 border border-slate-200">
+              <div className="h-2 overflow-hidden rounded-full bg-[#040E1B] border border-[#164B5A]">
                 <div
                   className={`h-full rounded-full transition-all duration-700 ${
                     junction.load >= 80
-                      ? "bg-red-500"
+                      ? "bg-rose-500"
                       : junction.load >= 65
-                        ? "bg-[#F59E0B]"
-                        : "bg-[#0E7C86]"
+                        ? "bg-[#FF8A3D]"
+                        : "bg-teal-400"
                   }`}
                   style={{ width: `${junction.load}%` }}
                 />
@@ -153,7 +153,7 @@ function JunctionStatus({ junctionsData }: JunctionStatusProps) {
 
             <Link
               to="/controller/junctions"
-              className="mt-3 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-[#0E5961] transition hover:text-[#F59E0B]"
+              className="mt-3 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-teal-300 transition hover:text-[#FF8A3D]"
             >
               View junction
               <ArrowUpRight size={12} />

@@ -234,7 +234,7 @@ export default function TrainSearch() {
   const totalResultsCount = trainResults.length + stationResults.length;
 
   return (
-    <div className="min-h-screen bg-[#F4F7FA] text-slate-800 font-sans pb-16">
+    <div className="train-search-page min-h-screen bg-gradient-to-br from-[#FFF4E1] via-white to-[#FFF4E1] text-slate-800 font-sans pb-16">
       {/* 1. PROMINENT SEARCH HEADER SECTION */}
       <section className="border-b border-[#164B5A] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] text-white shadow-lg">
         <div className="mx-auto max-w-[1400px] px-4 py-8 sm:px-6 lg:px-10">
@@ -252,10 +252,10 @@ export default function TrainSearch() {
           </div>
 
           {/* Search Bar Input */}
-          <form onSubmit={handleSearchSubmit} className="relative mt-6 max-w-4xl">
-            <div className="relative flex items-center rounded-2xl border-2 border-[#F59E0B]/70 bg-white p-2 shadow-xl transition-all focus-within:border-[#F59E0B] focus-within:ring-4 focus-within:ring-[#F59E0B]/20">
+          <form onSubmit={handleSearchSubmit} className="relative z-40 mt-6 max-w-4xl">
+            <div className="train-hero-search relative z-50 flex items-center rounded-2xl border-2 border-[#F59E0B]/70 bg-white dark:bg-[#071A33] p-2 shadow-xl transition-all focus-within:border-[#F59E0B] focus-within:ring-4 focus-within:ring-[#F59E0B]/20">
               <div className="pl-3 pr-2 text-slate-400">
-                <Search size={20} className="text-[#0E7C86]" />
+                <Search size={20} className="text-[#0E7C86] dark:text-[#2DD4BF] search-icon" />
               </div>
               <input
                 type="text"
@@ -269,13 +269,14 @@ export default function TrainSearch() {
                 }}
                 onKeyDown={handleInputKeyDown}
                 placeholder="Search train number, train name, station name or code (e.g. 12627, Karnataka Express, SBC, KSR Bengaluru, Rajahmundry)..."
-                className="w-full bg-transparent px-2 py-2 text-sm sm:text-base font-semibold text-[#071A33] placeholder-slate-400 focus:outline-none"
+                style={{ backgroundColor: 'transparent', background: 'transparent', border: 'none', outline: 'none', boxShadow: 'none' }}
+                className="train-hero-input w-full bg-transparent px-2 py-2 text-sm sm:text-base font-semibold text-[#071A33] dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-300 focus:outline-none focus:ring-0 border-0 shadow-none"
               />
               {searchQuery && (
                 <button
                   type="button"
                   onClick={handleClear}
-                  className="px-2 py-1 text-xs font-bold text-slate-400 hover:text-slate-600 transition cursor-pointer"
+                  className="search-clear-btn px-2 py-1 text-xs font-bold text-slate-400 hover:text-slate-600 transition cursor-pointer"
                 >
                   Clear
                 </button>
@@ -299,7 +300,7 @@ export default function TrainSearch() {
           </form>
 
           {/* Quick Search Suggestion Pills */}
-          <div className="mt-4 flex flex-wrap items-center gap-2">
+          <div className="relative z-10 mt-4 flex flex-wrap items-center gap-2">
             <span className="text-xs font-semibold text-slate-300">Examples:</span>
             {popularSuggestions.map((item) => (
               <button
@@ -507,7 +508,7 @@ export default function TrainSearch() {
                     return (
                       <div
                         key={train.train_number}
-                        className="rounded-2xl border border-slate-200/90 bg-white p-4 sm:p-5 shadow-xs transition-all hover:border-[#0E7C86]/50 hover:shadow-md"
+                        className="rounded-2xl border-2 border-[#071A33] bg-white p-4 sm:p-5 shadow-sm transition-all hover:border-[#F59E0B] hover:shadow-lg"
                       >
                         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                           {/* Left: Train Info & Route */}
@@ -634,7 +635,7 @@ export default function TrainSearch() {
                   {stationResults.map((station) => (
                     <div
                       key={station.code}
-                      className="rounded-2xl border border-slate-200/90 bg-white p-4 sm:p-5 shadow-xs transition-all hover:border-[#0E7C86]/50 hover:shadow-md flex flex-col justify-between"
+                      className="rounded-2xl border-2 border-[#071A33] bg-white p-4 sm:p-5 shadow-sm transition-all hover:border-[#F59E0B] hover:shadow-lg flex flex-col justify-between"
                     >
                       <div className="space-y-1.5">
                         <div className="flex items-center justify-between gap-2">

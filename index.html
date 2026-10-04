@@ -1,43 +1,48 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/logos/raildrishti-dark.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,300..900;1,300..900&display=swap" rel="stylesheet" />
-    <title>RailDrishti</title>
-  </head>
-  <body>
-    <div id="google_translate_element" style="display:none"></div>
-    <div id="root"></div>
-    <script type="text/javascript">
-      window.googleTranslateElementInit = function() {
-        if (window.google && window.google.translate) {
-          new window.google.translate.TranslateElement({
-            pageLanguage: 'en',
-            includedLanguages: 'en,hi,bn,mr,gu,ks,ta,te,kn,pa,ml,or,as,ur,kfy',
-            autoDisplay: false
-          }, 'google_translate_element');
-        }
-      };
 
-      // Suppress Google Translate default banner and body shift
-      try {
-        const observer = new MutationObserver(() => {
-          if (document.body && document.body.style.top !== '0px') {
-            document.body.style.top = '0px';
-          }
-          const banner = document.querySelector('.goog-te-banner-frame, iframe.skiptranslate');
-          if (banner) {
-            banner.style.display = 'none';
-          }
-        });
-        observer.observe(document.documentElement, { attributes: true, childList: true, subtree: true });
-      } catch (e) {}
-    </script>
-    <script type="text/javascript" src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/png" href="/logos/raildrishti-dark.png" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,300..900;1,300..900&display=swap"
+    rel="stylesheet" />
+  <title>RailSanket</title>
+</head>
+
+<body>
+  <div id="google_translate_element" style="display:none"></div>
+  <div id="root"></div>
+  <script type="text/javascript">
+    window.googleTranslateElementInit = function () {
+      if (window.google && window.google.translate) {
+        new window.google.translate.TranslateElement({
+          pageLanguage: 'en',
+          includedLanguages: 'en,hi,bn,mr,gu,ks,ta,te,kn,pa,ml,or,as,ur,kfy',
+          autoDisplay: false
+        }, 'google_translate_element');
+      }
+    };
+
+    // Suppress Google Translate default banner and body shift
+    try {
+      const observer = new MutationObserver(() => {
+        if (document.body && document.body.style.top !== '0px') {
+          document.body.style.top = '0px';
+        }
+        const banner = document.querySelector('.goog-te-banner-frame, iframe.skiptranslate');
+        if (banner) {
+          banner.style.display = 'none';
+        }
+      });
+      observer.observe(document.documentElement, { attributes: true, childList: true, subtree: true });
+    } catch (e) { }
+  </script>
+  <script type="text/javascript"
+    src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+
 </html>

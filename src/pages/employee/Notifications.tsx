@@ -34,8 +34,9 @@ import {
   getRoleNotificationsViewData,
   type RoleNotificationItem,
 } from "../../services/employeeAlertService";
-import type { EmployeeNavItem } from "../../services/employee";
 import { caseService } from "../../services/caseService";
+import EmployeeSidebar from "../../components/employee/EmployeeSidebar";
+import LanguageAndA11yControls from "../../components/LanguageAndA11yControls";
 
 export default function EmployeeNotifications() {
   const navigate = useNavigate();
@@ -205,19 +206,7 @@ export default function EmployeeNotifications() {
     });
   }, [notifications, statusFilter, categoryFilter, searchQuery]);
 
-  // Sidebar navigation menu items
-  const navItems: EmployeeNavItem[] = [
-    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/employee/dashboard", active: true },
-    { id: "duty", label: "My Duty", icon: CalendarCheck, path: "/employee/duty", active: true },
-    { id: "assignment", label: "My Train / My Section", icon: TrainFront, path: "/employee/assignment", active: true },
-    { id: "alerts", label: "Operational Alerts", icon: AlertTriangle, path: "/employee/alerts", active: true },
-    { id: "tasks", label: "Tasks", icon: CheckSquare, path: "/employee/tasks", active: true },
-    { id: "report_issue", label: "Report Issue", icon: FileWarning, path: "/employee/report", active: true },
-    { id: "incident", label: "Incident Reporting", icon: Flame, path: "/employee/incidents", active: true },
-    { id: "notifications", label: "Notifications", icon: Bell, path: "/employee/notifications", active: true, badge: unreadCount },
-    { id: "history", label: "Activity / History", icon: History, path: "/employee/history", active: true },
-    { id: "profile", label: "Profile", icon: User, path: "/employee/profile", active: true },
-  ];
+
 
   // Helper to render icon for all 9 unified categories
   const renderCategoryIcon = (category: string) => {
@@ -288,7 +277,7 @@ export default function EmployeeNotifications() {
       )}
 
       {/* TOP HEADER */}
-      <header className="sticky top-0 z-40 flex h-[72px] shrink-0 items-center justify-between border-b border-[#16364A] bg-[#071A33]/95 backdrop-blur-md px-4 sm:px-6">
+      <header className="sticky top-0 z-40 flex h-[72px] shrink-0 items-center justify-between border-b border-[#164B5A] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-4 sm:px-6 shadow-lg">
         {/* Left Branding & Mobile Toggle */}
         <div className="flex items-center gap-3">
           <button
@@ -304,15 +293,15 @@ export default function EmployeeNotifications() {
             <div className="h-11 w-11 shrink-0 overflow-hidden rounded-full border border-[#294665] bg-[#071A33] shadow-md">
               <img
                 src="/logos/raildrishti-dark.png"
-                alt="RailDrishti"
+                alt="RailSanket"
                 className="h-full w-full object-contain p-0.5"
               />
             </div>
 
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-mono text-xs font-semibold uppercase tracking-wider text-[#0E7C86]">
-                  RailDrishti
+                <span translate="no" className="notranslate text-xs font-bold uppercase tracking-[0.16em] text-white">
+                  Rail<span className="text-[#F59E0B]">Sanket</span>
                 </span>
                 <span className="rounded bg-[#0E7C86]/20 border border-[#0E7C86]/40 px-1.5 py-0.5 text-[10px] font-bold text-cyan-300">
                   EMPLOYEE PORTAL
@@ -326,22 +315,25 @@ export default function EmployeeNotifications() {
         </div>
 
         {/* Right Controls */}
-        <div className="flex items-center gap-3 sm:gap-4">
-          {/* IST Clock */}
-          <div className="hidden items-center gap-2 rounded-lg border border-[#16364A] bg-[#0A2036] px-3 py-1.5 md:flex">
-            <Clock size={16} className="text-[#0E7C86]" />
-            <span className="font-mono text-sm font-medium text-slate-200">
-              {formatIST(currentTime, is24Hour)} <span className="text-[10px] text-slate-400">IST</span>
-            </span>
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Live IST Clock Capsule */}
+          <div className="hidden sm:flex h-9 items-center gap-2 rounded-full border border-[#F59E0B] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-3 text-xs text-white shadow-sm transition-all duration-300">
+            <Clock size={15} className="text-[#F59E0B]" />
+            <div className="font-mono font-bold tracking-wider text-white">
+              {formatIST(currentTime, is24Hour)} <span className="text-[#F59E0B] text-[10px] font-bold">IST</span>
+            </div>
             <button
               type="button"
               onClick={() => setIs24Hour(!is24Hour)}
-              className="ml-1 rounded border border-[#294665] bg-[#071A33] px-1.5 py-0.5 text-[10px] font-medium text-slate-300 transition hover:bg-[#16364A]"
-              title="Toggle 12h/24h format"
+              className="ml-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-white hover:bg-[#F59E0B] hover:text-[#071A33] transition cursor-pointer border border-white/20"
+              title="Toggle 12H / 24H clock"
             >
               {is24Hour ? "24H" : "12H"}
             </button>
           </div>
+
+          {/* Language Selector & Accessibility Tools */}
+          <LanguageAndA11yControls buttonHeightClass="h-9" />
 
           {/* Security */}
           <div className="hidden items-center gap-2 border-l border-[#16364A] pl-3 sm:flex">
@@ -373,94 +365,20 @@ export default function EmployeeNotifications() {
 
       {/* BODY WITH SIDEBAR & CONTENT */}
       <div className="flex flex-1 overflow-hidden">
-        {/* MOBILE SIDEBAR BACKDROP */}
-        {sidebarOpen && (
-          <div
-            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
-
         {/* SIDEBAR */}
-        <aside
-          className={`fixed inset-y-0 left-0 z-50 flex flex-col border-r border-[#16364A] bg-[#071A33] transition-all duration-300 ease-in-out lg:static ${
-            sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
-          } ${sidebarCollapsed ? "lg:w-20" : "lg:w-64"} w-64`}
-        >
-          {/* Mobile Close Button */}
-          <div className="flex h-[72px] items-center justify-between border-b border-[#16364A] px-4 lg:hidden">
-            <span className="font-semibold text-white text-sm">Navigation Menu</span>
-            <button
-              type="button"
-              onClick={() => setSidebarOpen(false)}
-              className="rounded-lg p-2 text-slate-400 hover:bg-[#0A2036] hover:text-white"
-            >
-              <X size={20} />
-            </button>
-          </div>
-
-          {/* Nav Links */}
-          <div className="flex-1 overflow-y-auto p-3 space-y-1">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isCurrent = item.id === "notifications";
-
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  disabled={!item.active}
-                  onClick={() => {
-                    if (item.path) {
-                      navigate(item.path);
-                      setSidebarOpen(false);
-                    }
-                  }}
-                  className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium transition-all ${
-                    isCurrent
-                      ? "border border-[#0E7C86] bg-[#0E7C86] text-white shadow-lg shadow-[#0E7C86]/20 font-semibold"
-                      : item.active
-                      ? "text-slate-300 hover:bg-[#0A2036] hover:text-white border border-transparent"
-                      : "text-slate-500 cursor-not-allowed border border-transparent opacity-60"
-                  }`}
-                  title={item.phase ? `${item.label} (${item.phase})` : item.label}
-                >
-                  <Icon
-                    size={18}
-                    className={`shrink-0 ${
-                      isCurrent ? "text-cyan-200" : item.active ? "text-[#0E7C86]" : "text-slate-500"
-                    }`}
-                  />
-                  {!sidebarCollapsed && (
-                    <span className="flex-1 text-left truncate">{item.label}</span>
-                  )}
-                  {!sidebarCollapsed && item.badge !== undefined && item.badge > 0 && (
-                    <span className="rounded-full bg-[#0E7C86] text-white px-2 py-0.5 text-[10px] font-bold">
-                      {item.badge}
-                    </span>
-                  )}
-                  {!sidebarCollapsed && item.phase && (
-                    <span className="rounded bg-[#16364A] px-1.5 py-0.5 text-[9px] font-mono text-slate-400">
-                      {item.phase}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Sidebar Collapse Toggle (Desktop only) */}
-          <div className="hidden border-t border-[#16364A] p-3 lg:block">
-            <button
-              type="button"
-              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#16364A] bg-[#0A2036] py-2 text-xs text-slate-300 transition hover:bg-[#16364A] hover:text-white"
-            >
-              {sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-              {!sidebarCollapsed && <span>Collapse Sidebar</span>}
-            </button>
-          </div>
-        </aside>
+        <EmployeeSidebar
+          sidebarOpen={sidebarOpen}
+          setSidebarOpen={setSidebarOpen}
+          sidebarCollapsed={sidebarCollapsed}
+          setSidebarCollapsed={setSidebarCollapsed}
+          activeTab="notifications"
+          departmentName={roleViewData.department}
+          roleDisplayTitle={roleViewData.roleTitle}
+          badges={{
+            notifications: unreadCount,
+          }}
+          onShowToast={showToast}
+        />
 
         {/* MAIN PAGE CONTENT */}
         <main className="flex-1 overflow-y-auto bg-[#031426] p-4 sm:p-6 lg:p-8">
@@ -844,7 +762,7 @@ export default function EmployeeNotifications() {
               <div>
                 <span className="text-slate-400 block">Source:</span>
                 <span className="font-semibold text-slate-200">
-                  {selectedNotification.source || "RailDrishti Operational Core"}
+                  {selectedNotification.source || "RailSanket Operational Core"}
                 </span>
               </div>
             </div>

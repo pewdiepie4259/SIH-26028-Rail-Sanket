@@ -424,7 +424,11 @@ export function getRoleDutyData(user: AuthUser | null): RoleDutyData {
   const operationalRoleId = user?.operationalRole as OperationalRoleId | undefined;
   const department = user?.department as EmployeeDepartment | undefined;
 
-  const isRoleAssigned = Boolean(operationalRoleId && operationalRoleId in getRoleConfig(operationalRoleId));
+  const isRoleAssigned = Boolean(
+    operationalRoleId &&
+      (operationalRoleId as string) !== "unassigned" &&
+      getRoleConfig(operationalRoleId)
+  );
   const roleConfig = getRoleConfig(operationalRoleId || DEFAULT_OPERATIONAL_ROLE);
   const roleId = roleConfig.id;
 

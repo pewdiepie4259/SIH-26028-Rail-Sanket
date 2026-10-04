@@ -45,6 +45,7 @@ import {
   type RoleProfileViewData,
 } from "../../services/employeeProfileService";
 import type { EmployeeNavItem } from "../../services/employee";
+import EmployeeSidebar from "../../components/employee/EmployeeSidebar";
 
 export default function EmployeeProfile() {
   const navigate = useNavigate();
@@ -210,19 +211,7 @@ export default function EmployeeProfile() {
     showToast("Password updated successfully for this session.");
   };
 
-  // Sidebar navigation menu items
-  const navItems: EmployeeNavItem[] = [
-    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/employee/dashboard", active: true },
-    { id: "duty", label: "My Duty", icon: CalendarCheck, path: "/employee/duty", active: true },
-    { id: "assignment", label: "My Train / My Section", icon: TrainFront, path: "/employee/assignment", active: true },
-    { id: "alerts", label: "Operational Alerts", icon: AlertTriangle, path: "/employee/alerts", active: true },
-    { id: "tasks", label: "Tasks", icon: CheckSquare, path: "/employee/tasks", active: true },
-    { id: "report_issue", label: "Report Issue", icon: FileWarning, path: "/employee/report", active: true },
-    { id: "incident", label: "Incident Reporting", icon: Flame, path: "/employee/incidents", active: true },
-    { id: "notifications", label: "Notifications", icon: Bell, path: "/employee/notifications", active: true },
-    { id: "history", label: "Activity / History", icon: History, path: "/employee/history", active: true },
-    { id: "profile", label: "Profile", icon: User, path: "/employee/profile", active: true },
-  ];
+
 
   return (
     <div className="min-h-screen bg-[#031426] text-slate-100 flex flex-col font-sans selection:bg-[#F59E0B]/30 selection:text-white">
@@ -235,7 +224,7 @@ export default function EmployeeProfile() {
       )}
 
       {/* TOP HEADER */}
-      <header className="sticky top-0 z-40 flex h-[72px] shrink-0 items-center justify-between border-b border-[#16364A] bg-[#071A33]/95 backdrop-blur-md px-4 sm:px-6">
+      <header className="sticky top-0 z-40 flex h-[72px] shrink-0 items-center justify-between border-b border-[#164B5A] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-4 sm:px-6 shadow-lg">
         {/* Left Branding & Mobile Toggle */}
         <div className="flex items-center gap-3">
           <button
@@ -251,15 +240,15 @@ export default function EmployeeProfile() {
             <div className="h-11 w-11 shrink-0 overflow-hidden rounded-full border border-[#294665] bg-[#071A33] shadow-md">
               <img
                 src="/logos/raildrishti-dark.png"
-                alt="RailDrishti"
+                alt="RailSanket"
                 className="h-full w-full object-contain p-0.5"
               />
             </div>
 
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold uppercase tracking-[0.16em] text-white">
-                  Rail<span className="text-[#F59E0B]">Drishti</span>
+                <span translate="no" className="notranslate text-xs font-bold uppercase tracking-[0.16em] text-white">
+                  Rail<span className="text-[#F59E0B]">Sanket</span>
                 </span>
                 <span className="rounded bg-[#0E7C86]/30 px-1.5 py-0.5 text-[10px] font-semibold text-teal-300 border border-[#0E7C86]/50">
                   Employee Portal
@@ -322,105 +311,16 @@ export default function EmployeeProfile() {
       {/* MAIN CONTAINER WITH SIDEBAR & PROFILE CONTENT */}
       <div className="flex flex-1 min-w-0">
         {/* SIDEBAR NAVIGATION */}
-        {sidebarOpen && (
-          <div
-            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
-
-        <aside
-          className={`fixed lg:sticky top-[72px] z-50 h-[calc(100vh-72px)] bg-[#071A33] border-r border-[#16364A] flex flex-col transition-all duration-300 ${
-            sidebarOpen ? "left-0 w-64 shadow-2xl" : "-left-64 lg:left-0"
-          } ${sidebarCollapsed ? "lg:w-20" : "lg:w-64"}`}
-        >
-          {/* Sidebar Top */}
-          <div className="flex items-center justify-between p-4 border-b border-[#16364A]/60">
-            <div className={`flex items-center gap-2 ${sidebarCollapsed ? "lg:hidden" : ""}`}>
-              <ShieldCheck size={18} className="text-[#0E7C86]" />
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
-                Operational Modules
-              </span>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setSidebarOpen(false)}
-              className="lg:hidden text-slate-400 hover:text-white p-1"
-            >
-              <X size={20} />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="hidden lg:flex h-7 w-7 items-center justify-center rounded border border-[#16364A] text-slate-400 hover:text-white hover:bg-[#0A2036]"
-              title={sidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-            >
-              {sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-            </button>
-          </div>
-
-          {/* Navigation Links */}
-          <nav className="flex-1 overflow-y-auto p-3 space-y-1.5 scrollbar-thin">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isCurrent = item.id === "profile";
-              return (
-                <div key={item.id} className="relative group">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (item.path) {
-                        navigate(item.path);
-                      }
-                    }}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition text-left ${
-                      isCurrent
-                        ? "bg-gradient-to-r from-[#0E7C86] to-[#0A2036] text-white border-l-4 border-[#F59E0B] shadow-sm"
-                        : "text-slate-300 hover:bg-[#0A2036] hover:text-white"
-                    } ${sidebarCollapsed ? "justify-center px-2" : ""}`}
-                  >
-                    <Icon
-                      size={18}
-                      className={isCurrent ? "text-[#F59E0B]" : "text-slate-300"}
-                    />
-                    {!sidebarCollapsed && (
-                      <span className="truncate flex-1">{item.label}</span>
-                    )}
-                  </button>
-
-                  {sidebarCollapsed && (
-                    <div className="hidden lg:group-hover:block absolute left-full ml-2 top-1/2 -translate-y-1/2 px-2.5 py-1 bg-[#031426] border border-[#16364A] text-white text-xs rounded shadow-lg whitespace-nowrap z-50">
-                      {item.label}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </nav>
-
-          {/* Sidebar Footer */}
-          <div className="p-3 border-t border-[#16364A]/60 bg-[#051326]">
-            {!sidebarCollapsed ? (
-              <div className="text-[11px] text-slate-400 space-y-1">
-                <div className="flex items-center gap-1.5 text-slate-300 font-medium">
-                  <Building2 size={13} className="text-[#0E7C86]" />
-                  <span>{profileData.department}</span>
-                </div>
-                <div className="text-[10px] text-[#71899C] font-mono">{profileData.employeeId}</div>
-                <div className="pt-1 flex items-center justify-between text-[10px] text-slate-400 border-t border-[#16364A]/40">
-                  <span>Operational Role</span>
-                  <span className="text-amber-400 font-semibold">{profileData.roleDisplayName}</span>
-                </div>
-              </div>
-            ) : (
-              <div className="flex justify-center text-emerald-400" title="Active Session">
-                <CircleDot size={14} />
-              </div>
-            )}
-          </div>
-        </aside>
+        <EmployeeSidebar
+          sidebarOpen={sidebarOpen}
+          setSidebarOpen={setSidebarOpen}
+          sidebarCollapsed={sidebarCollapsed}
+          setSidebarCollapsed={setSidebarCollapsed}
+          activeTab="profile"
+          departmentName={profileData.department}
+          roleDisplayTitle={profileData.roleDisplayName}
+          onShowToast={showToast}
+        />
 
         {/* PROFILE MAIN CONTENT */}
         <main className="flex-1 min-w-0 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6">

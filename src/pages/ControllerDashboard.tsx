@@ -278,7 +278,7 @@ export default function ControllerDashboard() {
                     <div className="flex items-center gap-3 flex-wrap">
                         <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
                             <ShieldAlert className="text-amber-500" size={26} />
-                            <span>RailDrishti Section Copilot & Controller DSS</span>
+                            <span>RailSanket Section Copilot & Controller DSS</span>
                         </h1>
                         <span className="text-xs px-3 py-1 rounded bg-indigo-950 text-indigo-300 border border-indigo-800 font-mono">
                             NATIONAL RAIL NETWORK & CORRIDORS (5,207 TRAINS)
@@ -290,12 +290,6 @@ export default function ControllerDashboard() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
-                    <button
-                        onClick={() => navigate('/')}
-                        className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer"
-                    >
-                        ← Public Portal
-                    </button>
                     <button
                         onClick={() => navigate('/live')}
                         className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer flex items-center gap-1.5"

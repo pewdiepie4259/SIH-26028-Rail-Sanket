@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import {
   ChevronDown,
   Eye,
@@ -118,13 +118,44 @@ function PublicLayout() {
   const [langNotice, setLangNotice] = useState<string | null>(null)
 
   const [clockTime, setClockTime] = useState<Date>(new Date())
-  const [is24HourHeader, setIs24HourHeader] = useState<boolean>(true)
+  const [is24HourHeader, setIs24HourHeader] = useState<boolean>(() => {
+    const saved = localStorage.getItem("raildrishti_time_format")
+    return saved ? saved === "24h" : true
+  })
+
+  const handleToggleClockFormat = () => {
+    const nextVal = !is24HourHeader
+    setIs24HourHeader(nextVal)
+    localStorage.setItem("raildrishti_time_format", nextVal ? "24h" : "12h")
+    window.dispatchEvent(new Event("raildrishti_settings_updated"))
+  }
 
   useEffect(() => {
     const timer = setInterval(() => {
       setClockTime(new Date())
     }, 1000)
     return () => clearInterval(timer)
+  }, [])
+
+  useEffect(() => {
+    const handleSettingsUpdate = () => {
+      const savedFormat = localStorage.getItem("raildrishti_time_format")
+      if (savedFormat) {
+        setIs24HourHeader(savedFormat === "24h")
+      }
+      const savedLang = localStorage.getItem("raildrishti_lang_native")
+      if (savedLang) {
+        setLanguage(savedLang)
+      }
+      const savedDensity = localStorage.getItem("raildrishti_density")
+      document.documentElement.classList.toggle("density-compact", savedDensity === "compact")
+    }
+
+    handleSettingsUpdate()
+    window.addEventListener("raildrishti_settings_updated", handleSettingsUpdate)
+    return () => {
+      window.removeEventListener("raildrishti_settings_updated", handleSettingsUpdate)
+    }
   }, [])
 
   const headerHours = clockTime.getHours()
@@ -178,11 +209,13 @@ function PublicLayout() {
   // Synchronize CSS classes to <html> & persist to localStorage
   useEffect(() => {
     const root = document.documentElement
-    root.classList.toggle("accessibility-high-contrast", contrastMode === "high")
-    root.classList.toggle("accessibility-dark-contrast", contrastMode === "dark")
+    const isAuth = location.pathname === "/login" || location.pathname === "/register"
+    root.classList.toggle("accessibility-high-contrast", !isAuth && contrastMode === "high")
+    root.classList.toggle("accessibility-dark-contrast", !isAuth && contrastMode === "dark")
+    root.classList.toggle("accessibility-invert", !isAuth && (invertColors || contrastMode === "dark"))
+    root.classList.toggle("dark", !isAuth && (contrastMode === "dark" || invertColors))
     root.classList.toggle("accessibility-color-vision", colorVisionMode)
     root.classList.toggle("accessibility-highlight-links", highlightLinks)
-    root.classList.toggle("accessibility-invert", invertColors)
     root.classList.toggle("accessibility-sat-low", saturationMode === "low")
     root.classList.toggle("accessibility-sat-high", saturationMode === "high")
     root.classList.toggle("accessibility-sat-desaturated", saturationMode === "desaturated")
@@ -203,6 +236,7 @@ function PublicLayout() {
     }
     localStorage.setItem(A11Y_STORAGE_KEY, JSON.stringify(saved))
   }, [
+    location.pathname,
     contrastMode,
     colorVisionMode,
     highlightLinks,
@@ -405,7 +439,6 @@ function PublicLayout() {
   }
 
   const accessibilityFilters = [
-    invertColors ? "invert(1)" : "",
     saturationMode === "low" ? "saturate(0.65)" : "",
     saturationMode === "high" ? "saturate(1.5)" : "",
     saturationMode === "desaturated" ? "saturate(0)" : "",
@@ -413,28 +446,8 @@ function PublicLayout() {
     .filter(Boolean)
     .join(" ")
 
-  const [subHeaderOpen, setSubHeaderOpen] = useState(false)
-  const subHeaderTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  const handleOpenSubHeader = () => {
-    if (subHeaderTimerRef.current) {
-      clearTimeout(subHeaderTimerRef.current)
-      subHeaderTimerRef.current = null
-    }
-    setSubHeaderOpen(true)
-  }
-
-  const handleCloseSubHeader = () => {
-    if (subHeaderTimerRef.current) {
-      clearTimeout(subHeaderTimerRef.current)
-    }
-    subHeaderTimerRef.current = setTimeout(() => {
-      setSubHeaderOpen(false)
-    }, 250)
-  }
 
   const handleNavClick = () => {
-    setSubHeaderOpen(false)
     setMobileMenuOpen(false)
   }
 
@@ -454,82 +467,92 @@ function PublicLayout() {
     "flex h-9 items-center justify-center rounded-lg border border-[#F59E0B]/80 bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-3.5 text-xs font-semibold text-white transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_4px_12px_rgba(14,89,97,0.28)]"
 
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-    `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${isActive
+    `flex items-center gap-1 px-1.5 2xl:px-2.5 py-1 rounded-lg text-[11px] 2xl:text-xs font-semibold whitespace-nowrap transition-all duration-150 shrink-0 select-none ${isActive
       ? "bg-white/20 text-[#F59E0B] shadow-sm font-bold border border-white/10"
       : "text-slate-200 hover:text-white hover:bg-white/10"
     }`
 
+  const isAuthPage = location.pathname === "/login" || location.pathname === "/register"
+
   return (
     <div
-      className={`min-h-screen text-slate-900 ${contrastMode === "dark"
-          ? "bg-[#071A33] text-white"
-          : "bg-[#F4F7FA]"
-        } ${contrastMode === "high" ? "contrast-[1.25]" : ""}`}
+      className={`min-h-screen w-full max-w-full overflow-x-hidden text-slate-900 ${!isAuthPage && contrastMode === "dark"
+        ? "bg-[#071A33] text-white"
+        : "bg-[#F4F7FA]"
+        } ${!isAuthPage && contrastMode === "high" ? "contrast-[1.25]" : ""}`}
       style={{
         fontSize: `${textScale * 100}%`,
-        filter: accessibilityFilters || undefined,
+        filter: isAuthPage ? undefined : (accessibilityFilters || undefined),
       }}
     >
-      <header className="border-b border-[#164B5A] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] sticky top-0 z-40 shadow-lg">
-        <div className="mx-auto flex h-16 max-w-[1600px] items-center justify-between px-4 sm:px-6 lg:px-8 gap-4">
-          {/* Brand Logo & Title (Only RailDrishti logo and app name) */}
-          <Link to="/" className="flex items-center gap-3 shrink-0">
-            <div className="h-11 w-11 shrink-0 overflow-hidden rounded-full border border-[#294665] bg-[#071A33] shadow-sm">
+      <header className="w-full max-w-full border-b border-[#164B5A] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] sticky top-0 z-40 shadow-lg">
+        <div className="mx-auto flex h-16 max-w-[1720px] w-full items-center justify-between px-2.5 sm:px-4 lg:px-6 gap-1.5 2xl:gap-2.5 min-w-0">
+          {/* Brand Logo & Title (Only RailSanket logo and app name) */}
+          <Link to="/" className="flex items-center gap-2.5 sm:gap-3 shrink-0 z-20 pr-2">
+            <div className="h-10 w-10 sm:h-11 sm:w-11 shrink-0 overflow-hidden rounded-full border border-[#294665] bg-[#071A33] shadow-sm">
               <img
                 src="/logos/raildrishti-dark.png"
-                alt="RailDrishti"
+                alt="RailSanket"
                 className="h-full w-full object-contain p-0.5"
               />
             </div>
 
             <div>
-              <div className="text-xl font-extrabold leading-none tracking-tight text-white flex items-center">
-                Rail<span className="text-[#F59E0B]">Drishti</span>
+              <div translate="no" className="notranslate text-lg sm:text-xl font-extrabold leading-none tracking-tight text-white flex items-center">
+                Rail<span translate="no" className="notranslate text-[#F59E0B]">Sanket</span>
               </div>
             </div>
           </Link>
 
-          {/* Inline Navigation Links */}
-          <nav className="hidden xl:flex items-center gap-1">
-            <NavLink to="/" end onClick={handleNavClick} className={navLinkClass}>
+          {/* Inline Navigation Links - EXACT ORDER REQUIRED:
+              1. Dashboard
+              2. Live Map
+              3. Live Monitor
+              4. Dynamic ETA
+              5. Train Schedule
+              6. Live Station
+              7. Between Stations
+          */}
+          {/* Inline Navigation Links - All items directly visible without scrolling */}
+          <nav className="hidden xl:flex items-center gap-0.5 2xl:gap-1.5 flex-1 min-w-0 justify-center py-1 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+            <NavLink
+              to={currentUser?.role === "employee" ? "/employee/dashboard" : currentUser?.role === "controller" ? "/controller/dashboard" : currentUser?.role === "admin" ? "/admin" : "/"}
+              end
+              onClick={handleNavClick}
+              className={navLinkClass}
+            >
               Dashboard
             </NavLink>
 
+            <NavLink to="/map" onClick={handleNavClick} className={navLinkClass}>
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+              Live Map
+            </NavLink>
+
             <NavLink to="/live" onClick={handleNavClick} className={navLinkClass}>
-              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
               Live Monitor
             </NavLink>
 
             <NavLink to="/eta" onClick={handleNavClick} className={navLinkClass}>
-              Dynamic ETA
+              <span className="hidden 2xl:inline">Dynamic </span>ETA
             </NavLink>
 
-            <NavLink to="/map" onClick={handleNavClick} className={navLinkClass}>
-              Live Map
+            <NavLink to="/trains" onClick={handleNavClick} className={navLinkClass}>
+              <span className="hidden 2xl:inline">Train </span>Schedule
             </NavLink>
 
             <NavLink to="/stations" onClick={handleNavClick} className={navLinkClass}>
-              Stations
+              Live Station
             </NavLink>
 
-            <NavLink to="/pnr" onClick={handleNavClick} className={navLinkClass}>
-              PNR Status
+            <NavLink to="/between-stations" onClick={handleNavClick} className={navLinkClass}>
+              Between Stations
             </NavLink>
 
-            {currentUser && currentUser.role !== "user" && (
-              <NavLink
-                to="/controller"
-                onClick={handleNavClick}
-                className={({ isActive }) =>
-                  `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 ${
-                    isActive
-                      ? "bg-amber-500 text-[#071A33] shadow-sm"
-                      : "bg-indigo-950/70 border border-indigo-700/60 text-indigo-300 hover:bg-indigo-900 hover:text-white"
-                  }`
-                }
-              >
-                <ShieldAlert size={13} />
-                Controller DSS
+            {currentUser && (
+              <NavLink to="/pnr" onClick={handleNavClick} className={navLinkClass}>
+                PNR Status
               </NavLink>
             )}
           </nav>
@@ -541,27 +564,27 @@ function PublicLayout() {
               4. Login
               5. Register
           */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 2xl:gap-2 shrink-0 ml-auto pl-2 z-20">
             {/* 1. Live IST Digital Clock Capsule */}
             <button
               type="button"
-              onClick={() => setIs24HourHeader(!is24HourHeader)}
+              onClick={handleToggleClockFormat}
               title="Live Indian Standard Time (IST) • Click to toggle 12H / 24H mode"
-              className="flex h-9 items-center gap-2 rounded-full border border-[#F59E0B]/70 bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-3 text-xs font-bold text-white shadow-sm transition-all duration-300 hover:scale-[1.02] hover:border-[#F59E0B] hover:shadow-[0_4px_12px_rgba(245,158,11,0.25)] select-none cursor-pointer"
+              className="hidden sm:flex h-9 items-center gap-1.5 2xl:gap-2 rounded-full border border-[#F59E0B]/70 bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-2.5 2xl:px-3 text-xs font-bold text-white shadow-sm transition-all duration-300 hover:scale-[1.02] hover:border-[#F59E0B] hover:shadow-[0_4px_12px_rgba(245,158,11,0.25)] select-none cursor-pointer shrink-0"
             >
               <span className="relative flex h-2 w-2 shrink-0">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_6px_#10B981]" />
               </span>
               <span className="text-[10px] font-black tracking-wider text-[#F59E0B] uppercase">IST</span>
-              <span className="font-mono tracking-wide text-white">{formattedHeaderTime}</span>
-              <span className="hidden md:inline-block rounded bg-black/40 px-1.5 py-0.5 text-[9px] font-sans font-bold text-teal-300">
+              <span className="font-mono tracking-wide text-white text-[11px] 2xl:text-xs">{formattedHeaderTime}</span>
+              <span className="hidden 2xl:inline-block rounded bg-black/40 px-1.5 py-0.5 text-[9px] font-sans font-bold text-teal-300">
                 {is24HourHeader ? "24H" : "12H"}
               </span>
             </button>
 
             {/* 2. Language Selector */}
-            <div className="relative">
+            <div className="relative shrink-0">
               <button
                 type="button"
                 aria-label="Change language"
@@ -570,9 +593,9 @@ function PublicLayout() {
                   setLanguageOpen(!languageOpen)
                   setAccessibilityOpen(false)
                 }}
-                className={`flex h-9 items-center gap-1.5 rounded-full border border-[#F59E0B] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-3 text-xs font-medium text-white transition-all duration-300 hover:scale-[1.02] ${languageOpen
-                    ? "shadow-[0_5px_14px_rgba(245,158,11,0.18)]"
-                    : ""
+                className={`flex h-9 items-center gap-1 2xl:gap-1.5 rounded-full border border-[#F59E0B] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-2.5 2xl:px-3 text-xs font-medium text-white transition-all duration-300 hover:scale-[1.02] shrink-0 ${languageOpen
+                  ? "shadow-[0_5px_14px_rgba(245,158,11,0.18)]"
+                  : ""
                   }`}
               >
                 <span className="flex items-center gap-1">
@@ -591,8 +614,8 @@ function PublicLayout() {
                       type="button"
                       onClick={() => handleSelectLanguage(option)}
                       className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm font-medium transition ${language === option.native || language === option.label
-                          ? "bg-[#FFF4E1] text-[#0E7C86] font-semibold"
-                          : "text-slate-700 hover:bg-slate-50 hover:text-[#0E7C86]"
+                        ? "bg-[#FFF4E1] text-[#0E7C86] font-semibold"
+                        : "text-slate-700 hover:bg-slate-50 hover:text-[#0E7C86]"
                         }`}
                     >
                       <span>{option.native}</span>
@@ -614,8 +637,8 @@ function PublicLayout() {
                   setLanguageOpen(false)
                 }}
                 className={`flex h-9 w-9 items-center justify-center rounded-lg border border-[#F59E0B] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] transition-all duration-300 hover:scale-[1.02] ${accessibilityOpen
-                    ? "shadow-[0_5px_14px_rgba(245,158,11,0.18)]"
-                    : ""
+                  ? "shadow-[0_5px_14px_rgba(245,158,11,0.18)]"
+                  : ""
                   }`}
               >
                 <PersonStanding
@@ -869,11 +892,10 @@ function PublicLayout() {
                                 option.value as "normal" | "low" | "high" | "desaturated"
                               )
                             }
-                            className={`rounded-xl border px-3 py-2.5 text-xs font-semibold shadow-sm transition-all duration-200 flex items-center justify-between cursor-pointer ${
-                              saturationMode === option.value
-                                ? "border-[#0E7C86] bg-[#E7F4F5] text-[#0E5961] ring-1 ring-[#0E7C86]/50 font-bold"
-                                : "border-slate-200 bg-white text-slate-700 hover:border-[#0E7C86]/40"
-                            }`}
+                            className={`rounded-xl border px-3 py-2.5 text-xs font-semibold shadow-sm transition-all duration-200 flex items-center justify-between cursor-pointer ${saturationMode === option.value
+                              ? "border-[#0E7C86] bg-[#E7F4F5] text-[#0E5961] ring-1 ring-[#0E7C86]/50 font-bold"
+                              : "border-slate-200 bg-white text-slate-700 hover:border-[#0E7C86]/40"
+                              }`}
                           >
                             <span>{option.label}</span>
                             {saturationMode === option.value && <Check size={14} className="text-[#0E7C86]" />}
@@ -896,9 +918,8 @@ function PublicLayout() {
                         <button
                           type="button"
                           onClick={() => setReadableFont(!readableFont)}
-                          className={`flex flex-col items-center justify-center gap-1 rounded-xl border p-2 text-center transition cursor-pointer ${
-                            readableFont ? "border-[#0E7C86] bg-[#E7F4F5] text-[#0E5961] font-bold" : "border-slate-200 bg-white text-slate-700 hover:border-[#0E7C86]/40"
-                          }`}
+                          className={`flex flex-col items-center justify-center gap-1 rounded-xl border p-2 text-center transition cursor-pointer ${readableFont ? "border-[#0E7C86] bg-[#E7F4F5] text-[#0E5961] font-bold" : "border-slate-200 bg-white text-slate-700 hover:border-[#0E7C86]/40"
+                            }`}
                         >
                           <Type size={16} />
                           <span className="text-[11px] leading-tight">Readable Font</span>
@@ -911,9 +932,8 @@ function PublicLayout() {
                         <button
                           type="button"
                           onClick={() => setEnhancedFocus(!enhancedFocus)}
-                          className={`flex flex-col items-center justify-center gap-1 rounded-xl border p-2 text-center transition cursor-pointer ${
-                            enhancedFocus ? "border-[#0E7C86] bg-[#E7F4F5] text-[#0E5961] font-bold" : "border-slate-200 bg-white text-slate-700 hover:border-[#0E7C86]/40"
-                          }`}
+                          className={`flex flex-col items-center justify-center gap-1 rounded-xl border p-2 text-center transition cursor-pointer ${enhancedFocus ? "border-[#0E7C86] bg-[#E7F4F5] text-[#0E5961] font-bold" : "border-slate-200 bg-white text-slate-700 hover:border-[#0E7C86]/40"
+                            }`}
                         >
                           <Focus size={16} />
                           <span className="text-[11px] leading-tight">Enhanced Focus</span>
@@ -926,9 +946,8 @@ function PublicLayout() {
                         <button
                           type="button"
                           onClick={() => setReduceMotion(!reduceMotion)}
-                          className={`flex flex-col items-center justify-center gap-1 rounded-xl border p-2 text-center transition cursor-pointer ${
-                            reduceMotion ? "border-[#0E7C86] bg-[#E7F4F5] text-[#0E5961] font-bold" : "border-slate-200 bg-white text-slate-700 hover:border-[#0E7C86]/40"
-                          }`}
+                          className={`flex flex-col items-center justify-center gap-1 rounded-xl border p-2 text-center transition cursor-pointer ${reduceMotion ? "border-[#0E7C86] bg-[#E7F4F5] text-[#0E5961] font-bold" : "border-slate-200 bg-white text-slate-700 hover:border-[#0E7C86]/40"
+                            }`}
                         >
                           <ZapOff size={16} />
                           <span className="text-[11px] leading-tight">Reduce Motion</span>
@@ -946,12 +965,11 @@ function PublicLayout() {
                           <Volume2 size={14} className="text-[#F59E0B]" />
                           Read Aloud (Screen Reader)
                         </h3>
-                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${
-                          ttsStatus === "playing" ? "bg-emerald-500 text-white animate-pulse" :
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${ttsStatus === "playing" ? "bg-emerald-500 text-white animate-pulse" :
                           ttsStatus === "paused" ? "bg-amber-500 text-slate-900" :
-                          ttsStatus === "unsupported" ? "bg-rose-500 text-white" :
-                          "bg-white/20 text-slate-200"
-                        }`}>
+                            ttsStatus === "unsupported" ? "bg-rose-500 text-white" :
+                              "bg-white/20 text-slate-200"
+                          }`}>
                           {ttsStatus}
                         </span>
                       </div>
@@ -1041,14 +1059,14 @@ function PublicLayout() {
 
             {/* 4. Login & 5. Register (or User Profile & Sign Out if logged in) */}
             {currentUser ? (
-              <div className="hidden sm:flex items-center gap-1.5 ml-1">
+              <div className="hidden sm:flex items-center gap-1.5 shrink-0">
                 <Link
                   to={currentUser.role === "user" ? "/user/profile" : currentUser.role === "employee" ? "/employee/profile" : currentUser.role === "controller" ? "/controller/dashboard" : "/admin"}
                   title="View / Edit Profile"
-                  className="flex h-9 items-center gap-2 rounded-full border border-teal-500/60 bg-teal-950/40 px-3 text-xs font-semibold text-teal-200 shadow-sm transition hover:border-[#F59E0B] hover:text-[#F59E0B] cursor-pointer"
+                  className="flex h-9 items-center gap-1.5 rounded-full border border-teal-500/60 bg-teal-950/40 px-2.5 2xl:px-3 text-xs font-semibold text-teal-200 shadow-sm transition hover:border-[#F59E0B] hover:text-[#F59E0B] cursor-pointer shrink-0"
                 >
-                  <User size={14} className="text-teal-400" />
-                  <span className="max-w-[120px] truncate">{currentUser.name || "Passenger"}</span>
+                  <User size={13} className="text-teal-400 shrink-0" />
+                  <span className="max-w-[75px] 2xl:max-w-[120px] truncate">{currentUser.name || "Passenger"}</span>
                 </Link>
                 <button
                   type="button"
@@ -1058,19 +1076,18 @@ function PublicLayout() {
                     navigate("/login")
                   }}
                   title="Sign Out"
-                  className="flex h-9 items-center gap-1 rounded-full border border-slate-700 bg-slate-900/80 px-2.5 text-xs font-medium text-slate-300 transition-all hover:bg-red-950/40 hover:text-red-300 hover:border-red-500/50 cursor-pointer"
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-700 bg-slate-900/80 text-xs font-medium text-slate-300 transition-all hover:bg-red-950/40 hover:text-red-300 hover:border-red-500/50 cursor-pointer shrink-0"
                 >
-                  <LogOut size={13} />
-                  <span className="hidden lg:inline">Logout</span>
+                  <LogOut size={15} className="shrink-0" />
                 </button>
               </div>
             ) : (
-              <div className="hidden sm:flex items-center gap-1.5 ml-1">
+              <div className="hidden sm:flex items-center gap-1.5 shrink-0">
                 {/* 4. Login */}
                 <NavLink
                   to="/login"
                   className={({ isActive }) =>
-                    `${headerButton} ${isActive
+                    `${headerButton} shrink-0 ${isActive
                       ? "shadow-[0_5px_14px_rgba(245,158,11,0.18)] border-[#F59E0B]"
                       : ""
                     }`
@@ -1083,7 +1100,7 @@ function PublicLayout() {
                 <NavLink
                   to="/register"
                   className={({ isActive }) =>
-                    `${headerButton} ${isActive
+                    `${headerButton} shrink-0 ${isActive
                       ? "shadow-[0_5px_14px_rgba(245,158,11,0.18)] border-[#F59E0B]"
                       : ""
                     }`
@@ -1100,10 +1117,9 @@ function PublicLayout() {
               title="System Preferences & Diagnostics"
               aria-label="Application Settings"
               className={({ isActive }) =>
-                `relative ml-1 flex h-9 w-9 items-center justify-center rounded-lg border border-[#F59E0B] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] text-white transition-all duration-300 hover:scale-[1.05] ${
-                  isActive
-                    ? "shadow-[0_5px_14px_rgba(245,158,11,0.3)] border-[#F59E0B] text-[#F59E0B] bg-white/20 ring-2 ring-[#F59E0B]/50"
-                    : "hover:shadow-[0_4px_12px_rgba(245,158,11,0.2)]"
+                `relative flex h-9 w-9 items-center justify-center rounded-lg border border-[#F59E0B] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] text-white transition-all duration-300 hover:scale-[1.05] shrink-0 ${isActive
+                  ? "shadow-[0_5px_14px_rgba(245,158,11,0.3)] border-[#F59E0B] text-[#F59E0B] bg-white/20 ring-2 ring-[#F59E0B]/50"
+                  : "hover:shadow-[0_4px_12px_rgba(245,158,11,0.2)]"
                 }`
               }
             >
@@ -1132,7 +1148,7 @@ function PublicLayout() {
         {mobileMenuOpen && (
           <div className="xl:hidden border-t border-[#164B5A] bg-[#071A33]/98 px-5 py-4 space-y-2 backdrop-blur-md">
             <NavLink
-              to="/"
+              to={currentUser?.role === "employee" ? "/employee/dashboard" : currentUser?.role === "controller" ? "/controller/dashboard" : currentUser?.role === "admin" ? "/admin" : "/"}
               end
               onClick={() => setMobileMenuOpen(false)}
               className={({ isActive }) =>
@@ -1144,6 +1160,18 @@ function PublicLayout() {
             </NavLink>
 
             <NavLink
+              to="/map"
+              onClick={() => setMobileMenuOpen(false)}
+              className={({ isActive }) =>
+                `flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold ${isActive ? "bg-white/20 text-[#F59E0B]" : "text-slate-200 hover:bg-white/10"
+                }`
+              }
+            >
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+              Live Map
+            </NavLink>
+
+            <NavLink
               to="/live"
               onClick={() => setMobileMenuOpen(false)}
               className={({ isActive }) =>
@@ -1152,7 +1180,7 @@ function PublicLayout() {
               }
             >
               <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-              Live Telemetry Monitor
+              Live Monitor
             </NavLink>
 
             <NavLink
@@ -1163,18 +1191,18 @@ function PublicLayout() {
                 }`
               }
             >
-              Dynamic ETA Tracker
+              Dynamic ETA
             </NavLink>
 
             <NavLink
-              to="/map"
+              to="/trains"
               onClick={() => setMobileMenuOpen(false)}
               className={({ isActive }) =>
                 `flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold ${isActive ? "bg-white/20 text-[#F59E0B]" : "text-slate-200 hover:bg-white/10"
                 }`
               }
             >
-              Live Corridor Map
+              Train Schedule
             </NavLink>
 
             <NavLink
@@ -1185,19 +1213,32 @@ function PublicLayout() {
                 }`
               }
             >
-              Stations & Amenities
+              Live Station
             </NavLink>
 
             <NavLink
-              to="/pnr"
+              to="/between-stations"
               onClick={() => setMobileMenuOpen(false)}
               className={({ isActive }) =>
                 `flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold ${isActive ? "bg-white/20 text-[#F59E0B]" : "text-slate-200 hover:bg-white/10"
                 }`
               }
             >
-              <span className="font-bold">PNR Status</span>
+              Between Stations
             </NavLink>
+
+            {currentUser && (
+              <NavLink
+                to="/pnr"
+                onClick={() => setMobileMenuOpen(false)}
+                className={({ isActive }) =>
+                  `flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold ${isActive ? "bg-white/20 text-[#F59E0B]" : "text-slate-200 hover:bg-white/10"
+                  }`
+                }
+              >
+                <span className="font-bold">PNR Status</span>
+              </NavLink>
+            )}
 
             <NavLink
               to="/settings"
@@ -1210,17 +1251,6 @@ function PublicLayout() {
               Settings & Diagnostics
             </NavLink>
 
-
-            {currentUser?.role !== "user" && (
-              <NavLink
-                to="/controller"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-bold bg-amber-500 text-[#071A33]"
-              >
-                <ShieldAlert size={16} />
-                Section Controller DSS
-              </NavLink>
-            )}
 
             <div className="pt-3 border-t border-slate-700/60 flex flex-col gap-2">
               <button
@@ -1250,10 +1280,10 @@ function PublicLayout() {
                       currentUser.role === "user"
                         ? "/user/profile"
                         : currentUser.role === "controller"
-                        ? "/controller"
-                        : currentUser.role === "admin"
-                        ? "/admin/dashboard"
-                        : "/employee/dashboard"
+                          ? "/controller"
+                          : currentUser.role === "admin"
+                            ? "/admin/dashboard"
+                            : "/employee/dashboard"
                     }
                     onClick={() => setMobileMenuOpen(false)}
                     className="flex items-center justify-center gap-2 py-2.5 rounded-lg bg-teal-900/60 border border-teal-500/60 text-teal-200 text-xs font-bold"
@@ -1319,7 +1349,7 @@ function PublicLayout() {
         </div>
       )}
 
-      <main>
+      <main className="w-full max-w-full overflow-x-hidden">
         <Outlet />
       </main>
     </div>

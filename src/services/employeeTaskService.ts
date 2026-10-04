@@ -1159,7 +1159,11 @@ export function getRoleTasksViewData(user: AuthUser | null): RoleTasksViewData {
   const operationalRoleId = user?.operationalRole as OperationalRoleId | undefined;
   const department = user?.department as EmployeeDepartment | undefined;
 
-  const isRoleAssigned = Boolean(operationalRoleId && operationalRoleId in getRoleConfig(operationalRoleId));
+  const isRoleAssigned = Boolean(
+    operationalRoleId &&
+      (operationalRoleId as string) !== "unassigned" &&
+      getRoleConfig(operationalRoleId)
+  );
   const roleConfig = getRoleConfig(operationalRoleId || DEFAULT_OPERATIONAL_ROLE);
   const roleId = roleConfig.id;
 
@@ -1215,8 +1219,14 @@ export function getRoleTasksViewData(user: AuthUser | null): RoleTasksViewData {
     ];
   }
 
+  // Apply stored task status overrides
+  const statusMap = getStoredTaskStatusMap();
+  const synchronizedTasks = tasks.map((t) =>
+    statusMap[t.id] ? { ...t, status: statusMap[t.id] } : t
+  );
+
   // Extract unique categories
-  const categories = Array.from(new Set(tasks.map((t) => t.category)));
+  const categories = Array.from(new Set(synchronizedTasks.map((t) => t.category)));
 
   return {
     employeeName,
@@ -1224,10 +1234,39 @@ export function getRoleTasksViewData(user: AuthUser | null): RoleTasksViewData {
     department: departmentName,
     roleTitle,
     roleConfig,
-    tasks,
+    tasks: synchronizedTasks,
     categories,
     isRoleValid: isRoleAssigned,
     isDepartmentValid,
     warningMessage,
   };
 }
+
+/**
+ * Get stored persistent status map for employee tasks
+ */
+export const getStoredTaskStatusMap = (): Record<string, TaskStatus> => {
+  try {
+    const raw = localStorage.getItem("raildrishti_task_status_map");
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+};
+
+/**
+ * Save persistent task status and broadcast event
+ */
+export const saveTaskStatus = (taskId: string, status: TaskStatus): void => {
+  try {
+    const map = getStoredTaskStatusMap();
+    map[taskId] = status;
+    localStorage.setItem("raildrishti_task_status_map", JSON.stringify(map));
+    window.dispatchEvent(
+      new CustomEvent("raildrishti_task_status_changed", {
+        detail: { taskId, status },
+      })
+    );
+  } catch {}
+};
+

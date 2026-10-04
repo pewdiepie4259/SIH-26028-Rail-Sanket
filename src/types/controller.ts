@@ -90,6 +90,9 @@ export interface LiveTrain {
   telemetry: TelemetryData
   forecasts: ForecastItem[]
   updatedAt: string
+  eta_confidence?: number
+  eta_stability?: "HIGH" | "MODERATE" | "VOLATILE"
+  eta_variance_mins?: number
 }
 
 export interface AuditActionItem {

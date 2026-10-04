@@ -32,12 +32,16 @@ import {
 import { getCurrentUser, logout } from "../../services/auth";
 import {
   getRoleTasksViewData,
+  saveTaskStatus,
   type RoleTaskItem,
   type TaskPriority,
   type TaskStatus,
 } from "../../services/employeeTaskService";
 import RoleDepartmentWarning from "../../components/employee/RoleDepartmentWarning";
 import type { EmployeeNavItem } from "../../services/employee";
+import EmployeeSidebar from "../../components/employee/EmployeeSidebar";
+import LanguageAndA11yControls from "../../components/LanguageAndA11yControls";
+
 
 export default function EmployeeTasks() {
   const navigate = useNavigate();
@@ -119,11 +123,19 @@ export default function EmployeeTasks() {
           if (t.status === "Pending") {
             showToast(`Task "${t.title.slice(0, 30)}..." moved to In Progress`);
             const updated = { ...t, status: "In Progress" as TaskStatus };
+            saveTaskStatus(taskId, "In Progress");
             if (selectedTask?.id === taskId) setSelectedTask(updated);
             return updated;
           } else if (t.status === "In Progress") {
             showToast(`Task "${t.title.slice(0, 30)}..." marked as Completed`);
             const updated = { ...t, status: "Completed" as TaskStatus };
+            saveTaskStatus(taskId, "Completed");
+            if (selectedTask?.id === taskId) setSelectedTask(updated);
+            return updated;
+          } else {
+            showToast(`Task "${t.title.slice(0, 30)}..." reset to Pending`);
+            const updated = { ...t, status: "Pending" as TaskStatus };
+            saveTaskStatus(taskId, "Pending");
             if (selectedTask?.id === taskId) setSelectedTask(updated);
             return updated;
           }
@@ -132,6 +144,7 @@ export default function EmployeeTasks() {
       })
     );
   };
+
 
   // Dynamic Summary Counters
   const totalCount = tasks.length;
@@ -194,19 +207,7 @@ export default function EmployeeTasks() {
     }
   };
 
-  // Sidebar navigation menu items
-  const navItems: EmployeeNavItem[] = [
-    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/employee/dashboard", active: true },
-    { id: "duty", label: "My Duty", icon: CalendarCheck, path: "/employee/duty", active: true },
-    { id: "assignment", label: "My Train / My Section", icon: TrainFront, path: "/employee/assignment", active: true },
-    { id: "alerts", label: "Operational Alerts", icon: AlertTriangle, path: "/employee/alerts", active: true },
-    { id: "tasks", label: "Tasks", icon: CheckSquare, path: "/employee/tasks", active: true, badge: pendingCount + inProgressCount },
-    { id: "report_issue", label: "Report Issue", icon: FileWarning, path: "/employee/report", active: true },
-    { id: "incident", label: "Incident Reporting", icon: Flame, path: "/employee/incidents", active: true },
-    { id: "notifications", label: "Notifications", icon: Bell, path: "/employee/notifications", active: true },
-    { id: "history", label: "Activity / History", icon: History, path: "/employee/history", active: true },
-    { id: "profile", label: "Profile", icon: User, path: "/employee/profile", active: true },
-  ];
+
 
   return (
     <div className="min-h-screen bg-[#031426] text-slate-100 flex flex-col font-sans selection:bg-[#F59E0B]/30 selection:text-white">
@@ -219,7 +220,7 @@ export default function EmployeeTasks() {
       )}
 
       {/* TOP HEADER */}
-      <header className="sticky top-0 z-40 flex h-[72px] shrink-0 items-center justify-between border-b border-[#16364A] bg-[#071A33] px-4 sm:px-6">
+      <header className="sticky top-0 z-40 flex h-[72px] shrink-0 items-center justify-between border-b border-[#164B5A] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-4 sm:px-6 shadow-lg">
         {/* Left Branding & Mobile Toggle */}
         <div className="flex items-center gap-3">
           <button
@@ -235,15 +236,15 @@ export default function EmployeeTasks() {
             <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full border border-[#294665] bg-[#071A33]">
               <img
                 src="/logos/raildrishti-dark.png"
-                alt="RailDrishti"
+                alt="RailSanket"
                 className="h-full w-full object-contain p-0.5"
               />
             </div>
 
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold uppercase tracking-[0.16em] text-white">
-                  Rail<span className="text-[#F59E0B]">Drishti</span>
+                <span translate="no" className="notranslate text-xs font-bold uppercase tracking-[0.16em] text-white">
+                  Rail<span className="text-[#F59E0B]">Sanket</span>
                 </span>
                 <span className="rounded bg-[#0E7C86]/25 px-1.5 py-0.5 text-[10px] font-semibold text-teal-300 border border-[#0E7C86]/40">
                   Employee Portal
@@ -256,23 +257,26 @@ export default function EmployeeTasks() {
           </div>
         </div>
 
-        {/* Right Header: IST Clock, Security & Logout */}
+        {/* Right Header: IST Clock, Language Selector, Accessibility Tools, User & Logout */}
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* Live IST Clock */}
-          <div className="hidden sm:flex items-center gap-2 rounded-lg border border-[#16364A] bg-[#0A2036] px-3 py-1.5 text-xs text-slate-200">
+          {/* Live IST Clock Capsule */}
+          <div className="hidden sm:flex h-9 items-center gap-2 rounded-full border border-[#F59E0B] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-3 text-xs text-white shadow-sm transition-all duration-300">
             <Clock size={15} className="text-[#F59E0B]" />
-            <div className="font-mono font-semibold tracking-wider text-white">
-              {formatIST(currentTime, is24Hour)} <span className="text-[#71899C] text-[10px]">IST</span>
+            <div className="font-mono font-bold tracking-wider text-white">
+              {formatIST(currentTime, is24Hour)} <span className="text-[#F59E0B] text-[10px] font-bold">IST</span>
             </div>
             <button
               type="button"
               onClick={() => setIs24Hour(!is24Hour)}
-              className="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-[#16364A] text-slate-300 hover:text-white transition"
+              className="ml-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-white hover:bg-[#F59E0B] hover:text-[#071A33] transition cursor-pointer border border-white/20"
               title="Toggle 12H / 24H clock"
             >
               {is24Hour ? "24H" : "12H"}
             </button>
           </div>
+
+          {/* Language Selector & Accessibility Tools */}
+          <LanguageAndA11yControls buttonHeightClass="h-9" />
 
           {/* Security & User Badge */}
           <div className="hidden items-center gap-2 border-l border-[#16364A] pl-3 sm:flex">
@@ -306,126 +310,19 @@ export default function EmployeeTasks() {
       {/* MAIN CONTAINER WITH SIDEBAR & CONTENT */}
       <div className="flex flex-1 min-w-0">
         {/* SIDEBAR NAVIGATION */}
-        {sidebarOpen && (
-          <div
-            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
-
-        <aside
-          className={`fixed lg:sticky top-[72px] z-50 h-[calc(100vh-72px)] bg-[#071A33] border-r border-[#16364A] flex flex-col transition-all duration-300 ${
-            sidebarOpen ? "left-0 w-64 shadow-2xl" : "-left-64 lg:left-0"
-          } ${sidebarCollapsed ? "lg:w-20" : "lg:w-64"}`}
-        >
-          {/* Sidebar Header */}
-          <div className="flex items-center justify-between p-4 border-b border-[#16364A]/60">
-            <div className={`flex items-center gap-2 ${sidebarCollapsed ? "lg:hidden" : ""}`}>
-              <ShieldCheck size={18} className="text-[#0E7C86]" />
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
-                Operational Modules
-              </span>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setSidebarOpen(false)}
-              className="lg:hidden text-slate-400 hover:text-white p-1"
-            >
-              <X size={20} />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="hidden lg:flex h-7 w-7 items-center justify-center rounded border border-[#16364A] text-slate-400 hover:text-white hover:bg-[#0A2036]"
-              title={sidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-            >
-              {sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-            </button>
-          </div>
-
-          {/* Navigation Links */}
-          <nav className="flex-1 overflow-y-auto p-3 space-y-1.5 scrollbar-thin">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isCurrent = item.id === "tasks";
-              return (
-                <div key={item.id} className="relative group">
-                  <button
-                    type="button"
-                    disabled={!item.active}
-                    onClick={() => {
-                      if (item.path) {
-                        navigate(item.path);
-                      } else {
-                        showToast(`"${item.label}" will be unlocked in ${item.phase}`);
-                      }
-                    }}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition text-left ${
-                      isCurrent
-                        ? "bg-gradient-to-r from-[#0E7C86] to-[#0A2036] text-white border-l-4 border-[#F59E0B] shadow-sm"
-                        : item.active
-                        ? "text-slate-300 hover:bg-[#0A2036] hover:text-white"
-                        : "text-slate-500 hover:bg-[#0A2036]/50 cursor-not-allowed opacity-80"
-                    } ${sidebarCollapsed ? "justify-center px-2" : ""}`}
-                  >
-                    <Icon
-                      size={18}
-                      className={
-                        isCurrent
-                          ? "text-[#F59E0B]"
-                          : item.active
-                          ? "text-slate-300"
-                          : "text-slate-500"
-                      }
-                    />
-
-                    {!sidebarCollapsed && (
-                      <div className="flex-1 flex items-center justify-between min-w-0">
-                        <span className="truncate">{item.label}</span>
-                        {item.badge !== undefined && item.badge > 0 && (
-                          <span className="ml-2 px-1.5 py-0.5 rounded-full bg-[#EF4444] text-[10px] font-bold text-white">
-                            {item.badge}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </button>
-
-                  {sidebarCollapsed && (
-                    <div className="hidden lg:group-hover:block absolute left-full ml-2 top-1/2 -translate-y-1/2 px-2.5 py-1 bg-[#031426] border border-[#16364A] text-white text-xs rounded shadow-lg whitespace-nowrap z-50">
-                      {item.label}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </nav>
-
-          {/* Sidebar Footer */}
-          <div className="p-3 border-t border-[#16364A]/60 bg-[#051326]">
-            {!sidebarCollapsed ? (
-              <div className="text-[11px] text-slate-400 space-y-1">
-                <div className="flex items-center gap-1.5 text-slate-300 font-medium">
-                  <Building2 size={13} className="text-[#0E7C86]" />
-                  <span className="truncate">{roleTaskData.department}</span>
-                </div>
-                <div className="text-[10px] text-[#71899C] truncate">
-                  Role: {roleTaskData.roleTitle}
-                </div>
-                <div className="pt-1 flex items-center justify-between text-[10px] text-slate-400 border-t border-[#16364A]/40">
-                  <span>Indian Railways</span>
-                  <span className="text-teal-400 font-medium">● Connected</span>
-                </div>
-              </div>
-            ) : (
-              <div className="flex justify-center text-teal-400" title="Connected">
-                <CircleDot size={14} />
-              </div>
-            )}
-          </div>
-        </aside>
+        <EmployeeSidebar
+          sidebarOpen={sidebarOpen}
+          setSidebarOpen={setSidebarOpen}
+          sidebarCollapsed={sidebarCollapsed}
+          setSidebarCollapsed={setSidebarCollapsed}
+          activeTab="tasks"
+          departmentName={roleTaskData.department}
+          roleDisplayTitle={roleTaskData.roleTitle}
+          badges={{
+            tasks: pendingCount + inProgressCount,
+          }}
+          onShowToast={showToast}
+        />
 
         {/* TASKS MAIN CONTENT */}
         <main className="flex-1 min-w-0 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6">

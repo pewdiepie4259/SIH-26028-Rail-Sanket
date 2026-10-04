@@ -51,9 +51,14 @@ interface NTESLiveStatus {
   train_number?: string;
   current_station?: string;
   current_station_name?: string;
+  next_station?: string;
+  next_station_name?: string;
+  distance_to_next_km?: number;
+  route_progress_percent?: number;
   train_status_message?: string;
   terminated?: boolean;
   delay_minutes?: number;
+  planned_stops_count?: number;
   speed_kmh?: number;
   latitude?: number;
   longitude?: number;
@@ -131,7 +136,8 @@ const createMovingTrainIcon = (signal?: string, isHalt?: boolean) => {
 const MapFocusController: React.FC<{
   routeCoords: [number, number][];
   targetRake: string;
-}> = ({ routeCoords, targetRake }) => {
+  trainPos?: [number, number] | null;
+}> = ({ routeCoords, targetRake, trainPos }) => {
   const map = useMap();
   const lastZoomedRef = useRef<string>('');
 
@@ -139,7 +145,10 @@ const MapFocusController: React.FC<{
     if (!targetRake || lastZoomedRef.current === targetRake) return;
     map.invalidateSize();
 
-    if (routeCoords && routeCoords.length > 1) {
+    if (trainPos && !isNaN(trainPos[0]) && !isNaN(trainPos[1])) {
+      lastZoomedRef.current = targetRake;
+      map.setView(trainPos, 8, { animate: true });
+    } else if (routeCoords && routeCoords.length > 1) {
       const bounds = L.latLngBounds(routeCoords);
       if (bounds.isValid()) {
         lastZoomedRef.current = targetRake;
@@ -151,7 +160,7 @@ const MapFocusController: React.FC<{
         });
       }
     }
-  }, [targetRake, routeCoords, map]);
+  }, [targetRake, routeCoords, trainPos, map]);
 
   return null;
 };
@@ -172,16 +181,59 @@ export const LiveMap: React.FC = () => {
   const { trains } = useLiveTelemetry();
   const [stations, setStations] = useState<StationNode[]>(DEFAULT_STATIONS);
   const [selectedZone, setSelectedZone] = useState<string>('ALL');
-  const [selectedRakeNumber, setSelectedRakeNumber] = useState<string>('12627');
+  const [selectedRakeNumber, setSelectedRakeNumber] = useState<string>('12245');
   const [liveNtesData, setLiveNtesData] = useState<NTESLiveStatus | null>(null);
   const [routeStops, setRouteStops] = useState<RouteStop[]>([]);
+  const [plannedStops, setPlannedStops] = useState<RouteStop[]>([]);
   const [isStreamConnected, setIsStreamConnected] = useState<boolean>(false);
-  const [customSearch, setCustomSearch] = useState<string>('');
+  const [customSearch, setCustomSearch] = useState<string>('12245');
   const [followTrain, setFollowTrain] = useState<boolean>(false);
   const [showCascadingDrawer, setShowCascadingDrawer] = useState<boolean>(false);
+  const [showApiModal, setShowApiModal] = useState<boolean>(false);
+  const [apiKeyInput, setApiKeyInput] = useState<string>('');
+  const [apiStatus, setApiStatus] = useState<any>(null);
+  const [apiLoading, setApiLoading] = useState<boolean>(false);
 
   const [animatedPos, setAnimatedPos] = useState<[number, number] | null>(null);
   const [passedStationIdx, setPassedStationIdx] = useState<number>(0);
+
+  const checkRailRadarStatus = () => {
+    fetch('http://localhost:5000/api/config/railradar')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data) setApiStatus(data);
+      })
+      .catch(() => {});
+  };
+
+  const handleSaveApiKey = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!apiKeyInput.trim()) return;
+    setApiLoading(true);
+    try {
+      const res = await fetch('http://localhost:5000/api/config/railradar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey: apiKeyInput.trim() }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        checkRailRadarStatus();
+        alert('RailRadar API Key connected successfully! Real-time GPS stream activated.');
+        setShowApiModal(false);
+      } else {
+        alert(data.error || 'Failed to verify RailRadar API key');
+      }
+    } catch (err: any) {
+      alert('Connection error: ' + err.message);
+    } finally {
+      setApiLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    checkRailRadarStatus();
+  }, []);
 
 
   // 1. Fetch Station Registry
@@ -253,6 +305,33 @@ export const LiveMap: React.FC = () => {
           }
 
           setRouteStops(cleaned);
+
+          // Process official CRIS / NTES planned commercial halts
+          if (data?.planned_stops && Array.isArray(data.planned_stops) && data.planned_stops.length > 0) {
+            const parsedPlanned: RouteStop[] = data.planned_stops
+              .map((s: any, idx: number) => ({
+                stop_sequence: Number(s.stop_sequence || idx + 1),
+                station_code: s.station_code,
+                station_name: s.station_name,
+                latitude: parseFloat(s.latitude),
+                longitude: parseFloat(s.longitude),
+                scheduled_arrival: s.scheduled_arrival,
+                scheduled_departure: s.scheduled_departure,
+                predicted_platform: s.predicted_platform || `PF #${(idx % 4) + 1}`,
+                is_crew_change: Boolean(s.is_crew_change),
+                crew_duty_status: s.crew_duty_status || (s.is_crew_change ? 'Driver/Guard Handover Point' : null),
+              }))
+              .filter((s: RouteStop) => !isNaN(s.latitude) && !isNaN(s.longitude));
+            setPlannedStops(parsedPlanned);
+          } else {
+            // Algorithmic commercial stops extraction from cleaned route
+            const halts = cleaned.filter((s: RouteStop, idx: number) => {
+              if (idx === 0 || idx === cleaned.length - 1) return true;
+              return (s.scheduled_arrival && s.scheduled_departure && s.scheduled_arrival !== s.scheduled_departure) ||
+                     Boolean(s.is_crew_change);
+            });
+            setPlannedStops(halts.length >= 2 ? halts : cleaned.slice(0, 6));
+          }
         }
       })
       .catch(() => { });
@@ -301,6 +380,11 @@ export const LiveMap: React.FC = () => {
             if (body) {
               setLiveNtesData(body);
               setIsStreamConnected(true);
+              const curCode = (body.current_station || '').toUpperCase();
+              if (curCode && routeStops.length > 0) {
+                const found = routeStops.findIndex((s) => s.station_code.toUpperCase() === curCode);
+                if (found !== -1) setPassedStationIdx(found);
+              }
             }
           })
           .catch(() => { });
@@ -310,7 +394,14 @@ export const LiveMap: React.FC = () => {
             .then((res) => res.json())
             .then((payload) => {
               const body = payload?.body || payload;
-              if (body) setLiveNtesData(body);
+              if (body) {
+                setLiveNtesData(body);
+                const curCode = (body.current_station || '').toUpperCase();
+                if (curCode && routeStops.length > 0) {
+                  const found = routeStops.findIndex((s) => s.station_code.toUpperCase() === curCode);
+                  if (found !== -1) setPassedStationIdx(found);
+                }
+              }
             })
             .catch(() => { });
         }, 8000);
@@ -333,8 +424,23 @@ export const LiveMap: React.FC = () => {
       ? stations
       : stations.filter((stn) => stn.zone?.toUpperCase() === selectedZone.toUpperCase());
 
-  // Dead Reckoning position interpolation
+  // Real-Time GPS Coordinates or Dead Reckoning Position Interpolation
   useEffect(() => {
+    // If live telemetry provides valid coordinates, prioritize exact location
+    if (
+      liveNtesData?.latitude &&
+      liveNtesData?.longitude &&
+      !isNaN(Number(liveNtesData.latitude)) &&
+      !isNaN(Number(liveNtesData.longitude)) &&
+      Number(liveNtesData.latitude) >= 8.0 &&
+      Number(liveNtesData.latitude) <= 36.0 &&
+      Number(liveNtesData.longitude) >= 68.0 &&
+      Number(liveNtesData.longitude) <= 97.0
+    ) {
+      setAnimatedPos([Number(liveNtesData.latitude), Number(liveNtesData.longitude)]);
+      return;
+    }
+
     if (!routeStops || routeStops.length === 0) return;
 
     const fromIdx = Math.min(passedStationIdx, routeStops.length - 1);
@@ -378,7 +484,17 @@ export const LiveMap: React.FC = () => {
     updatePosition();
     const timer = setInterval(updatePosition, 5000);
     return () => clearInterval(timer);
-  }, [routeStops, passedStationIdx]);
+  }, [routeStops, passedStationIdx, liveNtesData]);
+
+  // Synchronize passedStationIdx whenever live telemetry or route stops update
+  useEffect(() => {
+    if (!liveNtesData?.current_station || routeStops.length === 0) return;
+    const curCode = liveNtesData.current_station.toUpperCase();
+    const found = routeStops.findIndex((s) => s.station_code.toUpperCase() === curCode);
+    if (found !== -1) {
+      setPassedStationIdx(found);
+    }
+  }, [liveNtesData?.current_station, routeStops]);
 
   const currentStationDisplay = useMemo(() => {
     if (!routeStops || routeStops.length === 0) return { code: 'EN ROUTE', name: 'In Transit' };
@@ -461,6 +577,47 @@ export const LiveMap: React.FC = () => {
 
   const isTrainDelayed = (liveNtesData?.delay_minutes ?? 0) > 10;
   const conflictsCount = liveNtesData?.cascading_conflicts?.length || 0;
+
+  // Real planned commercial passenger halts for display
+  const displayStops = useMemo(() => {
+    if (plannedStops && plannedStops.length > 0) return plannedStops;
+    if (liveNtesData?.stations && liveNtesData.stations.length > 0) {
+      return liveNtesData.stations.map((s: any, idx: number) => ({
+        stop_sequence: idx + 1,
+        station_code: s.stationCode || s.station_code,
+        station_name: s.stationName || s.station_name,
+        scheduled_arrival: s.arrivalTime || s.scheduled_arrival,
+        scheduled_departure: s.departureTime || s.scheduled_departure,
+        predicted_platform: s.predicted_platform || `PF #${(idx % 4) + 1}`,
+        is_crew_change: Boolean(s.is_crew_change),
+        crew_duty_status: s.crew_duty_status || (s.is_crew_change ? 'Driver/Guard Handover Point' : null),
+        status: s.status,
+      }));
+    }
+    if (routeStops && routeStops.length > 0) {
+      const halts = routeStops.filter((s: RouteStop, idx: number) => {
+        if (idx === 0 || idx === routeStops.length - 1) return true;
+        return (s.scheduled_arrival && s.scheduled_departure && s.scheduled_arrival !== s.scheduled_departure) ||
+               Boolean(s.is_crew_change);
+      });
+      return halts.length >= 2 ? halts : routeStops.slice(0, 6);
+    }
+    return [];
+  }, [plannedStops, liveNtesData?.stations, routeStops]);
+
+  const currentPlannedIdx = useMemo(() => {
+    if (!displayStops || displayStops.length === 0) return 0;
+    if (liveNtesData?.stations) {
+      const curFromStations = liveNtesData.stations.findIndex((s: any) => s.status === 'CURRENT');
+      if (curFromStations !== -1) return curFromStations;
+    }
+    const curCode = (liveNtesData?.current_station || '').toUpperCase();
+    if (curCode) {
+      const found = displayStops.findIndex(s => (s.station_code || '').toUpperCase() === curCode);
+      if (found !== -1) return found;
+    }
+    return 0;
+  }, [displayStops, liveNtesData?.current_station, liveNtesData?.stations]);
 
   // Hackathon Live Simulation Trigger
   const toggleDelaySimulation = () => {
@@ -633,6 +790,21 @@ export const LiveMap: React.FC = () => {
             >
               {(liveNtesData?.delay_minutes || 0) > 0 ? 'RESET SIMULATION' : 'SIMULATE DELAY SPIKE'}
             </button>
+
+            <div className="h-4 w-px bg-slate-700 mx-1" />
+
+            {/* RailRadar API Integration Status Button */}
+            <button
+              type="button"
+              onClick={() => {
+                checkRailRadarStatus();
+                setShowApiModal(true);
+              }}
+              className="px-2.5 py-1 rounded text-xs font-mono font-bold cursor-pointer transition border bg-indigo-950/80 text-indigo-300 border-indigo-700 hover:bg-indigo-900 flex items-center gap-1.5"
+            >
+              <span className={`h-1.5 w-1.5 rounded-full ${apiStatus?.isCustomKey ? 'bg-emerald-400 animate-pulse' : 'bg-indigo-400'}`} />
+              <span>RAILRADAR API</span>
+            </button>
           </div>
 
           {/* Leaflet Map with Inverted Dark Layer & All State Boundaries */}
@@ -644,6 +816,7 @@ export const LiveMap: React.FC = () => {
             <MapFocusController
               routeCoords={routePolylineCoords}
               targetRake={selectedRakeNumber}
+              trainPos={animatedPos}
             />
 
             <CameraFollower pos={animatedPos} active={followTrain} />
@@ -792,23 +965,40 @@ export const LiveMap: React.FC = () => {
                   Live Dispatch Feed
                 </span>
                 <span
-                  className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono ${isStreamConnected
-                    ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
-                    : 'bg-amber-950 text-amber-400 border border-amber-800'
-                    }`}
+                  className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono flex items-center gap-1.5 ${
+                    liveNtesData?.source === 'RAILRADAR_LIVE_API'
+                      ? 'bg-emerald-950 text-emerald-300 border border-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]'
+                      : isStreamConnected
+                        ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
+                        : 'bg-amber-950 text-amber-400 border border-amber-800'
+                  }`}
                 >
-                  {isStreamConnected ? 'REAL-TIME STREAM' : 'OFFLINE'}
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
+                  {liveNtesData?.source === 'RAILRADAR_LIVE_API'
+                    ? 'RAILRADAR LIVE API'
+                    : isStreamConnected
+                      ? 'REAL-TIME STREAM'
+                      : 'OFFLINE'}
                 </span>
               </div>
               <h2 className="text-xl font-bold text-white mt-1">Train #{selectedRakeNumber}</h2>
 
-              <p className="text-xs text-slate-300 font-mono mt-1 flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
-                <span>
-                  Passed {currentStationDisplay.code}
-                  {nextStationDisplay ? ` • Approaching ${nextStationDisplay.name} (${nextStationDisplay.platform})` : ''}
-                </span>
-              </p>
+              <div className="text-xs font-mono mt-1.5 space-y-1">
+                <p className="text-emerald-400 flex items-center gap-1.5 font-semibold">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
+                  <span>
+                    {liveNtesData?.train_status_message || `Passed ${currentStationDisplay.name} (${currentStationDisplay.code})`}
+                  </span>
+                </p>
+                {nextStationDisplay && (
+                  <p className="text-[11px] text-slate-400 flex items-center justify-between">
+                    <span>Approaching: <strong className="text-slate-200">{nextStationDisplay.name}</strong> ({nextStationDisplay.platform})</span>
+                    {liveNtesData?.distance_to_next_km ? (
+                      <span className="text-indigo-400 font-bold">{liveNtesData.distance_to_next_km} km away</span>
+                    ) : null}
+                  </p>
+                )}
+              </div>
             </div>
 
             {/* AI Predictive ETA Confidence, Range, Slack & Historical Bias Card */}
@@ -903,7 +1093,7 @@ export const LiveMap: React.FC = () => {
               <div className="p-3 bg-[#161c2b] border border-slate-800 rounded-xl">
                 <span className="text-[10px] text-slate-500 uppercase">Planned Stops</span>
                 <div className="text-lg font-bold text-indigo-400 mt-0.5">
-                  {routeStops.length || 0}
+                  {displayStops.length || liveNtesData?.planned_stops_count || 6}
                 </div>
               </div>
             </div>
@@ -914,15 +1104,16 @@ export const LiveMap: React.FC = () => {
                 Platform & Crew Waypoints
               </span>
               <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
-                {routeStops.map((st: any, idx: number) => {
-                  const isCurrent = idx === passedStationIdx;
+                {displayStops.map((st: any, idx: number) => {
+                  const isCurrent = idx === currentPlannedIdx || st.status === 'CURRENT';
+                  const hasPassed = idx < currentPlannedIdx || st.status === 'PASSED';
 
                   return (
                     <div
                       key={idx}
                       className={`p-2 rounded text-xs font-mono flex items-center justify-between border ${isCurrent
-                        ? 'bg-indigo-950/80 border-indigo-500 text-white font-bold'
-                        : st.hasPassed
+                        ? 'bg-indigo-950/80 border-indigo-500 text-white font-bold shadow-sm shadow-indigo-500/20'
+                        : hasPassed
                           ? 'bg-[#121722] border-slate-900 text-slate-500'
                           : 'bg-[#161c2b] border-slate-800/80 text-slate-300'
                         }`}
@@ -931,13 +1122,13 @@ export const LiveMap: React.FC = () => {
                         <span
                           className={`h-1.5 w-1.5 rounded-full ${isCurrent
                             ? 'bg-emerald-400 animate-ping'
-                            : st.hasPassed
+                            : hasPassed
                               ? 'bg-slate-600'
                               : 'bg-indigo-400'
                             }`}
                         />
                         <span className={isCurrent ? 'text-white font-bold' : ''}>{st.station_code}</span>
-                        <span className="text-[10px] text-indigo-400 font-semibold">{st.predicted_platform}</span>
+                        <span className="text-[10px] text-indigo-400 font-semibold">{st.predicted_platform || 'PF #1'}</span>
                         {st.is_crew_change && (
                           <span className="text-[9px] bg-amber-950/90 text-amber-300 border border-amber-800 px-1 py-0.2 rounded font-bold">
                             CREW
@@ -946,9 +1137,9 @@ export const LiveMap: React.FC = () => {
                         <span className="text-[10px] text-slate-500 truncate max-w-[80px]">{st.station_name}</span>
                       </div>
                       <span className="text-[10px]">
-                        {st.actual_time && st.actual_time !== '--'
-                          ? st.actual_time
-                          : st.scheduled_arrival || 'Pass'}
+                        {st.actual_departure_time && st.actual_departure_time !== '--'
+                          ? st.actual_departure_time
+                          : st.scheduled_arrival || st.scheduled_departure || 'Pass'}
                       </span>
                     </div>
                   );
@@ -982,6 +1173,93 @@ export const LiveMap: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* RailRadar API Key Configuration Modal */}
+      {showApiModal && (
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in duration-200 font-mono">
+          <div className="w-full max-w-md rounded-2xl border border-indigo-500/40 bg-[#0d131f] p-6 text-white shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full bg-indigo-400 animate-pulse" />
+                <h3 className="text-sm font-bold text-white tracking-wide">
+                  RailRadar Telemetry Gateway
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowApiModal(false)}
+                className="text-slate-400 hover:text-white text-base cursor-pointer"
+              >
+                &times;
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="rounded-xl border border-slate-800 bg-[#141b2b] p-3 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">Current Status:</span>
+                  <span className={`font-bold ${apiStatus?.isCustomKey ? 'text-emerald-400' : 'text-indigo-400'}`}>
+                    {apiStatus?.isCustomKey ? '● Connected (Live Upstream)' : '● Telemetry Ingestion Active'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-slate-400">
+                  <span>Active Ingestion:</span>
+                  <span className="text-slate-200 font-semibold">{liveNtesData?.source || 'RAILDRISHTI_REALTIME_CACHE'}</span>
+                </div>
+                {apiStatus?.maskedKey && (
+                  <div className="flex items-center justify-between text-[11px] text-slate-400">
+                    <span>Active Key:</span>
+                    <span className="font-mono text-slate-300">{apiStatus.maskedKey}</span>
+                  </div>
+                )}
+              </div>
+
+              <form onSubmit={handleSaveApiKey} className="space-y-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-300 mb-1">
+                    Connect Custom RailRadar API Key
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter rr_live_... or rg_... key"
+                    value={apiKeyInput}
+                    onChange={(e) => setApiKeyInput(e.target.value)}
+                    className="w-full rounded-lg border border-slate-700 bg-[#090e17] px-3 py-2 text-xs font-mono text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+                  />
+                  <span className="text-[10px] text-slate-400 mt-1 block">
+                    Get a free key instantly from{' '}
+                    <a
+                      href="https://railradar.in/developers"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-indigo-400 underline hover:text-indigo-300"
+                    >
+                      railradar.in/developers
+                    </a>
+                  </span>
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    type="submit"
+                    disabled={apiLoading}
+                    className="flex-1 rounded-lg bg-indigo-600 px-4 py-2 font-bold text-white hover:bg-indigo-500 disabled:opacity-50 cursor-pointer transition shadow-lg shadow-indigo-600/30"
+                  >
+                    {apiLoading ? 'Verifying...' : 'Verify & Connect API'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowApiModal(false)}
+                    className="rounded-lg border border-slate-700 bg-slate-800 px-4 py-2 text-slate-300 hover:bg-slate-700 cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

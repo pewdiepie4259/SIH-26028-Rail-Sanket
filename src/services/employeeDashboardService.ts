@@ -15,6 +15,8 @@ import {
   type EmployeeDepartment,
 } from "../config/employeeRoles";
 import type { AuthUser } from "./auth";
+import { getStoredTaskStatusMap } from "./employeeTaskService";
+
 
 export interface RoleDutyInfo {
   dutyType: string;
@@ -850,8 +852,13 @@ export function getRoleSpecificDashboardData(user: AuthUser | null): RoleDashboa
   const duty = getRoleDutyData(roleConfig, user, isRoleAssigned);
   const assignment = getRoleAssignmentData(roleConfig, isRoleAssigned);
   const summaryWidgets = getRoleSummaryWidgets(roleConfig, isRoleAssigned);
-  const tasks = getRoleTasks(roleConfig, isRoleAssigned);
+  const baseTasks = getRoleTasks(roleConfig, isRoleAssigned);
+  const statusMap = getStoredTaskStatusMap();
+  const tasks = baseTasks.map((t) =>
+    statusMap[t.id] ? { ...t, status: statusMap[t.id] as "Pending" | "In Progress" | "Completed" } : t
+  );
   const alerts = getRoleAlerts(roleConfig, isRoleAssigned);
+
 
   return {
     user,

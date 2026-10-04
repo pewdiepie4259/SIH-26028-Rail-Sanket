@@ -199,6 +199,36 @@ export async function searchTrainsApi(query = '', limit = 100): Promise<TrainRec
   });
 }
 
+export async function searchBetweenTrainsApi(from: string, to: string): Promise<TrainRecord[]> {
+  try {
+    const url = `http://localhost:5000/api/trains/between?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+    const res = await fetch(url);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && Array.isArray(data.trains) && data.trains.length > 0) {
+        return data.trains;
+      }
+    }
+  } catch (err) {
+    console.warn('Between trains API fetch failed:', err);
+  }
+
+  // Fallback: search both stations individually
+  try {
+    const [fromRes, toRes] = await Promise.all([
+      searchTrainsApi(from, 100),
+      searchTrainsApi(to, 100)
+    ]);
+    const trainMap = new Map<string, TrainRecord>();
+    [...fromRes, ...toRes].forEach((t) => {
+      if (t.train_number) trainMap.set(t.train_number, t);
+    });
+    return Array.from(trainMap.values());
+  } catch {
+    return FALLBACK_TRAINS;
+  }
+}
+
 export function getTrainMeta(
   trainNumber: string,
   trainName: string,

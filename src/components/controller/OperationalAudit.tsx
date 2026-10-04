@@ -79,38 +79,38 @@ function OperationalAudit() {
       <div className="overflow-x-auto">
         <table className="w-full min-w-[780px] border-collapse">
           <thead>
-            <tr className="border-b border-slate-200 bg-slate-50 text-left">
-              <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">
+            <tr className="border-b border-[#164B5A] bg-[#040E1B] text-left">
+              <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-[0.12em] text-teal-300">
                 Time
               </th>
 
-              <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">
+              <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-[0.12em] text-teal-300">
                 Action
               </th>
 
-              <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">
+              <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-[0.12em] text-teal-300">
                 Train
               </th>
 
-              <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">
+              <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-[0.12em] text-teal-300">
                 Location
               </th>
 
-              <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">
+              <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-[0.12em] text-teal-300">
                 Status
               </th>
 
-              <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">
+              <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-[0.12em] text-teal-300">
                 Actor
               </th>
             </tr>
           </thead>
 
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-[#164B5A]/50">
             {auditEntries.map((entry) => (
               <tr
                 key={entry.id}
-                className="transition-colors hover:bg-slate-50/80"
+                className="transition-colors hover:bg-[#0A2036]"
               >
                 <td className="px-5 py-4">
                   <div className="flex items-center gap-2">
@@ -119,14 +119,14 @@ function OperationalAudit() {
                       className="text-slate-400"
                     />
 
-                    <span className="text-[11px] font-semibold font-mono text-slate-600">
+                    <span className="text-[11px] font-semibold font-mono text-slate-300">
                       {entry.time}
                     </span>
                   </div>
                 </td>
 
                 <td className="px-5 py-4">
-                  <div className="text-xs font-bold text-[#071A33]">
+                  <div className="text-xs font-bold text-white">
                     {entry.action}
                   </div>
 
@@ -139,18 +139,18 @@ function OperationalAudit() {
                   {/^\d{4,5}$/.test(entry.target) ? (
                     <Link
                       to={`/controller/trains/${entry.target}`}
-                      className="inline-block rounded-md border border-slate-200 bg-slate-100 px-2 py-1 text-[10px] font-bold text-[#0E5961] hover:text-[#F59E0B] transition-colors"
+                      className="inline-block rounded-md border border-[#164B5A] bg-[#0A2036] px-2 py-1 text-[10px] font-bold text-teal-300 hover:text-[#FF8A3D] transition-colors"
                     >
                       {entry.target}
                     </Link>
                   ) : (
-                    <span className="rounded-md border border-slate-200 bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-700">
+                    <span className="rounded-md border border-[#164B5A] bg-[#0A2036] px-2 py-1 text-[10px] font-bold text-teal-300">
                       {entry.target}
                     </span>
                   )}
                 </td>
 
-                <td className="px-5 py-4 text-[11px] text-slate-600 font-medium">
+                <td className="px-5 py-4 text-[11px] text-slate-300 font-medium">
                   {entry.location || "Bengaluru Division"}
                 </td>
 
@@ -158,10 +158,10 @@ function OperationalAudit() {
                   <span
                     className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[9px] font-bold uppercase tracking-wide ${
                       entry.status === "Approved" || entry.status === "Completed"
-                        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                        ? "border-emerald-500/50 bg-emerald-950/80 text-emerald-300"
                         : entry.status === "Recorded"
-                          ? "border-teal-200 bg-teal-50 text-[#0E5961]"
-                          : "border-amber-200 bg-amber-50 text-amber-800"
+                          ? "border-teal-500/50 bg-teal-950/80 text-teal-200"
+                          : "border-amber-500/50 bg-amber-950/80 text-amber-300"
                     }`}
                   >
                     <CheckCircle2 size={11} />
@@ -176,7 +176,7 @@ function OperationalAudit() {
                       className="text-slate-400"
                     />
 
-                    <span className="text-[10px] text-slate-600 font-medium">
+                    <span className="text-[10px] text-slate-300 font-medium">
                       {entry.actor}
                     </span>
                   </div>
@@ -187,14 +187,14 @@ function OperationalAudit() {
         </table>
       </div>
 
-      <div className="flex flex-col gap-2 border-t border-slate-200 bg-slate-50 px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
-        <span className="text-[10px] text-slate-500">
+      <div className="flex flex-col gap-2 border-t border-[#164B5A] bg-[#040E1B] px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <span className="text-[10px] text-slate-400">
           Actions are recorded for operational traceability.
         </span>
 
         <Link
           to="/controller/reports"
-          className="text-left text-[10px] font-bold uppercase tracking-wide text-[#0E5961] transition hover:text-[#F59E0B] sm:text-right"
+          className="text-left text-[10px] font-bold uppercase tracking-wide text-teal-300 transition hover:text-[#FF8A3D] sm:text-right"
         >
           View full audit history →
         </Link>

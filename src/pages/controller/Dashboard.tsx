@@ -1,4 +1,4 @@
-import { Activity, Radio } from "lucide-react"
+import { Radio } from "lucide-react"
 import { useLiveTelemetry } from "../../hooks/useLiveTelemetry"
 
 import CascadeImpact from "../../components/controller/DelayCascade"
@@ -7,7 +7,6 @@ import CriticalAlerts from "../../components/controller/CriticalAlerts"
 import JunctionStatus from "../../components/controller/JunctionStatus"
 import NetworkHealthStrip from "../../components/controller/NetworkHealthStrip"
 import OperationalAudit from "../../components/controller/OperationalAudit"
-import OperationalMap from "../../components/controller/OperationalMap"
 import RecommendedActions from "../../components/controller/RecommendedActions"
 import WeatherImpact from "../../components/controller/WeatherImpact"
 import StaffRosterAllotment from "../../components/controller/StaffRosterAllotment"
@@ -18,30 +17,31 @@ function ControllerDashboard() {
   const effectiveTrainCount = Object.keys(trains).length > 0 ? Object.keys(trains).length : 5
 
   return (
-    <div className="controller-page px-4 py-5 lg:px-6">
-      <div className="mb-5 flex flex-col justify-between gap-3 md:flex-row md:items-end">
+    <div className="controller-page px-4 py-6 sm:px-6 lg:px-8 space-y-7 max-w-[1700px] mx-auto">
+      {/* Top Header Banner */}
+      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end border-b border-[#164B5A] pb-5">
         <div>
-          <div className="text-xs font-bold uppercase tracking-[0.16em] text-[#0E7C86]">
+          <div className="text-xs font-bold uppercase tracking-[0.18em] text-teal-300">
             Control Centre
           </div>
 
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-[#071A33]">
+          <h1 className="mt-1 text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
             Network Operations
           </h1>
 
-          <p className="mt-1 text-sm text-slate-600">
-            Live railway network operations and decision support.
+          <p className="mt-1 text-xs sm:text-sm text-slate-300 font-medium">
+            Live railway network operations, telemetry feeds, and real-time decision support.
           </p>
         </div>
 
-        <div className="bg-white border border-slate-200 shadow-xs flex w-fit items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800">
+        <div className="bg-[#071A33]/90 border border-[#164B5A] shadow-md flex w-fit items-center gap-2.5 rounded-full px-4 py-2 text-xs font-semibold text-slate-200">
           <Radio
-            size={15}
-            strokeWidth={2.2}
-            className="text-emerald-500 animate-pulse"
+            size={16}
+            strokeWidth={2.4}
+            className="text-emerald-400 animate-pulse"
           />
 
-          <span className="text-slate-700">
+          <span className="text-slate-200">
             {isConnected
               ? "Telemetry Connected (Live WS)"
               : "Telemetry Stream Active (RTIS Feeds)"}
@@ -49,66 +49,48 @@ function ControllerDashboard() {
         </div>
       </div>
 
+      {/* Network Health 4-Card Strip */}
       <NetworkHealthStrip metricsData={networkMetrics} />
 
-      <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px] items-stretch">
-        <section className="controller-panel min-h-[580px] flex flex-col overflow-hidden rounded-xl">
-          <div className="controller-header px-4 py-3 shrink-0">
-            <div className="flex items-center justify-between gap-4">
+      {/* Operational Grid 1: Critical Alerts (Left) & Predicted Conflicts (Right) */}
+      <div className="grid gap-6 lg:grid-cols-2 items-stretch">
+        <CriticalAlerts alerts={activeAlerts} />
+        <ConflictPanel conflictsData={conflicts} />
+      </div>
+
+      {/* Operational Grid 2: Junction Load Status (Left) & Weather Impact + Telemetry Status (Right) */}
+      <div className="grid gap-6 lg:grid-cols-2 items-start">
+        <JunctionStatus junctionsData={junctions} />
+
+        <div className="flex flex-col gap-6">
+          <WeatherImpact />
+
+          <section className="controller-panel overflow-hidden rounded-2xl border border-[#164B5A] bg-[#071A33]/90 shadow-xl backdrop-blur-md">
+            <div className="controller-header px-5 py-3.5 flex items-center justify-between">
               <div>
-                <h2 className="text-sm font-bold text-white">
-                  Live Operational Network
-                </h2>
-
-                <p className="mt-0.5 text-xs text-[#D7E5EC]/75">
-                  Real-time train positions and network movement
-                </p>
+                <div className="text-sm font-bold text-white">
+                  Telemetry Feed Status
+                </div>
+                <div className="mt-0.5 text-[11px] text-[#D7E5EC]/70">
+                  Network telemetry and RTIS feed health
+                </div>
               </div>
 
-              <div className="flex shrink-0 items-center gap-2 text-xs text-[#D7E5EC]">
-                <Activity
-                  size={14}
-                  strokeWidth={2.2}
-                  className="text-[#F59E0B]"
-                />
-
-                <span>
-                  {effectiveTrainCount} active feeds
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex-1 w-full min-h-[500px]">
-            <OperationalMap
-              trains={trains}
-              isConnected={isConnected || true}
-            />
-          </div>
-        </section>
-
-        <div className="flex flex-col gap-4">
-          <CriticalAlerts alerts={activeAlerts} />
-
-          <section className="controller-panel overflow-hidden rounded-xl shrink-0">
-            <div className="controller-header px-4 py-3">
-              <div className="text-sm font-bold text-white">
-                Telemetry Feed Status
-              </div>
-
-              <div className="mt-0.5 text-[11px] text-[#D7E5EC]/70">
-                Network telemetry and feed health
+              <div className="flex items-center gap-1.5 font-mono text-[10px] font-bold text-emerald-400 bg-[#040E1B] px-3 py-1 rounded-full border border-[#164B5A]">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                {isConnected ? "ONLINE (LIVE WS)" : "ACTIVE (RTIS STREAM)"}
               </div>
             </div>
 
-            <div className="p-4">
-              <div className="text-xs leading-5 text-slate-600">
-                {effectiveTrainCount} trains currently reporting live telemetry in monitored sector.
+            <div className="p-5 space-y-4">
+              <div className="flex items-center justify-between text-xs text-slate-300 font-medium">
+                <span>{effectiveTrainCount} trains currently reporting live telemetry in monitored sector.</span>
+                <span className="font-mono text-teal-300 font-extrabold text-sm">{Math.min(effectiveTrainCount * 20, 100)}%</span>
               </div>
 
-              <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100 border border-slate-200">
+              <div className="h-2.5 overflow-hidden rounded-full bg-[#040E1B] border border-[#164B5A]">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-[#0E7C86] to-emerald-500 transition-all duration-500"
+                  className="h-full rounded-full bg-gradient-to-r from-[#0E7C86] to-emerald-400 transition-all duration-500"
                   style={{
                     width: `${Math.min(
                       effectiveTrainCount * 20,
@@ -118,14 +100,13 @@ function ControllerDashboard() {
                 />
               </div>
 
-              <div className="mt-3 flex items-center justify-between text-[10px]">
-                <span className="text-slate-500">
-                  Network feed
+              <div className="flex items-center justify-between text-[11px] pt-1">
+                <span className="text-slate-400">
+                  Monitored Sector: <strong className="text-slate-200">Bengaluru Division (SBC–BYPL–KJM)</strong>
                 </span>
 
-                <span className="font-bold text-emerald-600 flex items-center gap-1.5">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  {isConnected ? "ONLINE (LIVE WS)" : "ACTIVE (TELEMETRY STREAM)"}
+                <span className="text-slate-400">
+                  Sample Rate: <strong className="text-teal-300 font-mono">1.2s</strong>
                 </span>
               </div>
             </div>
@@ -133,28 +114,19 @@ function ControllerDashboard() {
         </div>
       </div>
 
+      {/* Operational Grids 3 & 4: 2-Column Responsive Layout eliminating dead space */}
+      <div className="grid gap-6 lg:grid-cols-2 items-start">
+        {/* Left Column: Delay Cascade & Staff Roster Allotment */}
+        <div className="flex flex-col gap-6">
+          <CascadeImpact />
+          <StaffRosterAllotment />
+        </div>
 
-
-      <div className="mt-5 grid gap-5 xl:grid-cols-2">
-        <JunctionStatus junctionsData={junctions} />
-        <ConflictPanel conflictsData={conflicts} />
-      </div>
-
-      <div className="mt-5 grid gap-5 xl:grid-cols-2">
-        <WeatherImpact />
-        <CascadeImpact />
-      </div>
-
-      <div className="mt-5">
-        <RecommendedActions />
-      </div>
-
-      <div className="mt-5">
-        <StaffRosterAllotment />
-      </div>
-
-      <div className="mt-5">
-        <OperationalAudit />
+        {/* Right Column: AI Recommendations & Operational Audit Logs */}
+        <div className="flex flex-col gap-6">
+          <RecommendedActions />
+          <OperationalAudit />
+        </div>
       </div>
     </div>
   )

@@ -32,7 +32,7 @@ const initialIntegrations: Integration[] = [
     status: "Connected",
     endpoint: "wss://telemetry.cris.org.in/rtis/v2/stream",
     authStatus: "Server Managed (mTLS + Token)",
-    dataDirection: "External → RailDrishti",
+    dataDirection: "External → RailSanket",
     refreshInterval: "1000 ms",
     lastCheck: "30s ago",
     lastSync: "30s ago",
@@ -79,7 +79,7 @@ const initialIntegrations: Integration[] = [
     status: "Connected",
     endpoint: "https://topology.cris.res.in/nrdb/v3/routes",
     authStatus: "Server Managed (Gateway Certificate)",
-    dataDirection: "External → RailDrishti",
+    dataDirection: "External → RailSanket",
     refreshInterval: "24 hours",
     lastCheck: "14m ago",
     lastSync: "04:00 Today",
@@ -119,7 +119,7 @@ const initialIntegrations: Integration[] = [
     status: "Connected",
     endpoint: "https://api.open-meteo.com/v1/forecast",
     authStatus: "Server Managed (No client secrets exposed)",
-    dataDirection: "External → RailDrishti",
+    dataDirection: "External → RailSanket",
     refreshInterval: "15 minutes",
     lastCheck: "3m ago",
     lastSync: "3m ago",
@@ -167,7 +167,7 @@ const initialIntegrations: Integration[] = [
     name: "Prediction Service",
     type: "Neural Inference Microservice",
     purpose: "Dynamic ETA and delay prediction",
-    provider: "RailDrishti Prediction Cluster (GNN + Temporal)",
+    provider: "RailSanket Prediction Cluster (GNN + Temporal)",
     status: "Connected",
     endpoint: "http://localhost:8000/api/predict",
     authStatus: "Server Managed (VPC Private Token)",
@@ -214,7 +214,7 @@ const initialIntegrations: Integration[] = [
     name: "WebSocket Telemetry Gateway",
     type: "Controller Streaming Gateway",
     purpose: "Real-time telemetry delivery to Controller applications",
-    provider: "RailDrishti Real-time Gateway (FastAPI / WSS)",
+    provider: "RailSanket Real-time Gateway (FastAPI / WSS)",
     status: "Connected",
     endpoint: "ws://localhost:8000/ws/telemetry",
     authStatus: "Server Managed (Controller Session Auth)",
@@ -254,11 +254,11 @@ const initialIntegrations: Integration[] = [
     name: "Notification Service",
     type: "Operational Alerting Hub",
     purpose: "Operational notifications and alerts",
-    provider: "RailDrishti Multi-Channel Alert Gateway",
+    provider: "RailSanket Multi-Channel Alert Gateway",
     status: "Degraded",
     endpoint: "https://notify.internal.raildrishti.gov/v1/send",
     authStatus: "Server Managed (Signed Key)",
-    dataDirection: "RailDrishti → External",
+    dataDirection: "RailSanket → External",
     refreshInterval: "Event-driven",
     lastCheck: "5m ago",
     lastSync: "12m ago",
@@ -1015,11 +1015,11 @@ export default function Integrations() {
             </ul>
           </div>
 
-          {/* RailDrishti Backend Tier */}
+          {/* RailSanket Backend Tier */}
           <div className="relative rounded border border-[#0E7C86] bg-[#031A1F] p-4">
             <div className="flex items-center justify-between border-b border-[#145158]/60 pb-2">
               <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#F59E0B]">
-                Tier 2: RailDrishti Core
+                Tier 2: RailSanket Core
               </span>
               <span className="rounded bg-[#08383D] px-1.5 py-0.2 text-[9px] text-[#9FB8BE]">
                 Processing
@@ -1055,7 +1055,7 @@ export default function Integrations() {
           <div className="rounded border border-[#145158] bg-[#031A1F] p-4">
             <div className="flex items-center justify-between border-b border-[#145158]/60 pb-2">
               <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#0E7C86]">
-                Tier 3: RailDrishti Portals
+                Tier 3: RailSanket Portals
               </span>
               <span className="rounded bg-[#08383D] px-1.5 py-0.2 text-[9px] text-[#9FB8BE]">
                 Egress

@@ -63,6 +63,22 @@ export default function Register() {
     return () => clearInterval(interval);
   }, []);
 
+  // Enforce light mode on Register page
+  useEffect(() => {
+    const root = document.documentElement;
+    const prevHadDark = root.classList.contains("dark");
+    const prevHadDarkContrast = root.classList.contains("accessibility-dark-contrast");
+    const prevHadInvert = root.classList.contains("accessibility-invert");
+
+    root.classList.remove("dark", "accessibility-dark-contrast", "accessibility-invert");
+
+    return () => {
+      if (prevHadDark) root.classList.add("dark");
+      if (prevHadDarkContrast) root.classList.add("accessibility-dark-contrast");
+      if (prevHadInvert) root.classList.add("accessibility-invert");
+    };
+  }, []);
+
   // Selected tab: 'user' or 'employee' (Admin and Controller have NO public registration)
   const [activeTab, setActiveTab] = useState<PublicRegistrationRole>("user");
 
@@ -257,7 +273,7 @@ export default function Register() {
   };
 
   return (
-    <div className="relative min-h-[calc(100vh-4rem)] flex items-center justify-center bg-slate-950 overflow-hidden">
+    <div className="auth-page-no-dark relative min-h-[calc(100vh-4rem)] flex items-center justify-center bg-slate-950 overflow-hidden">
       {/* Background Image Slideshow (2-second rotation) */}
       {BACKGROUND_SLIDES.map((slide, idx) => (
         <div
@@ -281,8 +297,8 @@ export default function Register() {
             <div className="mb-1 text-xs font-bold uppercase tracking-[0.2em] text-[#F59E0B]">
               Registration Portal
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#071A33]">
-              Rail<span className="text-[#F59E0B]">Drishti</span>
+            <h1 translate="no" className="notranslate text-2xl sm:text-3xl font-extrabold tracking-tight text-[#071A33]">
+              Rail<span className="text-[#F59E0B]">Sanket</span>
             </h1>
           </div>
 
@@ -561,7 +577,7 @@ export default function Register() {
                               className="mt-0.5 w-3.5 h-3.5 rounded border-[#B8C9D2] text-[#071A33] focus:ring-[#0E7C86]"
                             />
                             <span className="text-[11px]">
-                              I accept the RailDrishti Platform Terms & Conditions, Privacy Policy,
+                              I accept the RailSanket Platform Terms & Conditions, Privacy Policy,
                               and Operational Guidelines.
                             </span>
                           </label>

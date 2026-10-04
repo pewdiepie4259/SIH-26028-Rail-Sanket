@@ -379,10 +379,6 @@ export default function WeatherConfiguration() {
           <h1 className="mt-1 text-2xl font-bold tracking-tight text-white">
             Weather Configuration
           </h1>
-
-          <p className="mt-1 text-xs sm:text-sm text-[#9FB8BE]">
-            Real-time meteorological telemetry ingestion, corridor risk monitoring, and GNN speed impact rules.
-          </p>
         </div>
 
         {/* Action Buttons */}

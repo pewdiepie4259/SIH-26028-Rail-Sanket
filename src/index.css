@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *, .accessibility-dark-contrast, .accessibility-dark-contrast *, .accessibility-invert, .accessibility-invert *, [data-theme="dark"], [data-theme="dark"] *));
+
 :root {
   --rd-navy: #0B3D91;
   --rd-teal: #0E7C86;
@@ -24,12 +26,16 @@
 
 html {
   scroll-behavior: smooth;
+  max-width: 100vw;
+  overflow-x: hidden;
 }
 
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  max-width: 100vw;
+  overflow-x: hidden;
   font-family:
     "Noto Sans",
     "Noto Sans Devanagari",
@@ -51,6 +57,32 @@ body {
 
 .alert-marquee:hover {
   animation-play-state: paused;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(22, 75, 90, 0.6);
+  border-radius: 9999px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(14, 124, 134, 0.9);
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 @keyframes alert-marquee {
@@ -103,7 +135,7 @@ html.accessibility-dark-contrast .text-slate-500 {
 
 html.accessibility-dark-contrast .bg-slate-50,
 html.accessibility-dark-contrast .bg-slate-100,
-html.accessibility-dark-contrast .bg-\[\#F4F7FA\] {
+html.accessibility-dark-contrast [class*="bg-[#F4F7FA]"] {
   background-color: #071A33 !important;
 }
 
@@ -142,17 +174,442 @@ html.accessibility-highlight-links a {
   font-weight: 600 !important;
 }
 
-html.accessibility-invert {
-  filter: invert(1) hue-rotate(180deg);
+/* ==========================================================================
+   Public Dashboard & App Dark Mode on Invert Toggle (html.accessibility-invert)
+   Transforms the public dashboard and all components into a sleek dark dashboard
+   matching the Controller and Admin dashboards, while preserving standard light mode.
+   ========================================================================== */
+
+html.accessibility-invert,
+html.accessibility-dark-contrast,
+html.dark,
+html[data-theme="dark"],
+html.accessibility-invert body,
+html.accessibility-dark-contrast body,
+html.dark body,
+html.accessibility-invert main,
+html.accessibility-dark-contrast main,
+html.dark main,
+html[data-theme="dark"] main {
+  background: #040E1B !important;
+  background-color: #040E1B !important;
+  color: #F1F5F9 !important;
 }
 
-/* Guard media and specific images from double-inverting distortion */
-html.accessibility-invert img,
-html.accessibility-invert video,
-html.accessibility-invert canvas,
-html.accessibility-invert [data-no-invert] {
-  filter: invert(1) hue-rotate(180deg);
+/* Page wrapper & global backgrounds in dark mode */
+html.accessibility-invert [class*="bg-[#F4F7FA]"],
+html.accessibility-dark-contrast [class*="bg-[#F4F7FA]"],
+html.dark [class*="bg-[#F4F7FA]"],
+html[data-theme="dark"] [class*="bg-[#F4F7FA]"],
+html.accessibility-invert [class*="bg-[#F8FAFC]"],
+html.accessibility-dark-contrast [class*="bg-[#F8FAFC]"],
+html.dark [class*="bg-[#F8FAFC]"],
+html[data-theme="dark"] [class*="bg-[#F8FAFC]"],
+html.accessibility-invert .bg-slate-50,
+html.accessibility-dark-contrast .bg-slate-50,
+html.dark .bg-slate-50,
+html.accessibility-invert .bg-slate-100,
+html.accessibility-dark-contrast .bg-slate-100,
+html.dark .bg-slate-100 {
+  background-color: #040E1B !important;
+  color: #F1F5F9 !important;
 }
+
+/* All cream / light gradient backgrounds in dark mode (BetweenStations, TrainSearch, LiveTrainStatus, settings, etc.) */
+html.accessibility-dark-contrast .between-stations-page,
+html.accessibility-invert .between-stations-page,
+html.dark .between-stations-page,
+html[data-theme="dark"] .between-stations-page,
+html.accessibility-dark-contrast .train-search-page,
+html.accessibility-invert .train-search-page,
+html.dark .train-search-page,
+html[data-theme="dark"] .train-search-page,
+html.accessibility-dark-contrast .live-status-page,
+html.accessibility-invert .live-status-page,
+html.dark .live-status-page,
+html[data-theme="dark"] .live-status-page,
+html.accessibility-dark-contrast .settings-page,
+html.accessibility-invert .settings-page,
+html.dark .settings-page,
+html[data-theme="dark"] .settings-page,
+html.accessibility-dark-contrast .train-eta-page,
+html.accessibility-invert .train-eta-page,
+html.dark .train-eta-page,
+html[data-theme="dark"] .train-eta-page,
+html.accessibility-dark-contrast [class*="from-[#FFF4E1]"]:not(.auth-page-no-dark *):not(.auth-page-no-dark),
+html.accessibility-invert [class*="from-[#FFF4E1]"]:not(.auth-page-no-dark *):not(.auth-page-no-dark),
+html.dark [class*="from-[#FFF4E1]"]:not(.auth-page-no-dark *):not(.auth-page-no-dark),
+html[data-theme="dark"] [class*="from-[#FFF4E1]"]:not(.auth-page-no-dark *):not(.auth-page-no-dark),
+html.accessibility-dark-contrast [class*="from-[#FFF8EC]"]:not(.auth-page-no-dark *):not(.auth-page-no-dark),
+html.accessibility-invert [class*="from-[#FFF8EC]"]:not(.auth-page-no-dark *):not(.auth-page-no-dark),
+html.dark [class*="from-[#FFF8EC]"]:not(.auth-page-no-dark *):not(.auth-page-no-dark),
+html[data-theme="dark"] [class*="from-[#FFF8EC]"]:not(.auth-page-no-dark *):not(.auth-page-no-dark) {
+  background: #040E1B !important;
+  background-color: #040E1B !important;
+  background-image: none !important;
+  color: #F1F5F9 !important;
+}
+
+/* Between stations summary banner in dark mode */
+html.accessibility-dark-contrast .between-stations-summary,
+html.accessibility-invert .between-stations-summary,
+html.dark .between-stations-summary,
+html[data-theme="dark"] .between-stations-summary {
+  background: #071A33 !important;
+  background-color: #071A33 !important;
+  background-image: linear-gradient(to right, #071A33, rgba(14, 89, 97, 0.4), #071A33) !important;
+  border-color: #164B5A !important;
+  color: #2DD4BF !important;
+}
+
+/* Live alerts marquee bar in dark mode */
+html.accessibility-invert [class*="bg-[#FFF8EC]"],
+html.accessibility-dark-contrast [class*="bg-[#FFF8EC]"],
+html.dark [class*="bg-[#FFF8EC]"],
+html[data-theme="dark"] [class*="bg-[#FFF8EC]"] {
+  background-color: #040E1B !important;
+  border-color: #164B5A !important;
+}
+
+html.accessibility-invert [class*="bg-[#FFF8EC]"] [class*="text-[#071A33]"],
+html.accessibility-dark-contrast [class*="bg-[#FFF8EC]"] [class*="text-[#071A33]"],
+html.dark [class*="bg-[#FFF8EC]"] [class*="text-[#071A33]"],
+html[data-theme="dark"] [class*="bg-[#FFF8EC]"] [class*="text-[#071A33]"] {
+  color: #FFFFFF !important;
+}
+
+html.accessibility-invert [class*="bg-[#FFF8EC]"] .text-slate-700,
+html.accessibility-dark-contrast [class*="bg-[#FFF8EC]"] .text-slate-700,
+html.dark [class*="bg-[#FFF8EC]"] .text-slate-700,
+html[data-theme="dark"] [class*="bg-[#FFF8EC]"] .text-slate-700 {
+  color: #E2E8F0 !important;
+}
+
+/* Cards & containers in dark mode */
+html.accessibility-invert .bg-white:not(.accessibility-modal-card):not(.no-dark-override),
+html.accessibility-dark-contrast .bg-white:not(.accessibility-modal-card):not(.no-dark-override),
+html.dark .bg-white:not(.accessibility-modal-card):not(.no-dark-override),
+html.accessibility-invert .bg-white\/95,
+html.accessibility-dark-contrast .bg-white\/95,
+html.dark .bg-white\/95,
+html.accessibility-invert .bg-white\/90,
+html.accessibility-dark-contrast .bg-white\/90,
+html.dark .bg-white\/90 {
+  background-color: rgba(7, 26, 51, 0.95) !important;
+  border-color: #164B5A !important;
+  color: #F1F5F9 !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45) !important;
+}
+
+/* Secondary nested panels */
+html.accessibility-invert .bg-slate-50\/80,
+html.accessibility-dark-contrast .bg-slate-50\/80,
+html.dark .bg-slate-50\/80,
+html.accessibility-invert .bg-slate-50\/70,
+html.accessibility-dark-contrast .bg-slate-50\/70,
+html.dark .bg-slate-50\/70,
+html.accessibility-invert .bg-slate-100\/80,
+html.accessibility-dark-contrast .bg-slate-100\/80,
+html.dark .bg-slate-100\/80 {
+  background-color: #040E1B !important;
+  border-color: #164B5A !important;
+}
+
+/* Headings and primary text */
+html.accessibility-invert h1:not(header *),
+html.accessibility-dark-contrast h1:not(header *),
+html.dark h1:not(header *),
+html.accessibility-invert h2:not(header *),
+html.accessibility-dark-contrast h2:not(header *),
+html.dark h2:not(header *),
+html.accessibility-invert h3:not(header *),
+html.accessibility-dark-contrast h3:not(header *),
+html.dark h3:not(header *),
+html.accessibility-invert h4:not(header *),
+html.accessibility-dark-contrast h4:not(header *),
+html.dark h4:not(header *),
+html.accessibility-invert h5:not(header *),
+html.accessibility-dark-contrast h5:not(header *),
+html.dark h5:not(header *),
+html.accessibility-invert h6:not(header *),
+html.accessibility-dark-contrast h6:not(header *),
+html.dark h6:not(header *),
+html.accessibility-invert [class*="text-[#071A33]"],
+html.accessibility-dark-contrast [class*="text-[#071A33]"],
+html.dark [class*="text-[#071A33]"],
+html[data-theme="dark"] [class*="text-[#071A33]"],
+html.accessibility-invert .text-slate-900,
+html.accessibility-dark-contrast .text-slate-900,
+html.dark .text-slate-900,
+html.accessibility-invert .text-slate-800,
+html.accessibility-dark-contrast .text-slate-800,
+html.dark .text-slate-800 {
+  color: #FFFFFF !important;
+}
+
+/* Secondary and muted text */
+html.accessibility-invert .text-slate-700,
+html.accessibility-dark-contrast .text-slate-700,
+html.dark .text-slate-700,
+html.accessibility-invert .text-slate-600,
+html.accessibility-dark-contrast .text-slate-600,
+html.dark .text-slate-600 {
+  color: #CBD5E1 !important;
+}
+
+html.accessibility-invert .text-slate-500,
+html.accessibility-dark-contrast .text-slate-500,
+html.dark .text-slate-500,
+html.accessibility-invert .text-slate-400,
+html.accessibility-dark-contrast .text-slate-400,
+html.dark .text-slate-400 {
+  color: #94A3B8 !important;
+}
+
+/* Vibrant teal labels & accents */
+html.accessibility-invert [class*="text-[#0E7C86]"],
+html.accessibility-dark-contrast [class*="text-[#0E7C86]"],
+html.dark [class*="text-[#0E7C86]"],
+html[data-theme="dark"] [class*="text-[#0E7C86]"] {
+  color: #2DD4BF !important;
+}
+
+/* Borders */
+html.accessibility-invert .border-slate-100,
+html.accessibility-dark-contrast .border-slate-100,
+html.dark .border-slate-100,
+html.accessibility-invert .border-slate-200,
+html.accessibility-dark-contrast .border-slate-200,
+html.dark .border-slate-200,
+html.accessibility-invert .border-slate-300,
+html.accessibility-dark-contrast .border-slate-300,
+html.dark .border-slate-300,
+html.accessibility-invert .border-slate-200\/90,
+html.accessibility-dark-contrast .border-slate-200\/90,
+html.dark .border-slate-200\/90,
+html.accessibility-invert .border-slate-200\/80,
+html.accessibility-dark-contrast .border-slate-200\/80,
+html.dark .border-slate-200\/80 {
+  border-color: #164B5A !important;
+}
+
+/* Search input & form elements (excluding transparent hero search inputs) */
+html.accessibility-invert input:not([type="checkbox"]):not([type="radio"]):not(.train-hero-input):not(.public-hero-input),
+html.accessibility-dark-contrast input:not([type="checkbox"]):not([type="radio"]):not(.train-hero-input):not(.public-hero-input),
+html.dark input:not([type="checkbox"]):not([type="radio"]):not(.train-hero-input):not(.public-hero-input),
+html.accessibility-invert select,
+html.accessibility-dark-contrast select,
+html.dark select,
+html.accessibility-invert textarea,
+html.accessibility-dark-contrast textarea,
+html.dark textarea {
+  background-color: #071A33 !important;
+  color: #FFFFFF !important;
+  border-color: #164B5A !important;
+}
+
+/* ==========================================================================
+   Hero Search Bars (PublicDashboard, UserDashboard, TrainSearch)
+   Light Mode: Solid White (#FFFFFF) with dark navy text (#071A33)
+   Dark Mode: Deep Navy (#071A33) with crisp white text (#FFFFFF)
+   ========================================================================== */
+
+/* 1. Light Mode (Default) */
+.train-hero-search {
+  background-color: #FFFFFF !important;
+  background: #FFFFFF !important;
+  background-image: none !important;
+  border-color: #F59E0B !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+}
+
+.train-hero-search input,
+.train-hero-search .train-hero-input,
+.public-hero-search input,
+.public-hero-search .train-hero-input {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: 0 !important;
+  border-color: transparent !important;
+  outline: none !important;
+  box-shadow: none !important;
+  color: #071A33 !important;
+}
+
+.train-hero-search input::placeholder,
+.train-hero-search .train-hero-input::placeholder {
+  color: #64748B !important;
+  opacity: 1 !important;
+}
+
+.train-hero-search .search-icon {
+  color: #0E7C86 !important;
+}
+
+.train-hero-search .search-clear-btn {
+  color: #64748B !important;
+}
+
+.train-hero-search .search-clear-btn:hover {
+  color: #071A33 !important;
+}
+
+/* 2. Dark Mode Overrides */
+html.accessibility-dark-contrast .train-hero-search,
+html.accessibility-invert .train-hero-search,
+html.dark .train-hero-search,
+html[data-theme="dark"] .train-hero-search {
+  background-color: #071A33 !important;
+  background: #071A33 !important;
+  background-image: none !important;
+  border-color: #F59E0B !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(245, 158, 11, 0.3) !important;
+}
+
+html.accessibility-dark-contrast .train-hero-search input,
+html.accessibility-dark-contrast .train-hero-search .train-hero-input,
+html.accessibility-invert .train-hero-search input,
+html.accessibility-invert .train-hero-search .train-hero-input,
+html.dark .train-hero-search input,
+html.dark .train-hero-search .train-hero-input,
+html[data-theme="dark"] .train-hero-search input,
+html[data-theme="dark"] .train-hero-search .train-hero-input {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: 0 !important;
+  border-color: transparent !important;
+  outline: none !important;
+  box-shadow: none !important;
+  color: #FFFFFF !important;
+}
+
+html.accessibility-dark-contrast .train-hero-search input::placeholder,
+html.accessibility-dark-contrast .train-hero-search .train-hero-input::placeholder,
+html.accessibility-invert .train-hero-search input::placeholder,
+html.accessibility-invert .train-hero-search .train-hero-input::placeholder,
+html.dark .train-hero-search input::placeholder,
+html.dark .train-hero-search .train-hero-input::placeholder,
+html[data-theme="dark"] .train-hero-search input::placeholder,
+html[data-theme="dark"] .train-hero-search .train-hero-input::placeholder {
+  color: #CBD5E1 !important;
+  opacity: 1 !important;
+}
+
+html.accessibility-dark-contrast .train-hero-search .search-icon,
+html.accessibility-invert .train-hero-search .search-icon,
+html.dark .train-hero-search .search-icon,
+html[data-theme="dark"] .train-hero-search .search-icon {
+  color: #2DD4BF !important;
+}
+
+html.accessibility-dark-contrast .train-hero-search .search-clear-btn,
+html.accessibility-invert .train-hero-search .search-clear-btn,
+html.dark .train-hero-search .search-clear-btn,
+html[data-theme="dark"] .train-hero-search .search-clear-btn {
+  color: #CBD5E1 !important;
+}
+
+html.accessibility-dark-contrast .train-hero-search .search-clear-btn:hover,
+html.accessibility-invert .train-hero-search .search-clear-btn:hover,
+html.dark .train-hero-search .search-clear-btn:hover,
+html[data-theme="dark"] .train-hero-search .search-clear-btn:hover {
+  color: #FFFFFF !important;
+}
+
+/* Live Train Status Search Input in Dark Mode */
+html.accessibility-dark-contrast .live-status-page .live-search-input,
+html.accessibility-invert .live-status-page .live-search-input,
+html.dark .live-status-page .live-search-input,
+html[data-theme="dark"] .live-status-page .live-search-input {
+  background-color: #071A33 !important;
+  border-color: #F59E0B !important;
+  color: #FFFFFF !important;
+}
+
+html.accessibility-dark-contrast .live-status-page .live-search-input::placeholder,
+html.accessibility-invert .live-status-page .live-search-input::placeholder,
+html.dark .live-status-page .live-search-input::placeholder,
+html[data-theme="dark"] .live-status-page .live-search-input::placeholder {
+  color: #CBD5E1 !important;
+  opacity: 1 !important;
+}
+
+html.accessibility-dark-contrast .live-status-page .live-search-clear,
+html.accessibility-invert .live-status-page .live-search-clear,
+html.dark .live-status-page .live-search-clear,
+html[data-theme="dark"] .live-status-page .live-search-clear {
+  color: #CBD5E1 !important;
+}
+
+html.accessibility-dark-contrast .live-status-page .live-search-clear:hover,
+html.accessibility-invert .live-status-page .live-search-clear:hover,
+html.dark .live-status-page .live-search-clear:hover,
+html[data-theme="dark"] .live-status-page .live-search-clear:hover {
+  color: #FFFFFF !important;
+  background-color: #0E5961 !important;
+}
+
+html.accessibility-dark-contrast .live-status-page .search-icon,
+html.accessibility-invert .live-status-page .search-icon,
+html.dark .live-status-page .search-icon,
+html[data-theme="dark"] .live-status-page .search-icon {
+  color: #2DD4BF !important;
+}
+
+html.accessibility-dark-contrast input::placeholder,
+html.accessibility-invert input::placeholder,
+html.dark input::placeholder,
+html.accessibility-dark-contrast textarea::placeholder,
+html.accessibility-invert textarea::placeholder,
+html.dark textarea::placeholder {
+  color: #CBD5E1 !important;
+  opacity: 1 !important;
+}
+
+/* Filter buttons and pills */
+html.accessibility-invert button.bg-white {
+  background-color: #040E1B !important;
+  color: #E2E8F0 !important;
+  border-color: #164B5A !important;
+}
+
+html.accessibility-invert button.bg-white:hover {
+  background-color: #0E5961 !important;
+  color: #FFFFFF !important;
+}
+
+/* Status badges */
+html.accessibility-invert .bg-emerald-50 {
+  background-color: rgba(6, 78, 59, 0.45) !important;
+  border-color: rgba(16, 185, 129, 0.35) !important;
+  color: #6EE7B7 !important;
+}
+
+html.accessibility-invert .bg-amber-50 {
+  background-color: rgba(120, 53, 15, 0.45) !important;
+  border-color: rgba(245, 158, 11, 0.35) !important;
+  color: #FCD34D !important;
+}
+
+html.accessibility-invert .bg-rose-50,
+html.accessibility-invert .bg-red-50 {
+  background-color: rgba(136, 19, 55, 0.45) !important;
+  border-color: rgba(244, 63, 94, 0.35) !important;
+  color: #FDA4AF !important;
+}
+
+html.accessibility-invert .bg-indigo-50 {
+  background-color: rgba(49, 46, 129, 0.45) !important;
+  border-color: rgba(99, 102, 241, 0.35) !important;
+  color: #A5B4FC !important;
+}
+
+html.accessibility-invert .bg-blue-50 {
+  background-color: rgba(30, 58, 138, 0.45) !important;
+  border-color: rgba(59, 130, 246, 0.35) !important;
+  color: #93C5FD !important;
+}
+
 
 html.accessibility-sat-low {
   filter: saturate(0.6);
@@ -220,7 +677,7 @@ body {
   margin-top: 0px !important;
 }
 
-body > .skiptranslate {
+body>.skiptranslate {
   display: none !important;
 }
 
@@ -258,41 +715,37 @@ body > .skiptranslate {
 
 .controller-page {
   min-height: 100%;
-  background: linear-gradient(135deg, #FFF4E1 0%, #FFFFFF 50%, #FFF4E1 100%);
-  color: var(--rd-controller-text);
+  background: linear-gradient(135deg, #0A2D3B 0%, #020810 50%, #0A2D3B 100%);
+  color: #F1F5F9;
 }
 
 .controller-gradient {
-  background: linear-gradient(
-    90deg,
-    var(--rd-controller-navy) 0%,
-    var(--rd-controller-teal) 50%,
-    var(--rd-controller-navy) 100%
-  );
+  background: linear-gradient(90deg,
+      var(--rd-controller-navy) 0%,
+      var(--rd-controller-teal) 50%,
+      var(--rd-controller-navy) 100%);
 }
 
 .controller-header {
-  background: linear-gradient(
-    90deg,
-    var(--rd-controller-navy) 0%,
-    var(--rd-controller-teal) 50%,
-    var(--rd-controller-navy) 100%
-  );
+  background: linear-gradient(90deg,
+      var(--rd-controller-navy) 0%,
+      var(--rd-controller-teal) 50%,
+      var(--rd-controller-navy) 100%);
   border-bottom: 1px solid #164B5A;
   color: #FFFFFF;
 }
 
 .controller-panel {
-  background: #FFFFFF !important;
-  border: 1px solid #E2E8F0 !important;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
-  color: #071A33;
+  background: #071A33 !important;
+  border: 1px solid #164B5A !important;
+  box-shadow: 0 4px 14px 0 rgba(0, 0, 0, 0.4);
+  color: #F1F5F9 !important;
 }
 
 .controller-panel-secondary {
-  background: #F8FAFC !important;
-  border: 1px solid #E2E8F0 !important;
-  color: #071A33;
+  background: #0A2036 !important;
+  border: 1px solid #164B5A !important;
+  color: #F1F5F9 !important;
 }
 
 .controller-button {
@@ -301,12 +754,10 @@ body > .skiptranslate {
   justify-content: center;
   gap: 0.5rem;
 
-  background: linear-gradient(
-    90deg,
-    var(--rd-controller-navy) 0%,
-    var(--rd-controller-teal) 50%,
-    var(--rd-controller-navy) 100%
-  );
+  background: linear-gradient(90deg,
+      var(--rd-controller-navy) 0%,
+      var(--rd-controller-teal) 50%,
+      var(--rd-controller-navy) 100%);
 
   border: 1px solid var(--rd-controller-orange);
   color: white;
@@ -323,33 +774,27 @@ body > .skiptranslate {
 }
 
 .controller-sidebar {
-  background: linear-gradient(
-    180deg,
-    var(--rd-controller-navy) 0%,
-    var(--rd-controller-teal) 100%
-  );
+  background: linear-gradient(180deg,
+      var(--rd-controller-navy) 0%,
+      var(--rd-controller-teal) 100%);
 
   border-right: 1px solid #164B5A;
 }
 
 .controller-sidebar-active {
-  background: linear-gradient(
-    90deg,
-    var(--rd-controller-navy) 0%,
-    var(--rd-controller-teal) 100%
-  );
+  background: linear-gradient(90deg,
+      var(--rd-controller-navy) 0%,
+      var(--rd-controller-teal) 100%);
 
   border-left: 3px solid var(--rd-controller-orange);
   color: white;
 }
 
 .controller-section-heading {
-  background: linear-gradient(
-    90deg,
-    var(--rd-controller-navy) 0%,
-    var(--rd-controller-teal) 50%,
-    var(--rd-controller-navy) 100%
-  );
+  background: linear-gradient(90deg,
+      var(--rd-controller-navy) 0%,
+      var(--rd-controller-teal) 50%,
+      var(--rd-controller-navy) 100%);
 
   border: 1px solid var(--rd-controller-border);
   color: #FFFFFF;
@@ -363,96 +808,104 @@ body > .skiptranslate {
   border-color: var(--rd-controller-border);
 }
 
-/* Light Mode Dashboard Hierarchy & Contrast */
+/* Dark Mode Dashboard Hierarchy & Contrast */
 .controller-page h1:not(.controller-header *):not(header *),
 .controller-page h2:not(.controller-header *):not(header *),
 .controller-page h3:not(.controller-header *):not(header *),
 .controller-page h4:not(.controller-header *):not(header *) {
-  color: #071A33;
+  color: #FFFFFF;
 }
 
 .controller-panel table thead tr {
-  background-color: #F8FAFC !important;
-  color: #475569 !important;
-  border-bottom: 1px solid #E2E8F0 !important;
+  background-color: #0A2036 !important;
+  color: #94A3B8 !important;
+  border-bottom: 1px solid #164B5A !important;
 }
 
 .controller-panel table tbody tr {
-  border-bottom: 1px solid #F1F5F9 !important;
+  border-bottom: 1px solid rgba(22, 75, 90, 0.4) !important;
+  color: #F1F5F9 !important;
 }
 
 .controller-panel table tbody tr:hover {
-  background-color: #FFFDF9 !important;
+  background-color: rgba(14, 89, 97, 0.35) !important;
 }
 
-/* Light Mode Card & Text Contrast Safeguards */
+/* Dark Mode Card & Text Contrast Safeguards */
 .controller-page input:not([type="checkbox"]):not([type="radio"]),
 .controller-page select,
 .controller-page textarea {
-  background-color: #FFFFFF !important;
-  color: #0F172A !important;
-  border-color: #CBD5E1 !important;
+  background-color: #071A33 !important;
+  color: #FFFFFF !important;
+  border-color: #164B5A !important;
 }
 
 .controller-page input::placeholder,
 .controller-page textarea::placeholder {
-  color: #94A3B8 !important;
-}
-
-.controller-panel .text-white:not(.controller-header *):not(.controller-button *):not(.bg-gradient-to-r *):not(button.bg-gradient-to-r *),
-.controller-page h1.text-white,
-.controller-page h2.text-white,
-.controller-page h3.text-white {
-  color: #071A33 !important;
-}
-
-.controller-page .text-\[\#D7E5EC\]:not(header *):not(.controller-header *):not(header):not(.bg-gradient-to-r *) {
-  color: #334155 !important;
-}
-.controller-page .text-\[\#9FB8BE\]:not(header *):not(.controller-header *):not(header):not(.bg-gradient-to-r *) {
-  color: #64748B !important;
-}
-.controller-page .text-\[\#718F96\]:not(header *):not(.controller-header *):not(header):not(.bg-gradient-to-r *) {
-  color: #64748B !important;
-}
-.controller-page .text-\[\#71899C\]:not(header *):not(.controller-header *):not(header):not(.bg-gradient-to-r *) {
-  color: #64748B !important;
-}
-.controller-page .text-\[\#AFC0D4\]:not(header *):not(.controller-header *):not(header):not(.bg-gradient-to-r *) {
-  color: #475569 !important;
-}
-.controller-page .text-slate-100:not(header *):not(.controller-header *):not(.bg-gradient-to-r *) {
-  color: #0F172A !important;
-}
-.controller-page .text-slate-200:not(header *):not(.controller-header *):not(.bg-gradient-to-r *) {
-  color: #1E293B !important;
-}
-.controller-page .text-slate-300:not(header *):not(.controller-header *):not(.bg-gradient-to-r *) {
-  color: #334155 !important;
-}
-.controller-page .text-slate-400:not(header *):not(.controller-header *):not(.bg-gradient-to-r *) {
   color: #64748B !important;
 }
 
-.controller-page .bg-\[\#031A1F\]:not(header *):not(.controller-header *):not(.bg-gradient-to-r *):not([class*="from-"]),
-.controller-page .bg-\[\#071A33\]:not(header *):not(.controller-header *):not(.bg-gradient-to-r *):not([class*="from-"]),
-.controller-page .bg-\[\#0A2036\]:not(header *):not(.controller-header *):not(.bg-gradient-to-r *):not([class*="from-"]),
-.controller-page .bg-\[\#051322\]:not(header *):not(.controller-header *):not(.bg-gradient-to-r *):not([class*="from-"]),
-.controller-page .bg-\[\#031426\]:not(header *):not(.controller-header *):not(.bg-gradient-to-r *):not([class*="from-"]),
-.controller-page .bg-\[\#08383D\]:not(header *):not(.controller-header *):not(.bg-gradient-to-r *):not([class*="from-"]) {
-  background-color: #FFFFFF !important;
-}
-
-.controller-page .border-\[\#145158\],
-.controller-page .border-\[\#16364A\],
-.controller-page .border-\[\#294665\],
-.controller-page .border-\[\#174E56\] {
-  border-color: #E2E8F0 !important;
-}
 
 
 /* Leaflet Map Container Full Fill */
 .leaflet-container {
   width: 100% !important;
   height: 100% !important;
-}
+}
+
+/* Information Density Mode */
+html.density-compact,
+body.density-compact {
+  --table-cell-padding-y: 0.35rem;
+}
+
+html.density-compact table td,
+html.density-compact table th {
+  padding-top: 0.35rem !important;
+  padding-bottom: 0.35rem !important;
+}
+
+/* ==========================================================================
+   Auth Pages (Login & Registration): Completely Free of Dark Mode Overrides
+   ========================================================================== */
+.auth-page-no-dark,
+.auth-page-no-dark * {
+  color-scheme: light !important;
+}
+
+html.dark .auth-page-no-dark input:not([type="checkbox"]):not([type="radio"]),
+html.accessibility-dark-contrast .auth-page-no-dark input:not([type="checkbox"]):not([type="radio"]),
+html.accessibility-invert .auth-page-no-dark input:not([type="checkbox"]):not([type="radio"]),
+html[data-theme="dark"] .auth-page-no-dark input:not([type="checkbox"]):not([type="radio"]) {
+  background-color: #FFFFFF !important;
+  color: #071A33 !important;
+  border-color: #CBD5E1 !important;
+}
+
+html.dark .auth-page-no-dark [class*="from-[#FFF8EC]"],
+html.accessibility-dark-contrast .auth-page-no-dark [class*="from-[#FFF8EC]"],
+html.accessibility-invert .auth-page-no-dark [class*="from-[#FFF8EC]"],
+html.dark .auth-page-no-dark [class*="from-[#FFF4E1]"],
+html.accessibility-dark-contrast .auth-page-no-dark [class*="from-[#FFF4E1]"],
+html.accessibility-invert .auth-page-no-dark [class*="from-[#FFF4E1]"] {
+  background: linear-gradient(to bottom right, #FFF8EC, #FFFFFF, #FFF4E1) !important;
+  background-color: transparent !important;
+  color: #071A33 !important;
+}
+
+html.dark .auth-page-no-dark .bg-white,
+html.accessibility-dark-contrast .auth-page-no-dark .bg-white,
+html.accessibility-invert .auth-page-no-dark .bg-white {
+  background-color: #FFFFFF !important;
+  color: #071A33 !important;
+  border-color: #E2E8F0 !important;
+}
+
+html.dark .auth-page-no-dark h1,
+html.accessibility-dark-contrast .auth-page-no-dark h1,
+html.accessibility-invert .auth-page-no-dark h1,
+html.dark .auth-page-no-dark h2,
+html.accessibility-dark-contrast .auth-page-no-dark h2,
+html.accessibility-invert .auth-page-no-dark h2 {
+  color: #071A33 !important;
+}

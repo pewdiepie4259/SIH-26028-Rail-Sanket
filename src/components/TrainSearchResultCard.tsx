@@ -53,13 +53,12 @@ export function TrainSearchResultCard({
 
         {/* Signal Aspect Badge */}
         <span
-          className={`rounded px-2 py-0.5 font-mono text-[11px] font-semibold border ${
-            meta.aspect === 'GREEN'
+          className={`rounded px-2 py-0.5 font-mono text-[11px] font-semibold border ${meta.aspect === 'GREEN'
               ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
               : meta.aspect === 'YELLOW'
-              ? 'bg-amber-50 border-amber-200 text-amber-800'
-              : 'bg-rose-50 border-rose-200 text-rose-800'
-          }`}
+                ? 'bg-amber-50 border-amber-200 text-amber-800'
+                : 'bg-rose-50 border-rose-200 text-rose-800'
+            }`}
         >
           Aspect: {meta.aspect}
         </span>
@@ -109,9 +108,8 @@ export function TrainSearchResultCard({
               ETA & Delay
             </p>
             <p
-              className={`mt-0.5 text-xs font-bold ${
-                meta.delayMin > 0 ? 'text-amber-600' : 'text-emerald-600'
-              }`}
+              className={`mt-0.5 text-xs font-bold ${meta.delayMin > 0 ? 'text-amber-600' : 'text-emerald-600'
+                }`}
             >
               {meta.delayMin > 0 ? `+${meta.delayMin.toFixed(1)} mins` : 'On-Time (0.0m)'}
             </p>

@@ -16,7 +16,6 @@ import {
   Info,
   PhoneCall
 } from "lucide-react";
-import { getCurrentUser } from "../../services/auth";
 
 import {
   type PNRRecord,
@@ -32,8 +31,6 @@ export default function PNRStatus() {
   const [pnrResult, setPnrResult] = useState<PNRRecord | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
-
-  const currentUser = getCurrentUser();
 
   const handleLookup = (pnrToSearch: string) => {
     const clean = pnrToSearch.trim().replace(/\D/g, "");
@@ -435,7 +432,7 @@ export default function PNRStatus() {
             <div className="h-16 w-16 mx-auto rounded-2xl bg-teal-50 border border-teal-100 flex items-center justify-center text-[#0E7C86] mb-4">
               <Ticket size={32} />
             </div>
-            <h3 className="text-xl font-bold text-[#071A33]">Enter a 10-digit PNR to Check Real-Time PRS Status</h3>
+            <h3 className="text-xl font-bold text-[#071A33]">Enter a 10-digit PNR to Check Real-Time PNR Status</h3>
             <p className="mt-2 text-sm text-slate-500 max-w-lg mx-auto">
               Get live updates on seat confirmation, coach berth position, chart status, and real-time train ETA.
             </p>

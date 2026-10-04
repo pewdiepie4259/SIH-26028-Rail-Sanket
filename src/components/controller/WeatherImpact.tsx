@@ -55,22 +55,34 @@ function WeatherImpact() {
   const [zones, setZones] = useState<WeatherZone[]>(defaultWeatherZones)
 
   useEffect(() => {
-    weatherService.getControllerWeather().then((res) => {
-      if (res && res.sections && res.sections.length > 0) {
-        const mapped: WeatherZone[] = res.sections.slice(0, 3).map((s: ControllerWeatherSection) => ({
-          location: s.section,
-          condition: s.condition,
-          rainfall: s.rainfall,
-          visibility: s.visibility,
-          wind: s.wind,
-          speedRestriction: s.speedImpact !== "0 km/h" ? `${s.speedImpact.replace("-", "")} reduction` : "No restriction",
-          impact: s.impact === "High" ? "High" : s.impact === "Medium" ? "Moderate" : "Low",
-        }))
-        setZones(mapped)
-      }
-    }).catch(() => {
-      // Keep defaults
-    })
+    let isCancelled = false;
+
+    const fetchImpact = () => {
+      weatherService.getControllerWeather().then((res) => {
+        if (isCancelled) return;
+        if (res && res.sections && res.sections.length > 0) {
+          const mapped: WeatherZone[] = res.sections.slice(0, 3).map((s: ControllerWeatherSection) => ({
+            location: s.section,
+            condition: s.condition,
+            rainfall: s.rainfall,
+            visibility: s.visibility,
+            wind: s.wind,
+            speedRestriction: s.speedImpact !== "0 km/h" ? `${s.speedImpact.replace("-", "")} reduction` : "No restriction",
+            impact: s.impact === "High" ? "High" : s.impact === "Medium" ? "Moderate" : "Low",
+          }))
+          setZones(mapped)
+        }
+      }).catch(() => {
+        // Keep defaults
+      })
+    };
+
+    fetchImpact();
+    const interval = setInterval(fetchImpact, 20000); // 20s live telemetry refresh
+    return () => {
+      isCancelled = true;
+      clearInterval(interval);
+    };
   }, [])
 
   return (
@@ -98,25 +110,25 @@ function WeatherImpact() {
         </span>
       </div>
 
-      <div className="divide-y divide-slate-100">
+      <div className="divide-y divide-[#164B5A]/60">
         {zones.map((zone) => (
           <div
             key={zone.location}
-            className="p-4 transition-colors hover:bg-slate-50/80"
+            className="p-4 transition-colors hover:bg-[#0A2036]"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="flex min-w-0 items-center gap-2">
                 <MapPin
                   size={14}
-                  className="shrink-0 text-[#0E5961]"
+                  className="shrink-0 text-teal-300"
                 />
 
                 <div className="min-w-0">
-                  <div className="truncate text-xs font-bold text-[#071A33]">
+                  <div className="truncate text-xs font-bold text-white">
                     {zone.location}
                   </div>
 
-                  <div className="mt-0.5 text-[10px] text-slate-500">
+                  <div className="mt-0.5 text-[10px] text-slate-300">
                     {zone.condition}
                   </div>
                 </div>
@@ -125,10 +137,10 @@ function WeatherImpact() {
               <span
                 className={`shrink-0 rounded-md border px-2 py-1 text-[9px] font-bold uppercase tracking-wide ${
                   zone.impact === "High"
-                    ? "border-red-200 bg-red-50 text-red-700"
+                    ? "border-rose-500/50 bg-rose-950/80 text-rose-300"
                     : zone.impact === "Moderate"
-                      ? "border-amber-200 bg-amber-50 text-amber-800"
-                      : "border-emerald-200 bg-emerald-50 text-emerald-700"
+                      ? "border-amber-500/50 bg-amber-950/80 text-amber-300"
+                      : "border-emerald-500/50 bg-emerald-950/80 text-emerald-300"
                 }`}
               >
                 {zone.impact} impact
@@ -136,46 +148,46 @@ function WeatherImpact() {
             </div>
 
             <div className="mt-4 grid grid-cols-3 gap-2">
-              <div className="rounded-md border border-slate-200 bg-slate-50/70 p-2.5">
-                <div className="flex items-center gap-1.5 text-[9px] text-slate-500">
+              <div className="rounded-md border border-[#164B5A] bg-[#0A2036]/90 p-2.5">
+                <div className="flex items-center gap-1.5 text-[9px] text-teal-300">
                   <Droplets size={11} />
                   Rainfall
                 </div>
 
-                <div className="mt-1 text-[11px] font-bold text-[#071A33]">
+                <div className="mt-1 text-[11px] font-bold text-white">
                   {zone.rainfall}
                 </div>
               </div>
 
-              <div className="rounded-md border border-slate-200 bg-slate-50/70 p-2.5">
-                <div className="flex items-center gap-1.5 text-[9px] text-slate-500">
+              <div className="rounded-md border border-[#164B5A] bg-[#0A2036]/90 p-2.5">
+                <div className="flex items-center gap-1.5 text-[9px] text-teal-300">
                   <Gauge size={11} />
                   Visibility
                 </div>
 
-                <div className="mt-1 text-[11px] font-bold text-[#071A33]">
+                <div className="mt-1 text-[11px] font-bold text-white">
                   {zone.visibility}
                 </div>
               </div>
 
-              <div className="rounded-md border border-slate-200 bg-slate-50/70 p-2.5">
-                <div className="flex items-center gap-1.5 text-[9px] text-slate-500">
+              <div className="rounded-md border border-[#164B5A] bg-[#0A2036]/90 p-2.5">
+                <div className="flex items-center gap-1.5 text-[9px] text-teal-300">
                   <Wind size={11} />
                   Wind
                 </div>
 
-                <div className="mt-1 text-[11px] font-bold text-[#071A33]">
+                <div className="mt-1 text-[11px] font-bold text-white">
                   {zone.wind}
                 </div>
               </div>
             </div>
 
-            <div className="mt-3 flex items-center justify-between rounded-md border border-slate-200 bg-slate-50/70 px-3 py-2">
-              <span className="text-[10px] text-slate-500">
+            <div className="mt-3 flex items-center justify-between rounded-md border border-[#164B5A] bg-[#0A2036]/90 px-3 py-2">
+              <span className="text-[10px] text-slate-300">
                 Operational effect
               </span>
 
-              <span className="text-[10px] font-bold text-[#071A33]">
+              <span className="text-[10px] font-bold text-[#FF8A3D]">
                 {zone.speedRestriction}
               </span>
             </div>

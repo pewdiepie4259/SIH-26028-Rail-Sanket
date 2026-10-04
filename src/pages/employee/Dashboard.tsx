@@ -24,6 +24,7 @@ import {
   Building2,
   Lock,
   Mail,
+  Radio,
 } from "lucide-react";
 import { getCurrentUser, logout } from "../../services/auth";
 import {
@@ -39,6 +40,11 @@ import RoleAlertSummary from "../../components/employee/RoleAlertSummary";
 import RoleQuickActions from "../../components/employee/RoleQuickActions";
 import RoleDepartmentWarning from "../../components/employee/RoleDepartmentWarning";
 import type { EmployeeNavItem, NotificationDemo } from "../../services/employee";
+import EmployeeSidebar from "../../components/employee/EmployeeSidebar";
+import { saveTaskStatus } from "../../services/employeeTaskService";
+import { RAILWAY_EMPLOYEE_SLIDES } from "../../data/railwayEmployees";
+import LanguageAndA11yControls from "../../components/LanguageAndA11yControls";
+
 
 export default function EmployeeDashboard() {
   const navigate = useNavigate();
@@ -51,6 +57,25 @@ export default function EmployeeDashboard() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeTab] = useState<string>("dashboard");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [selectedNotification, setSelectedNotification] = useState<NotificationDemo | null>(null);
+
+  // Indian Railways Dedicated Employee Hero Gallery slides - rotates every 5 minutes (300,000 ms)
+  const [currentEmployeeSlide, setCurrentEmployeeSlide] = useState(() => {
+    return Math.floor(Date.now() / (5 * 60 * 1000)) % RAILWAY_EMPLOYEE_SLIDES.length;
+  });
+
+  useEffect(() => {
+    setCurrentEmployeeSlide(
+      Math.floor(Date.now() / (5 * 60 * 1000)) % RAILWAY_EMPLOYEE_SLIDES.length
+    );
+
+    const slideTimer = setInterval(() => {
+      setCurrentEmployeeSlide((prev) => (prev + 1) % RAILWAY_EMPLOYEE_SLIDES.length);
+    }, 5 * 60 * 1000); // 5 minutes = 300,000 ms
+
+    return () => clearInterval(slideTimer);
+  }, []);
+
 
   // Sync auth state & safeguard controller redirection
   useEffect(() => {
@@ -63,6 +88,7 @@ export default function EmployeeDashboard() {
       setCurrentUser(user);
     }
   }, [navigate]);
+
 
   // Real-time synchronization with Section Controller role allotment
   useEffect(() => {
@@ -256,17 +282,22 @@ export default function EmployeeDashboard() {
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  // Toggle Task Status
-  const toggleTaskStatus = (taskId: string) => {
+  // Toggle or Set Task Status with persistent saving
+  const toggleTaskStatus = (
+    taskId: string,
+    targetStatus?: "Pending" | "In Progress" | "Completed"
+  ) => {
     setTasks((prev) =>
       prev.map((t) => {
         if (t.id === taskId) {
           const nextStatus =
-            t.status === "Pending"
+            targetStatus ||
+            (t.status === "Pending"
               ? "In Progress"
               : t.status === "In Progress"
               ? "Completed"
-              : "Pending";
+              : "Pending");
+          saveTaskStatus(taskId, nextStatus);
           showToast(`Task status updated to ${nextStatus}`);
           return { ...t, status: nextStatus };
         }
@@ -274,6 +305,15 @@ export default function EmployeeDashboard() {
       })
     );
   };
+
+  // Inspect and open notification
+  const handleSelectNotification = (notif: NotificationDemo) => {
+    setSelectedNotification(notif);
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === notif.id ? { ...n, isRead: true } : n))
+    );
+  };
+
 
   // Mark alert as acknowledged and read
   const handleAcknowledgeAlert = (alertId: string) => {
@@ -336,20 +376,6 @@ export default function EmployeeDashboard() {
   const pendingTasksCount = tasks.filter((t) => t.status !== "Completed").length;
   const activeAlertsCount = alerts.filter((a) => a.status !== "ACKNOWLEDGED").length;
 
-  // Sidebar navigation menu items
-  const navItems: EmployeeNavItem[] = [
-    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/employee/dashboard", active: true },
-    { id: "duty", label: "My Duty", icon: CalendarCheck, path: "/employee/duty", active: true },
-    { id: "assignment", label: "My Train / My Section", icon: TrainFront, path: "/employee/assignment", active: true },
-    { id: "alerts", label: "Operational Alerts", icon: AlertTriangle, path: "/employee/alerts", active: true, badge: activeAlertsCount },
-    { id: "tasks", label: "Tasks", icon: CheckSquare, path: "/employee/tasks", active: true, badge: pendingTasksCount },
-    { id: "report_issue", label: "Report Issue", icon: FileWarning, path: "/employee/report", active: true },
-    { id: "mail", label: "Official Mail & Directives", icon: Mail, path: "/employee/mail", active: true },
-    { id: "incident", label: "Incident Reporting", icon: Flame, path: "/employee/incidents", active: true },
-    { id: "notifications", label: "Notifications", icon: Bell, path: "/employee/notifications", active: true, badge: unreadCount },
-    { id: "history", label: "Activity / History", icon: History, path: "/employee/history", active: true },
-    { id: "profile", label: "Profile", icon: User, path: "/employee/profile", active: true },
-  ];
 
   const employeeName = currentUser?.name || "Ramesh Sharma";
   const employeeId = currentUser?.employeeId || "IR-2024-8841";
@@ -367,7 +393,7 @@ export default function EmployeeDashboard() {
       )}
 
       {/* TOP HEADER */}
-      <header className="sticky top-0 z-40 flex h-[72px] shrink-0 items-center justify-between border-b border-[#16364A] bg-[#071A33] px-4 sm:px-6">
+      <header className="sticky top-0 z-40 flex h-[72px] shrink-0 items-center justify-between border-b border-[#164B5A] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-4 sm:px-6 shadow-lg">
         {/* Left Branding & Mobile Toggle */}
         <div className="flex items-center gap-3">
           <button
@@ -383,76 +409,85 @@ export default function EmployeeDashboard() {
             <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full border border-[#294665] bg-[#071A33]">
               <img
                 src="/logos/raildrishti-dark.png"
-                alt="RailDrishti"
+                alt="RailSanket"
                 className="h-full w-full object-contain p-0.5"
               />
             </div>
 
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold uppercase tracking-[0.16em] text-white">
-                  Rail<span className="text-[#F59E0B]">Drishti</span>
+                <span translate="no" className="notranslate text-sm sm:text-base font-bold text-white tracking-wide">
+                  Rail<span className="text-[#F59E0B]">Sanket</span>
                 </span>
                 <span className="rounded bg-[#0E7C86]/25 px-1.5 py-0.5 text-[10px] font-semibold text-teal-300 border border-[#0E7C86]/40">
                   Employee Portal
                 </span>
               </div>
-              <h1 className="text-sm sm:text-base font-bold text-white tracking-wide">
+              <h1 className="text-[11px] sm:text-xs font-bold uppercase tracking-[0.16em] text-slate-300">
                 Employee Operations Dashboard
               </h1>
             </div>
           </div>
         </div>
 
-        {/* Right Header: IST Clock, Notifications, Authorized User & Logout */}
+        {/* Right Header: IST Clock, Language Selector, Accessibility Tools, Notifications, User & Logout */}
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* Live IST Clock */}
-          <div className="hidden sm:flex items-center gap-2 rounded-lg border border-[#16364A] bg-[#0A2036] px-3 py-1.5 text-xs text-slate-200">
+          {/* Live IST Clock Capsule (Matching Language/A11y gradient & orange border) */}
+          <div className="hidden sm:flex h-9 items-center gap-2 rounded-full border border-[#F59E0B] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] px-3 text-xs text-white shadow-sm transition-all duration-300">
             <Clock size={15} className="text-[#F59E0B]" />
-            <div className="font-mono font-semibold tracking-wider text-white">
-              {formatIST(currentTime, is24Hour)} <span className="text-[#71899C] text-[10px]">IST</span>
+            <div className="font-mono font-bold tracking-wider text-white">
+              {formatIST(currentTime, is24Hour)} <span className="text-[#F59E0B] text-[10px] font-bold">IST</span>
             </div>
             <button
               type="button"
               onClick={() => setIs24Hour(!is24Hour)}
-              className="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-[#16364A] text-slate-300 hover:text-white transition"
+              className="ml-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-white hover:bg-[#F59E0B] hover:text-[#071A33] transition cursor-pointer border border-white/20"
               title="Toggle 12H / 24H clock"
             >
               {is24Hour ? "24H" : "12H"}
             </button>
           </div>
 
-          {/* Notifications Trigger */}
+          {/* Language Selector & Accessibility Tools */}
+          <LanguageAndA11yControls buttonHeightClass="h-9" />
+
+          {/* Notifications Trigger (Matching A11y square button gradient & orange border) */}
           <button
             type="button"
-            onClick={handleMarkNotificationsRead}
-            className="relative flex h-10 w-10 items-center justify-center rounded-lg border border-[#16364A] bg-[#0A2036] text-[#D7E5EC] transition hover:border-[#0E7C86] hover:text-white"
-            title="Mark notifications as read"
-            aria-label="View notifications"
+            onClick={() => navigate("/employee/notifications")}
+            className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-[#F59E0B] bg-gradient-to-r from-[#071A33] via-[#0E5961] to-[#071A33] text-white transition-all duration-300 hover:scale-[1.02] cursor-pointer shadow-sm"
+            title="View all notifications"
+            aria-label="View all notifications"
           >
-            <Bell size={18} />
+            <Bell size={18} className="text-white" />
             {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#EF4444] text-[9px] font-bold text-white shadow-sm ring-2 ring-[#071A33]">
+              <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#EF4444] text-[9px] font-black text-white shadow-sm ring-2 ring-[#071A33]">
                 {unreadCount}
               </span>
             )}
           </button>
 
           {/* Security & User Badge */}
-          <div className="hidden items-center gap-2 border-l border-[#16364A] pl-3 sm:flex">
-            <ShieldCheck size={18} className="text-[#0E7C86]" />
+          <button
+            type="button"
+            onClick={() => navigate("/employee/profile")}
+            className="hidden items-center gap-2 border-l border-[#16364A] pl-3 sm:flex hover:opacity-85 transition cursor-pointer text-left group"
+            title="View Employee Profile"
+          >
+            <ShieldCheck size={18} className="text-[#0E7C86] group-hover:text-cyan-300 transition" />
 
             <div className="hidden lg:block text-left">
-              <div className="text-xs font-semibold text-white truncate max-w-[130px]">
+              <div className="text-xs font-semibold text-white group-hover:text-cyan-200 transition truncate max-w-[130px]">
                 {employeeName}
               </div>
-              <div className="text-[10px] text-teal-400 truncate max-w-[130px]">
+              <div className="text-[10px] text-teal-400 group-hover:text-teal-300 transition truncate max-w-[130px]">
                 {roleDisplayTitle}
               </div>
             </div>
 
-            <UserCircle size={24} className="text-[#AFC0D4]" />
-          </div>
+            <UserCircle size={24} className="text-[#AFC0D4] group-hover:text-white transition" />
+          </button>
+
 
           {/* Secure Logout */}
           <button
@@ -470,308 +505,490 @@ export default function EmployeeDashboard() {
       {/* MAIN CONTAINER WITH SIDEBAR & DASHBOARD */}
       <div className="flex flex-1 min-w-0">
         {/* SIDEBAR NAVIGATION */}
-        {sidebarOpen && (
-          <div
-            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
-
-        <aside
-          className={`fixed lg:sticky top-[72px] z-50 h-[calc(100vh-72px)] bg-[#071A33] border-r border-[#16364A] flex flex-col transition-all duration-300 ${
-            sidebarOpen ? "left-0 w-64 shadow-2xl" : "-left-64 lg:left-0"
-          } ${sidebarCollapsed ? "lg:w-20" : "lg:w-64"}`}
-        >
-          {/* Sidebar Header & Collapse Button */}
-          <div className="flex items-center justify-between p-4 border-b border-[#16364A]/60">
-            <div className={`flex items-center gap-2 ${sidebarCollapsed ? "lg:hidden" : ""}`}>
-              <ShieldCheck size={18} className="text-[#0E7C86]" />
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
-                Operational Modules
-              </span>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setSidebarOpen(false)}
-              className="lg:hidden text-slate-400 hover:text-white p-1"
-            >
-              <X size={20} />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="hidden lg:flex h-7 w-7 items-center justify-center rounded border border-[#16364A] text-slate-400 hover:text-white hover:bg-[#0A2036]"
-              title={sidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-            >
-              {sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-            </button>
-          </div>
-
-          {/* Navigation Links */}
-          <nav className="flex-1 overflow-y-auto p-3 space-y-1.5 scrollbar-thin">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isCurrent = item.id === activeTab;
-              return (
-                <div key={item.id} className="relative group">
-                  <button
-                    type="button"
-                    disabled={!item.active}
-                    onClick={() => {
-                      if (item.path) {
-                        navigate(item.path);
-                      } else {
-                        showToast(`"${item.label}" will be unlocked in ${item.phase}`);
-                      }
-                    }}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition text-left ${
-                      isCurrent
-                        ? "bg-gradient-to-r from-[#0E7C86] to-[#0A2036] text-white border-l-4 border-[#F59E0B] shadow-sm"
-                        : item.active
-                        ? "text-slate-300 hover:bg-[#0A2036] hover:text-white"
-                        : "text-slate-500 hover:bg-[#0A2036]/50 cursor-not-allowed opacity-80"
-                    } ${sidebarCollapsed ? "justify-center px-2" : ""}`}
-                  >
-                    <Icon
-                      size={18}
-                      className={
-                        isCurrent
-                          ? "text-[#F59E0B]"
-                          : item.active
-                          ? "text-slate-300"
-                          : "text-slate-500"
-                      }
-                    />
-
-                    {!sidebarCollapsed && (
-                      <div className="flex-1 flex items-center justify-between min-w-0">
-                        <span className="truncate">{item.label}</span>
-                        {item.badge !== undefined && item.badge > 0 && (
-                          <span className="ml-2 px-1.5 py-0.5 rounded-full bg-[#EF4444] text-[10px] font-bold text-white">
-                            {item.badge}
-                          </span>
-                        )}
-                        {!item.active && item.phase && (
-                          <span className="ml-1.5 text-[9px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700 flex items-center gap-1 font-mono">
-                            <Lock size={9} />
-                            {item.phase}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </button>
-
-                  {sidebarCollapsed && (
-                    <div className="hidden lg:group-hover:block absolute left-full ml-2 top-1/2 -translate-y-1/2 px-2.5 py-1 bg-[#031426] border border-[#16364A] text-white text-xs rounded shadow-lg whitespace-nowrap z-50">
-                      {item.label} {!item.active && `(${item.phase})`}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </nav>
-
-          {/* Sidebar Footer */}
-          <div className="p-3 border-t border-[#16364A]/60 bg-[#051326]">
-            {!sidebarCollapsed ? (
-              <div className="text-[11px] text-slate-400 space-y-1">
-                <div className="flex items-center gap-1.5 text-slate-300 font-medium">
-                  <Building2 size={13} className="text-[#0E7C86]" />
-                  <span className="truncate">{departmentName}</span>
-                </div>
-                <div className="text-[10px] text-[#71899C] truncate">
-                  Role: {roleDisplayTitle}
-                </div>
-                <div className="pt-1 flex items-center justify-between text-[10px] text-slate-400 border-t border-[#16364A]/40">
-                  <span>Indian Railways</span>
-                  <span className="text-teal-400 font-medium">● Connected</span>
-                </div>
-              </div>
-            ) : (
-              <div className="flex justify-center text-teal-400" title="Connected">
-                <CircleDot size={14} />
-              </div>
-            )}
-          </div>
-        </aside>
+        <EmployeeSidebar
+          sidebarOpen={sidebarOpen}
+          setSidebarOpen={setSidebarOpen}
+          sidebarCollapsed={sidebarCollapsed}
+          setSidebarCollapsed={setSidebarCollapsed}
+          activeTab={activeTab}
+          departmentName={departmentName}
+          roleDisplayTitle={roleDisplayTitle}
+          badges={{
+            alerts: activeAlertsCount,
+            tasks: pendingTasksCount,
+            notifications: unreadCount,
+          }}
+          onShowToast={showToast}
+        />
 
         {/* DASHBOARD MAIN CONTENT */}
-        <main className="flex-1 min-w-0 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6">
+        <main className="flex-1 min-w-0 overflow-y-auto bg-[#031426] flex flex-col">
           {/* ============================================================ */}
-          {/* 1. ROLE / DEPARTMENT CONFIGURATION WARNING (IF MISMATCH)     */}
+          {/* 1. DYNAMIC HERO BANNER: FLUSH UNDER MAIN HEADER (0 GAP)      */}
+          {/*    (End-to-End Banner • Changes smoothly every 5 minutes)    */}
           {/* ============================================================ */}
-          <RoleDepartmentWarning
-            warningMessage={warningMessage}
-            isUnassigned={!isRoleValid}
-          />
+          <section className="relative w-full border-b border-[#164B5A] overflow-hidden min-h-[250px] shadow-xl shrink-0">
+            {/* Background Employee Slide with Smooth Crossfade */}
+            {RAILWAY_EMPLOYEE_SLIDES.map((slide, idx) => (
+              <div
+                key={slide.id}
+                className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
+                  idx === currentEmployeeSlide ? "opacity-100 z-0" : "opacity-0 pointer-events-none"
+                }`}
+              >
+                <img
+                  src={slide.image}
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = "/images/home-theme-bg.jpg";
+                  }}
+                  alt={slide.title}
+                  className="h-full w-full object-cover object-center"
+                />
+              </div>
+            ))}
 
-          {/* ============================================================ */}
-          {/* 2. DYNAMIC HEADER / WELCOME SECTION                          */}
-          {/* ============================================================ */}
-          <section className="rounded-xl border border-[#16364A] bg-[#071A33] p-5 sm:p-6 shadow-sm">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2 mb-1.5">
-                  <span className="h-2 w-2 rounded-full bg-teal-400"></span>
-                  <span className="text-xs font-semibold text-teal-400 uppercase tracking-wider">
-                    {duty.dutyStatus}
-                  </span>
+            {/* Dark teal vignette gradient overlay */}
+            <div className="absolute inset-0 z-[1] bg-gradient-to-r from-[#031426]/95 via-[#071A33]/85 to-[#031426]/75 backdrop-brightness-90" />
+
+            {/* Hero Content Overlay */}
+            <div className="relative z-10 px-4 sm:px-6 lg:px-8 py-6 flex flex-col justify-between min-h-[250px]">
+              <div className="flex flex-col gap-4 items-start">
+                <div>
+                  <div className="flex items-center gap-2.5 mb-2">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-950/80 border border-emerald-500/50 text-[11px] font-extrabold text-emerald-300 shadow-xs">
+                      <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                      <span>{duty.dutyStatus || "ON DUTY"}</span>
+                    </span>
+                    <span className="text-[11px] font-mono font-bold text-slate-300">
+                      Shift: <strong className="text-[#F59E0B]">{duty.shift}</strong>
+                    </span>
+                  </div>
+
+                  <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                    {getGreeting()}, <span className="text-[#F59E0B] font-black">{employeeName}</span>
+                  </h2>
+                  <p className="text-xs sm:text-sm text-slate-200 font-semibold mt-1">
+                    <span className="text-[#F59E0B] font-bold">{roleDisplayTitle}</span>
+                    {" • "}
+                    <span className="text-teal-300 font-semibold">{departmentName}</span>
+                    {" • "}
+                    <span className="text-slate-200">{duty.location}</span>
+                  </p>
                 </div>
 
-                <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-                  {getGreeting()}, <span className="text-white">{employeeName}</span>
-                </h2>
-                <p className="text-xs sm:text-sm text-slate-400 mt-1">
-                  <span className="text-teal-300 font-semibold">{roleDisplayTitle}</span>
-                  {" • "}
-                  <span className="text-slate-300">{departmentName}</span>
-                  {" • "}
-                  <span className="text-slate-400">{duty.location}</span>
-                </p>
+                {/* Key Meta Information Strip */}
+                <div className="flex flex-wrap items-center gap-4 sm:gap-6 bg-[#071A33]/90 backdrop-blur-md px-4 py-3 rounded-xl border border-white/20 shadow-md">
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Employee ID</div>
+                    <div className="text-xs font-mono font-extrabold text-white mt-0.5">
+                      {employeeId}
+                    </div>
+                  </div>
+                  <div className="h-7 w-px bg-[#16364A] hidden sm:block"></div>
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Department</div>
+                    <div className="text-xs font-bold text-slate-100 mt-0.5 truncate max-w-[160px]">
+                      {departmentName}
+                    </div>
+                  </div>
+                  <div className="h-7 w-px bg-[#16364A] hidden sm:block"></div>
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Operational Role</div>
+                    <div className="text-xs font-black text-[#F59E0B] mt-0.5 truncate max-w-[170px]">
+                      {roleDisplayTitle}
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              {/* Key Meta Information Strip */}
-              <div className="flex flex-wrap items-center gap-4 sm:gap-6 bg-[#0A2036] px-4 py-3 rounded-lg border border-[#16364A]">
-                <div>
-                  <div className="text-[10px] font-medium text-slate-400">Employee ID</div>
-                  <div className="text-xs font-mono font-semibold text-white mt-0.5">
-                    {employeeId}
+              {/* Bottom Operational Status Bar & 5-Min Slide Indicators */}
+              <div className="flex flex-wrap items-center justify-between pt-4 mt-3 border-t border-white/10 text-xs gap-3">
+                <span className="text-[11px] text-slate-300 font-medium">
+                  Saluting Indian Railways Workforce • 24x7 Operations Nationwide
+                </span>
+
+                <div className="flex items-center gap-3">
+                  {/* 5-Minute Auto-Rotating Slide Indicators */}
+                  <div className="flex items-center gap-1.5 bg-[#031426]/70 px-2.5 py-1 rounded-full border border-white/15 backdrop-blur-xs">
+                    {RAILWAY_EMPLOYEE_SLIDES.map((slide, idx) => (
+                      <button
+                        key={slide.id}
+                        type="button"
+                        onClick={() => setCurrentEmployeeSlide(idx)}
+                        title={`Slide ${idx + 1}: ${slide.title} (Changes every 5 mins)`}
+                        className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
+                          idx === currentEmployeeSlide
+                            ? "w-5 bg-[#F59E0B]"
+                            : "w-2 bg-white/30 hover:bg-white/70"
+                        }`}
+                      />
+                    ))}
                   </div>
-                </div>
-                <div className="h-7 w-px bg-[#16364A] hidden sm:block"></div>
-                <div>
-                  <div className="text-[10px] font-medium text-slate-400">Department</div>
-                  <div className="text-xs font-semibold text-slate-200 mt-0.5 truncate max-w-[160px]">
-                    {departmentName}
-                  </div>
-                </div>
-                <div className="h-7 w-px bg-[#16364A] hidden sm:block"></div>
-                <div>
-                  <div className="text-[10px] font-medium text-slate-400">Operational Role</div>
-                  <div className="text-xs font-semibold text-teal-400 mt-0.5 truncate max-w-[150px]">
-                    {roleDisplayTitle}
-                  </div>
+
+                  <span className="text-[11px] text-emerald-400 font-bold font-mono hidden sm:inline">
+                    Active Shift Telemetry • RailSanket
+                  </span>
                 </div>
               </div>
             </div>
           </section>
 
           {/* ============================================================ */}
-          {/* 3. ROLE-SPECIFIC SUMMARY WIDGETS                             */}
+          {/* 2. LIVE ALERTS MARQUEE TICKER STRIP (Slower, Live Alerts)     */}
           {/* ============================================================ */}
-          <RoleDashboardSummary widgets={summaryWidgets} />
-
-          {/* ============================================================ */}
-          {/* 4. TODAY'S DUTY & CURRENT ASSIGNMENT (ROLE-AWARE)            */}
-          {/* ============================================================ */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* TODAY'S DUTY */}
-            <RoleDutyCard duty={duty} roleConfig={roleConfig} />
-
-            {/* CURRENT ASSIGNMENT */}
-            <RoleAssignmentCard assignment={assignment} roleConfig={roleConfig} />
-          </div>
-
-          {/* ============================================================ */}
-          {/* 5. ROLE-SPECIFIC ALERTS & TASKS                              */}
-          {/* ============================================================ */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* OPERATIONAL ALERTS */}
-            <RoleAlertSummary
-              alerts={alerts}
-              onAcknowledgeAlert={handleAcknowledgeAlert}
-            />
-
-            {/* PENDING TASKS */}
-            <RoleTaskSummary
-              tasks={tasks}
-              onToggleStatus={toggleTaskStatus}
-            />
-          </div>
-
-          {/* ============================================================ */}
-          {/* 6. ROLE QUICK ACTIONS                                        */}
-          {/* ============================================================ */}
-          <RoleQuickActions roleConfig={roleConfig} />
-
-          {/* ============================================================ */}
-          {/* 7. RECENT NOTIFICATIONS                                      */}
-          {/* ============================================================ */}
-          <section className="rounded-xl border border-[#16364A] bg-[#071A33] p-5 sm:p-6 shadow-sm">
-            <div className="flex items-center justify-between border-b border-[#16364A] pb-3 mb-4">
-              <div className="flex items-center gap-2">
-                <Bell size={18} className="text-teal-400" />
-                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-200">
-                  Recent Notifications
-                </h3>
-              </div>
-              <div className="flex items-center gap-2">
-                {unreadCount > 0 && (
-                  <button
-                    type="button"
-                    onClick={handleMarkNotificationsRead}
-                    className="text-[11px] text-teal-400 hover:underline"
-                  >
-                    Mark all read
-                  </button>
-                )}
-                <span className="text-xs font-semibold px-2 py-0.5 rounded bg-[#16364A] text-slate-300">
-                  {notifications.length} Total
+          <section className="relative z-20 w-full shrink-0 border-b border-[#164B5A] bg-gradient-to-r from-[#071A33] via-[#0A2D3B] to-[#071A33] shadow-inner">
+            <div className="flex h-11 w-full items-center min-w-0">
+              {/* Sticky Left Category Title */}
+              <div className="z-10 flex h-full shrink-0 items-center gap-2 border-r border-[#164B5A] bg-[#071A33] px-3 sm:px-5 shadow-sm">
+                <Radio size={15} className="text-[#F59E0B] animate-pulse" />
+                <span className="text-xs font-black uppercase tracking-wider text-white whitespace-nowrap flex items-center gap-1.5">
+                  <span>Live Alerts</span>
+                  <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[9px] font-extrabold font-mono">LIVE</span>
                 </span>
               </div>
+
+              {/* Scrolling Marquee Container (Relaxed 65s speed) */}
+              <div className="relative flex-1 min-w-0 overflow-hidden">
+                <div
+                  className="alert-marquee flex w-max items-center py-2"
+                  style={{ animationDuration: "65s" }}
+                >
+                  {[
+                    ...alerts.map((a) => ({
+                      id: `alert-${a.id}`,
+                      badge: (
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
+                            a.severity === "HIGH"
+                              ? "bg-red-500/20 text-red-400 border border-red-500/40"
+                              : a.severity === "MEDIUM"
+                              ? "bg-amber-500/20 text-[#F59E0B] border border-[#F59E0B]/40"
+                              : "bg-teal-500/20 text-teal-300 border border-teal-500/40"
+                          }`}
+                        >
+                          {a.severity === "HIGH" ? "CRITICAL ALERT" : a.severity === "MEDIUM" ? "CAUTION" : "ADVISORY"}
+                        </span>
+                      ),
+                      text: `${a.title} • ${duty.location || "Section Corridor"}`,
+                      time: a.timestamp || "Just now",
+                      onClick: () => handleAcknowledgeAlert(a.id),
+                    })),
+                    {
+                      id: "live-rtis",
+                      badge: (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                          RTIS LIVE
+                        </span>
+                      ),
+                      text: "Real-time Telemetry feed online for all active coaching rakes and locomotives in section.",
+                      time: "Live Feed",
+                      onClick: () => navigate("/live"),
+                    },
+                    {
+                      id: "speed-restriction",
+                      badge: (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-[#F59E0B] border border-[#F59E0B]/40">
+                          SPEED CAUTION
+                        </span>
+                      ),
+                      text: "Speed restriction (30 km/h) active between station blocks for track inspection squad.",
+                      time: "Active Order",
+                      onClick: undefined,
+                    },
+                    {
+                      id: "safety-vigil",
+                      badge: (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-red-500/20 text-red-300 border border-red-500/40">
+                          SAFETY VIGIL
+                        </span>
+                      ),
+                      text: "Maintain continuous vigil for OHE status and interlocking signal feedback during shifts.",
+                      time: "Urgent",
+                      onClick: undefined,
+                    },
+                    {
+                      id: "platform-clearance",
+                      badge: (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-teal-500/20 text-teal-300 border border-teal-500/40">
+                          LINE CLEAR
+                        </span>
+                      ),
+                      text: `Platform 1 & 2 operational clearances recorded for incoming corridor traffic at ${duty.location || "Terminal"}.`,
+                      time: "Recent",
+                      onClick: undefined,
+                    },
+                  ]
+                    .concat([
+                      ...alerts.map((a) => ({
+                        id: `alert-dup-${a.id}`,
+                        badge: (
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
+                              a.severity === "HIGH"
+                                ? "bg-red-500/20 text-red-400 border border-red-500/40"
+                                : a.severity === "MEDIUM"
+                                ? "bg-amber-500/20 text-[#F59E0B] border border-[#F59E0B]/40"
+                                : "bg-teal-500/20 text-teal-300 border border-teal-500/40"
+                            }`}
+                          >
+                            {a.severity === "HIGH" ? "CRITICAL ALERT" : a.severity === "MEDIUM" ? "CAUTION" : "ADVISORY"}
+                          </span>
+                        ),
+                        text: `${a.title} • ${duty.location || "Section Corridor"}`,
+                        time: a.timestamp || "Just now",
+                        onClick: () => handleAcknowledgeAlert(a.id),
+                      })),
+                      {
+                        id: "live-rtis-dup",
+                        badge: (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                            RTIS LIVE
+                          </span>
+                        ),
+                        text: "Real-time Telemetry feed online for all active coaching rakes and locomotives in section.",
+                        time: "Live Feed",
+                        onClick: () => navigate("/live"),
+                      },
+                      {
+                        id: "speed-restriction-dup",
+                        badge: (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-[#F59E0B] border border-[#F59E0B]/40">
+                            SPEED CAUTION
+                          </span>
+                        ),
+                        text: "Speed restriction (30 km/h) active between station blocks for track inspection squad.",
+                        time: "Active Order",
+                        onClick: undefined,
+                      },
+                    ])
+                    .map((item, idx) => (
+                      <div
+                        key={`${item.id}-${idx}`}
+                        onClick={() => item.onClick && item.onClick()}
+                        className="flex items-center gap-2 whitespace-nowrap px-5 text-xs font-medium text-slate-200 hover:text-white cursor-pointer transition group"
+                      >
+                        {item.badge}
+                        <span className="group-hover:underline decoration-[#F59E0B] font-semibold">{item.text}</span>
+                        <span className="text-[10px] text-slate-400 font-mono">({item.time})</span>
+                        <span className="mx-2 text-[#164B5A] font-bold">•</span>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* ============================================================ */}
+          {/* 3. PADDED MAIN CONTENT CONTAINER                             */}
+          {/* ============================================================ */}
+          <div className="p-4 sm:p-6 lg:p-8 space-y-6 flex-1">
+            {/* ROLE / DEPARTMENT CONFIGURATION WARNING (IF MISMATCH) */}
+            <RoleDepartmentWarning
+              warningMessage={warningMessage}
+              isUnassigned={!isRoleValid}
+            />
+
+            {/* ROLE-SPECIFIC SUMMARY WIDGETS */}
+            <RoleDashboardSummary widgets={summaryWidgets} />
+
+            {/* TODAY'S DUTY & CURRENT ASSIGNMENT (ROLE-AWARE) */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* TODAY'S DUTY */}
+              <RoleDutyCard duty={duty} roleConfig={roleConfig} />
+
+              {/* CURRENT ASSIGNMENT */}
+              <RoleAssignmentCard assignment={assignment} roleConfig={roleConfig} />
             </div>
 
-            <div className="space-y-2.5">
-              {notifications.slice(0, 4).map((notif) => (
-                <div
-                  key={notif.id}
-                  className={`rounded-lg p-3 border transition flex items-center justify-between gap-3 ${
-                    !notif.isRead
-                      ? "bg-[#0A2036] border-teal-500/40"
-                      : "bg-[#0A2036]/60 border-[#16364A]/60"
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <span
-                      className={`h-2 w-2 rounded-full shrink-0 ${
-                        !notif.isRead ? "bg-[#F59E0B]" : "bg-slate-600"
-                      }`}
-                    />
-                    <div className="min-w-0">
-                      <div
-                        className={`text-xs font-medium truncate ${
-                          !notif.isRead ? "text-white font-semibold" : "text-slate-300"
+            {/* ROLE-SPECIFIC ALERTS & TASKS */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* OPERATIONAL ALERTS */}
+              <RoleAlertSummary
+                alerts={alerts}
+                onAcknowledgeAlert={handleAcknowledgeAlert}
+              />
+
+              {/* PENDING TASKS */}
+              <RoleTaskSummary
+                tasks={tasks}
+                onToggleStatus={toggleTaskStatus}
+              />
+            </div>
+
+            {/* QUICK ACTIONS */}
+            <RoleQuickActions
+              roleConfig={roleConfig}
+              onShowToast={showToast}
+            />
+
+            {/* RECENT NOTIFICATIONS */}
+            <section className="rounded-xl border border-[#16364A] bg-[#071A33] p-5 sm:p-6 shadow-sm">
+              <div className="flex items-center justify-between border-b border-[#16364A] pb-3 mb-4">
+                <div className="flex items-center gap-2">
+                  <Bell size={18} className="text-teal-400" />
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-slate-200">
+                    Recent Notifications
+                  </h3>
+                </div>
+                <div className="flex items-center gap-2">
+                  {unreadCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleMarkNotificationsRead}
+                      className="text-[11px] text-teal-400 hover:underline"
+                    >
+                      Mark all read
+                    </button>
+                  )}
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded bg-[#16364A] text-slate-300">
+                    {notifications.length} Total
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-2.5">
+                {notifications.slice(0, 4).map((notif) => (
+                  <div
+                    key={notif.id}
+                    onClick={() => handleSelectNotification(notif)}
+                    className={`rounded-lg p-3 border transition flex items-center justify-between gap-3 cursor-pointer group ${
+                      !notif.isRead
+                        ? "bg-[#0A2036] border-teal-500/40 hover:border-teal-400 hover:bg-[#0A223D]"
+                        : "bg-[#0A2036]/60 border-[#16364A]/60 hover:border-teal-500/50 hover:bg-[#0A2036]"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span
+                        className={`h-2 w-2 rounded-full shrink-0 ${
+                          !notif.isRead ? "bg-[#F59E0B] animate-pulse" : "bg-slate-600"
                         }`}
-                      >
-                        {notif.title}
+                      />
+                      <div className="min-w-0">
+                        <div
+                          className={`text-xs font-medium truncate group-hover:text-cyan-200 transition ${
+                            !notif.isRead ? "text-white font-semibold" : "text-slate-300"
+                          }`}
+                        >
+                          {notif.title}
+                        </div>
+                        {notif.category && (
+                          <span className="text-[10px] text-[#71899C] group-hover:text-teal-400 transition">
+                            {notif.category}
+                          </span>
+                        )}
                       </div>
-                      {notif.category && (
-                        <span className="text-[10px] text-[#71899C]">{notif.category}</span>
-                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-[10px] text-[#71899C] font-mono">
+                        {notif.timestamp}
+                      </span>
+                      <span className="text-[10px] text-teal-400 opacity-0 group-hover:opacity-100 transition hidden sm:inline-block">
+                        View →
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-[#16364A] flex items-center justify-between">
+                <span className="text-[11px] text-[#71899C]">
+                  Select any notification to inspect or mark read.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => navigate("/employee/notifications")}
+                  className="text-teal-400 hover:text-teal-300 text-xs font-medium flex items-center gap-1 transition"
+                >
+                  <span>View All Notifications</span>
+                  <ChevronRight size={14} />
+                </button>
+              </div>
+            </section>
+          </div>
+        </main>
+
+          {/* NOTIFICATION INSPECTION MODAL */}
+          {selectedNotification && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm"
+              onClick={() => setSelectedNotification(null)}
+            >
+              <div
+                className="w-full max-w-lg rounded-xl border border-[#16364A] bg-[#071A33] p-6 shadow-2xl space-y-4"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-start justify-between gap-3 border-b border-[#16364A] pb-3">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="h-8 w-8 rounded-lg bg-teal-950/60 border border-teal-600/50 flex items-center justify-center text-teal-300 shrink-0">
+                      <Bell size={18} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-wider bg-teal-950/80 text-teal-300 border-teal-700/60">
+                          {selectedNotification.category || "NOTIFICATION"}
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          {selectedNotification.timestamp}
+                        </span>
+                      </div>
+                      <h3 className="text-sm font-bold text-white mt-1 leading-snug">
+                        {selectedNotification.title}
+                      </h3>
                     </div>
                   </div>
 
-                  <span className="text-[10px] text-[#71899C] shrink-0 font-mono">
-                    {notif.timestamp}
-                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedNotification(null)}
+                    className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-[#16364A]"
+                  >
+                    <X size={18} />
+                  </button>
                 </div>
-              ))}
-            </div>
 
-            <div className="mt-4 pt-3 border-t border-[#16364A] flex items-center justify-end">
-              <button
-                type="button"
-                onClick={() => navigate("/employee/notifications")}
-                className="text-teal-400 hover:text-teal-300 text-xs font-medium flex items-center gap-1 transition"
-              >
-                <span>View All Notifications</span>
-                <ChevronRight size={14} />
-              </button>
+                <div className="bg-[#0A2036] p-4 rounded-lg border border-[#16364A] space-y-2 text-xs">
+                  <div className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">
+                    Official Notice Detail
+                  </div>
+                  <p className="text-slate-200 leading-relaxed">
+                    {selectedNotification.title}. Please acknowledge this notification and take any required operational action in accordance with Indian Railways standard procedures.
+                  </p>
+                </div>
+
+                <div className="border-t border-[#16364A] pt-3 flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const cat = selectedNotification.category?.toLowerCase() || "";
+                      if (cat.includes("roster") || cat.includes("duty")) {
+                        navigate("/employee/duty");
+                      } else if (cat.includes("circular") || cat.includes("directive")) {
+                        navigate("/employee/mail");
+                      } else if (cat.includes("personnel")) {
+                        navigate("/employee/profile");
+                      } else {
+                        navigate("/employee/notifications");
+                      }
+                      setSelectedNotification(null);
+                    }}
+                    className="px-3 py-1.5 rounded-lg border border-[#16364A] text-teal-400 hover:text-teal-300 hover:bg-[#0A2036] text-xs flex items-center gap-1.5 transition"
+                  >
+                    <span>View Related Module</span>
+                    <ChevronRight size={13} />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedNotification(null)}
+                    className="px-3 py-1.5 rounded-lg bg-[#16364A] text-slate-300 hover:text-white text-xs transition"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
             </div>
-          </section>
-        </main>
+          )}
       </div>
     </div>
   );
